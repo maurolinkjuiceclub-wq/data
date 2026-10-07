@@ -1,10 +1,8 @@
 <!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <!-- Site lists: paste what a publisher or broker sent, match it against the
-     database, decide every row. Served at /lists/ next to the desk, behind
-     the same Cloudflare Access. The parsing and matching live in
-     site-lists.js (shared with the Worker and tested by
-     scripts/probar-listas.mjs); this file is only the screen.
-     Plan and decisions: BRIEF.md. -->
+     database, decide every row. The parsing and matching live in
+     site-lists.js (tested by scripts/probar-listas.mjs); this file is only
+     the screen. Plan and decisions: BRIEF.md. -->
 <title>LJC Site Lists</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -128,6 +126,18 @@ td.dec{white-space:nowrap;width:1%}
 .seg .on-reject{background:var(--bad-bg);color:var(--bad-ink);font-weight:600}
 .seg .on-ask{background:var(--wait-bg);color:var(--wait-ink);font-weight:600}
 .empty{color:var(--muted);font-style:italic;padding:14px 12px;font-size:13px}
+.seg .on-type{background:var(--accent-wash);color:var(--accent-ink);font-weight:600}
+.seg.stype button{padding:6px 12px;font-size:12.5px}
+.seg .on-webmaster{background:var(--accent-wash);color:var(--accent-ink);font-weight:600}
+.delta{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;font-variant-numeric:tabular-nums}
+.delta.up{color:var(--wait-ink)}
+.delta.down{color:var(--ok-ink)}
+.fv{display:inline-block;font-family:var(--sans);font-size:11px;border:1px solid var(--line-strong);border-radius:4px;padding:0 5px;margin:0 4px 3px 0;color:var(--ink-2);background:var(--surface-2)}
+.fv.off{border-style:dashed;color:var(--muted);background:none}
+.raw{display:block;font-size:11px;color:var(--muted);margin-top:2px;white-space:normal}
+.export table.outreach td{white-space:normal}
+.export table.outreach td.dom{white-space:nowrap}
+.aviso.acc{border-color:var(--accent);background:var(--accent-wash);color:var(--accent-ink)}
 
 /* ---------- export, folded ---------- */
 .export{margin-top:22px;border-top:1px solid var(--line);padding-top:10px}
@@ -163,6 +173,7 @@ td.dec{white-space:nowrap;width:1%}
   <aside class="rail">
     <form class="rev-form" onsubmit="return false">
       <div><label for="sender" data-i18n="sender">Sender</label><input type="text" id="sender" value="starmagazines.de@gmail.com" autocomplete="off"></div>
+      <div><label data-i18n="stype">The sender is</label><span class="seg stype" role="group"><button type="button" id="stype-publisher" data-stype="Publisher" class="on-type" data-i18n="publisher">Publisher</button><button type="button" id="stype-broker" data-stype="Broker" data-i18n="broker">Broker</button></span></div>
       <div><label for="label" data-i18n="list">List</label><input type="text" id="label" value="starmagazines 05/10" autocomplete="off"></div>
       <div><label for="list" data-i18n="paste">Paste the list</label><textarea id="list" spellcheck="false"></textarea></div>
       <div class="actions"><button type="button" class="btn primary" id="match" data-i18n="match">Match</button></div>
@@ -173,18 +184,28 @@ td.dec{white-space:nowrap;width:1%}
   <main class="work">
     <div id="results"></div>
     <section class="export" id="export" hidden>
-      <button type="button" class="panel-h" id="export-h" aria-expanded="false" aria-controls="export-body"><span class="caret" aria-hidden="true">▾</span><span id="export-t"></span></button>
-      <div id="export-body" hidden>
+      <button type="button" class="panel-h" id="export-h" aria-expanded="true" aria-controls="export-body"><span class="caret" aria-hidden="true">▾</span><span id="export-t"></span></button>
+      <div id="export-body">
         <p class="hint" data-i18n="rowshint"></p>
-        <textarea id="tsv" class="inp" readonly spellcheck="false"></textarea>
+        <div class="tabla-wrap" id="export-prev"></div>
         <div class="actions"><button type="button" class="btn" id="copy" data-i18n="copy">Copy</button><span class="said" id="copynote"></span></div>
+        <textarea id="tsv" class="inp" readonly spellcheck="false" hidden></textarea>
+      </div>
+    </section>
+    <section class="export" id="wm" hidden>
+      <button type="button" class="panel-h" id="wm-h" aria-expanded="true" aria-controls="wm-body"><span class="caret" aria-hidden="true">▾</span><span id="wm-t"></span></button>
+      <div id="wm-body">
+        <p class="hint" data-i18n="wmhint"></p>
+        <div class="tabla-wrap" id="wm-prev"></div>
+        <div class="actions"><button type="button" class="btn" id="wm-copy" data-i18n="copy">Copy</button><span class="said" id="wm-note"></span></div>
+        <textarea id="wm-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
       </div>
     </section>
   </main>
 </div>
 
 <script type="module">
-import { parseList, indexDatabase, matchList, rowForAccept, formatPrice, senderOf, NICHES, DB_COLUMNS, BUYING_COLUMN } from "./site-lists.js";
+import { parseList, indexDatabase, matchList, rowForAccept, formatPrice, senderOf, termsOf, priceDelta, listTermsOf, withListTerms, NICHES, DB_COLUMNS, BUYING_COLUMN } from "./site-lists.js";
 /* ---------- sample database (2026 layout, marked rows are examples) ---------- */
 const SAMPLE_DB = [
   r("Publisher","starmagazines.de","starmagazines.de@gmail.com","",{general:"€ 99.00",casino:"€ 249.00",cbd:"€ 170.00",crypto:"€ 170.00"},"dofollow","Guest post","permanent","Example row: same prices as the 05/10 list"),
@@ -215,7 +236,15 @@ Unsere Leistungen: Dauerhafte Veröffentlichung von Gastbeiträgen · Do-Follow-
 /* ---------- state ---------- */
 let dbRows = SAMPLE_DB, rmRows = SAMPLE_REMOVED, dbSource = "sample rows";
 let index = indexDatabase(dbRows, rmRows);
-let groups = null, items = [], lastParsed = null, view = "changed";
+let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
+try{ stype = localStorage.getItem("ljc-lists-stype") === "Broker" ? "Broker" : "Publisher"; }catch(e){}
+function setStype(v){
+  stype = v; try{ localStorage.setItem("ljc-lists-stype", v); }catch(e){}
+  $("stype-publisher").className = v === "Publisher" ? "on-type" : "";
+  $("stype-broker").className = v === "Broker" ? "on-type" : "";
+  if(groups) render();
+}
+
 function noteParse(){
   if(!lastParsed) return;
   const cols = lastParsed.columns ? lastParsed.columns.join(", ") : t().noheader;
@@ -229,6 +258,9 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until the sheet is connected. A CSV copy can be loaded here; it stays in your browser.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
+    stype:"The sender is", publisher:"Publisher", broker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
+    brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
+    terms:{linkType:"link", placement:"placement", priceValidity:"validity", sponsorTag:"tag"}, saidNothing:"terms not stated", fromList:"Stated once for the whole list, not for this site", fromListShort:"whole list", dAbove:"above", dBelow:"below", recorded:"recorded",
     reset:"Back to sample rows", rows:"Rows Accept will write", rowshint:"Sheet not connected yet: copy the rows.", copy:"Copy", copied:"Copied",
     state:(src)=>`database: ${src} · sheet not connected`, meta:(n,d,c,r)=>`${n} rows · ${d} domains · ${c} contacts · ${r} removed`,
     parsed:(n,s,cols)=>`${n} domains · ${s} lines skipped${cols ? " · " + cols : ""}`, noheader:"no header: 1st price general, 2nd casino",
@@ -242,6 +274,9 @@ const T = {
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta conectar la hoja. Puedes cargar una copia CSV; se queda en tu navegador.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
+    stype:"El remitente es", publisher:"Publisher", broker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
+    brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
+    terms:{linkType:"enlace", placement:"duración", priceValidity:"validez", sponsorTag:"etiqueta"}, saidNothing:"sin condiciones", fromList:"Dicho una vez para toda la lista, no para este sitio", fromListShort:"toda la lista", dAbove:"más", dBelow:"menos", recorded:"registrado",
     reset:"Volver a la muestra", rows:"Filas que escribirá Aceptar", rowshint:"La hoja aún no está conectada: copia las filas.", copy:"Copiar", copied:"Copiado",
     state:(src)=>`base: ${src} · hoja sin conectar`, meta:(n,d,c,r)=>`${n} filas · ${d} dominios · ${c} contactos · ${r} removidos`,
     parsed:(n,s,cols)=>`${n} dominios · ${s} líneas omitidas${cols ? " · " + cols : ""}`, noheader:"sin cabecera: 1.º precio general, 2.º casino",
@@ -304,6 +339,7 @@ function readFile(input, cb){
 }
 $("state").addEventListener("click", () => { const open = $("dbpanel").hidden; $("dbpanel").hidden = !open; $("state").setAttribute("aria-expanded", String(open)); });
 $("export-h").addEventListener("click", () => { const open = $("export-body").hidden; $("export-body").hidden = !open; $("export-h").setAttribute("aria-expanded", String(open)); });
+$("wm-h").addEventListener("click", () => { const open = $("wm-body").hidden; $("wm-body").hidden = !open; $("wm-h").setAttribute("aria-expanded", String(open)); });
 $("dbfile").addEventListener("change", () => readFile($("dbfile"), (t, name) => { dbRows = csvToObjects(t); dbSource = name; rebuild(); }));
 $("rmfile").addEventListener("change", () => readFile($("rmfile"), (t) => { rmRows = csvToObjects(t); rebuild(); }));
 $("reset").addEventListener("click", () => { dbRows = SAMPLE_DB; rmRows = SAMPLE_REMOVED; dbSource = "sample rows"; $("dbfile").value = ""; $("rmfile").value = ""; rebuild(); });
@@ -312,7 +348,8 @@ function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); if(item
 /* ---------- matching ---------- */
 function run(){
   const parsed = parseList($("list").value);
-  items = parsed.items; lastParsed = parsed;
+  const listTerms = listTermsOf(parsed);
+  items = parsed.items.map(i => withListTerms(i, listTerms)); lastParsed = parsed;
   noteParse();
   for(const k in decisions) delete decisions[k];
   loadDecisions();
@@ -323,8 +360,23 @@ $("match").addEventListener("click", run);
 
 function price(p){ return p ? formatPrice(p) : ""; }
 function offeredCells(item, diffs){
-  const changed = new Set((diffs || []).flat().map(d => d.niche));
-  return NICHES.filter(n => item.prices[n]).map(n => `<span class="pr${changed.has(n) ? " cambia" : ""}"><span class="k">${esc(t().niche[n])}</span>${esc(price(item.prices[n]))}</span>`).join("") || `<span class="sender">${t().noPrice}</span>`;
+  const deltas = new Map();
+  (diffs || []).forEach(list => priceDelta(list).forEach(d => { if(!deltas.has(d.niche)) deltas.set(d.niche, d); }));
+  return NICHES.filter(n => item.prices[n]).map(n => {
+    const d = deltas.get(n);
+    let tail = "";
+    if(d && d.delta != null && d.delta !== 0) tail = `<span class="delta ${d.delta > 0 ? "up" : "down"}">${d.delta > 0 ? "+" : "−"}${esc(formatPrice({ amount: Math.abs(d.delta) }))} · ${Math.abs(d.pct)}% ${d.delta > 0 ? t().dAbove : t().dBelow}</span>`;
+    else if(d && d.inDatabase == null) tail = `<span class="delta up">${t().recorded}: —</span>`;
+    return `<span class="pr${d ? " cambia" : ""}"><span class="k">${esc(t().niche[n])}</span>${esc(price(item.prices[n]))}${tail}</span>`;
+  }).join("") || `<span class="sender">${t().noPrice}</span>`;
+}
+function termsCells(item){
+  const f = termsOf(item);
+  const chips = [["linkType", f.linkType], ["placement", f.placement], ["priceValidity", f.priceValidity], ["sponsorTag", f.sponsorTag]]
+    .map(([k, v]) => v ? `<span class="fv" title="${esc(t().terms[k])}">${esc(v)}</span>` : "").join("");
+  const admin = f.adminComments.map(c => `<span class="fv off">${esc(c)}</span>`).join("");
+  const raw = item.terms ? `<span class="raw">${item.inherited ? `<span class="fv off" title="${esc(t().fromList)}">${esc(t().fromListShort)}</span>` : ""}${esc(item.terms)}</span>` : "";
+  return (chips || admin) ? chips + admin + raw : (item.terms ? raw : `<span class="sender">${t().saidNothing}</span>`);
 }
 function dbCells(rows){
   if(!rows.length) return `<span class="sender">${t().notInDb}</span>`;
@@ -336,14 +388,15 @@ function dbCells(rows){
 }
 function decisionCell(domain){
   const d = decisions[domain];
-  return `<span class="seg">` + ["accept","reject","ask"].map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${t()[k]}</button>`).join("") + `</span>`;
+  const keys = stype === "Broker" ? ["webmaster","accept","ask","reject"] : ["accept","webmaster","ask","reject"];
+  return `<span class="seg">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${t()[k]}</button>`).join("") + `</span>`;
 }
 function table(entries, kind){
   if(!entries.length) return `<div class="tabla-wrap"><div class="empty">${t().empty}</div></div>`;
   const rows = entries.map(e => {
     const d = e.item.domain; const done = decisions[d] ? " done" : "";
     const dbCol = e.removedRows ? dbCells(e.removedRows) : dbCells(e.rows);
-    return `<tr class="${done.trim()}"><td class="dom">${esc(d)}${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offeredCells(e.item, e.diffs)}</td><td>${dbCol}</td><td class="ancha">${esc(e.item.terms) || `<span class=sender>${t().none}</span>`}</td><td class="dec">${decisionCell(d)}</td></tr>`;
+    return `<tr class="${done.trim()}"><td class="dom">${esc(d)}${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offeredCells(e.item, e.diffs)}</td><td>${dbCol}</td><td class="ancha">${termsCells(e.item)}</td><td class="dec">${decisionCell(d)}</td></tr>`;
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -351,7 +404,7 @@ function render(){
   if(!groups) return;
   const total = items.length, decided = Object.keys(decisions).filter(k => items.some(i => i.domain === k)).length;
   const first = groups.unknown.concat(groups.changed, groups.unchanged, groups.removed)[0];
-  const broker = first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "";
+  const broker = stype === "Broker" ? `<div class="aviso acc">${t().brokerHint}</div>` : (first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "");
   const sameSender = groups.changed.filter(c => c.sameSender).length;
   const all = groups.changed.concat(groups.unknown, groups.unchanged, groups.removed);
   const tabs = [
@@ -381,25 +434,46 @@ function render(){
 }
 function renderExport(){
   const accepted = items.filter(i => decisions[i.domain] === "accept");
-  $("export").hidden = !accepted.length;
-  if(!accepted.length) return;
-  $("export-t").textContent = t().exportT(accepted.length);
-  const who = "you";
   const label = $("label").value.trim();
   const sender = $("sender").value.trim();
-  const type = (groups && groups.unknown.concat(groups.changed)[0] && groups.unknown.concat(groups.changed)[0].brokerHint) ? "Broker" : "Publisher";
-  const lines = [DB_COLUMNS.join("\t")].concat(accepted.map(i => DB_COLUMNS.map(c => String(rowForAccept(i, { type, sender, who, listLabel: label })[c]).replace(/\t|\n/g, " ")).join("\t")));
-  $("tsv").value = lines.join("\n");
+  $("export").hidden = !accepted.length;
+  if(accepted.length){
+    $("export-t").textContent = t().exportT(accepted.length);
+    const rows = accepted.map(i => rowForAccept(i, { type: stype, sender, who: "you", listLabel: label }));
+    const show = ["Type", "Domain", "Webmaster Contact", ...NICHES.map(n => BUYING_COLUMN[n]), "Sponsor Tag Type", "Link Type", "Placement", "Price Validity", "Admin Comments", "Last Updated"];
+    const used = show.filter(c => c === "Type" || c === "Domain" || rows.some(r => r[c]));
+    $("export-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c.replace("Buying ", "B. "))}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]).replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    $("tsv").value = [DB_COLUMNS.join("\t")].concat(rows.map(r => DB_COLUMNS.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");
+  }
+  const wm = items.filter(i => decisions[i.domain] === "webmaster");
+  $("wm").hidden = !wm.length;
+  if(wm.length){
+    $("wm-t").textContent = t().wmT(wm.length);
+    const cols = ["Domain", "Country", "Date Sent", "Whatsapp / Phone Number", "Status WA / Number", "Contact Email", "Alternative contact", "Replied?", "Database?", "Additional Comments"];
+    const rows = wm.map(i => {
+      const offered = NICHES.filter(n => i.prices[n]).map(n => `${t().niche[n]} ${formatPrice(i.prices[n])}`).join(", ");
+      return { Domain: i.domain, Country: "", "Date Sent": "", "Whatsapp / Phone Number": "", "Status WA / Number": "", "Contact Email": "", "Alternative contact": "", "Replied?": "FALSE", "Database?": "FALSE",
+        "Additional Comments": `${stype} ${sender} offered ${offered || "no price"}${label ? ` (list ${label})` : ""}${i.terms ? `; ${i.terms}` : ""}` };
+    });
+    const used = ["Domain", "Contact Email", "Additional Comments"];
+    $("wm-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]) || "<span class=sender>—</span>"}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    $("wm-tsv").value = [cols.join("\t")].concat(rows.map(r => cols.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");
+  }
 }
-$("copy").addEventListener("click", () => {
-  const t = $("tsv").value;
-  const done = () => { $("copynote").textContent = t().copied; setTimeout(() => { $("copynote").textContent = ""; }, 1500); };
-  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => { $("tsv").select(); });
-  else $("tsv").select();
-});
+function copyFrom(id, note){
+  const el = $(id); const txt = el.value;
+  const done = () => { $(note).textContent = t().copied; setTimeout(() => { $(note).textContent = ""; }, 1500); };
+  const fallback = () => { el.hidden = false; el.select(); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, fallback); else fallback();
+}
+$("wm-copy").addEventListener("click", () => copyFrom("wm-tsv", "wm-note"));
+$("copy").addEventListener("click", () => copyFrom("tsv", "copynote"));
 
 /* ---------- boot ---------- */
+$("stype-publisher").addEventListener("click", () => setStype("Publisher"));
+$("stype-broker").addEventListener("click", () => setStype("Broker"));
 $("list").value = STAR;
+setStype(stype);
 applyLang();
 run();
 

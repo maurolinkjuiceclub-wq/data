@@ -284,6 +284,59 @@ export function matchList(items, index, { sender, brokerHintAt = 10 } = {}){
   return groups;
 }
 
+/* ---------- terms, as the database's fixed values ---------- */
+
+/* Reads the free text of an item ("do follow, permanent, prices valid until
+   31.12.2026, marked as Werbung") into the fixed values of the sheet. Empty
+   string means the list did not say. `adminComments` holds only the phrases
+   the team uses. */
+export function termsOf(item){
+  const text = item.terms || "";
+  const t = text.toLowerCase();
+  const marked = text.match(/marked\s+as\s+["“']([^"”']+)["”']/i) || text.match(/marked\s+as\s+([\p{L}\d-]+)/iu);
+  const sponsorTag = /rel=sponsored|sponsored tag|sponsored link/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
+  const linkType = /no-?\s?follow/.test(t) ? "No follow" : /do-?\s?follow|dofollow/.test(t) ? "Do follow" : "";
+  const placement = /permanent|lifetime|forever|dauerhaft|permanente/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
+  const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
+  const priceValidity = until ? until[1] : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
+  const adminComments = [];
+  if(marked) adminComments.push(`Marked as "${marked[1]}"`);
+  if(item.prices && item.prices.unlicensedCasino) adminComments.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
+  else if(/unlicen[cs]ed casinos? accepted/.test(t)) adminComments.push("Unlicensed Casinos Accepted");
+  else if(/only licen[cs]ed/.test(t)) adminComments.push("Only Licensed Casinos");
+  if(/written by (the )?(wm|webmaster)/.test(t)) adminComments.push("Written by WM");
+  if(/no ?index/.test(t)) adminComments.push("NO INDEX");
+  return { sponsorTag, linkType, placement, priceValidity, adminComments };
+}
+
+/* Terms the email states once for the whole list ("Do-Follow-Links ·
+   Dauerhafte Veröffentlichung"), read from the lines parseList skipped.
+   Applied to every item that says nothing itself. */
+export function listTermsOf(parsed){
+  const text = (parsed.skipped || []).map(l => l.text).join(" | ");
+  const f = termsOf({ terms: text, prices: {} });
+  f.text = text;
+  f.any = !!(f.linkType || f.placement || f.priceValidity || f.sponsorTag || f.adminComments.length);
+  return f;
+}
+
+/* Fills an item's empty terms from the list's. Returns a copy; `inherited`
+   says the terms came from the list, not the row. */
+export function withListTerms(item, listTerms){
+  if(item.terms || !listTerms || !listTerms.any) return item;
+  return { ...item, terms: listTerms.text, inherited: true };
+}
+
+/* Offered minus recorded, per niche, for a changed row: {niche, offered,
+   inDatabase, delta, pct}. pct is relative to the recorded price. */
+export function priceDelta(diffs){
+  return (diffs || []).map(d => {
+    const a = d.offered ? d.offered.amount : null, b = d.inDatabase ? d.inDatabase.amount : null;
+    const delta = a != null && b != null ? a - b : null;
+    return { ...d, delta, pct: delta != null && b ? Math.round(delta / b * 100) : null };
+  });
+}
+
 /* ---------- the row that Accept writes ---------- */
 
 /* Builds a full row (array in DB_COLUMNS order) for an unknown domain the
@@ -303,25 +356,12 @@ export function rowForAccept(item, { type = "Publisher", sender = "", contactNam
     const p = item.prices[niche];
     if(p) row[BUYING_COLUMN[niche]] = formatPrice(p);
   }
-  const t = item.terms.toLowerCase();
-  /* Sponsor Tag Type: blank means no tag. "Marked by WM" when the publisher
-     marks the article themselves; the wording goes to Admin Comments as
-     Marked as "...". rel=sponsored when they say so. */
-  /* The quotes may be gone (a CSV cell strips them), so a bare word after
-     "marked as" counts too. */
-  const marked = item.terms.match(/marked\s+as\s+["“']([^"”']+)["”']/i) || item.terms.match(/marked\s+as\s+([\p{L}\d-]+)/iu);
-  row["Sponsor Tag Type"] = /rel=sponsored|sponsored tag|sponsored link/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
-  row["Link Type"] = /no-?\s?follow/.test(t) ? "No follow" : "Do follow";
-  row["Placement"] = /permanent|lifetime|forever|dauerhaft|permanente/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
-  const until = item.terms.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
-  row["Price Validity"] = until ? until[1] : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
-  const admin = [];
-  if(marked) admin.push(`Marked as "${marked[1]}"`);
-  if(item.prices.unlicensedCasino) admin.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
-  else if(/unlicen[cs]ed casinos? accepted/.test(t)) admin.push("Unlicensed Casinos Accepted");
-  else if(/only licen[cs]ed/.test(t)) admin.push("Only Licensed Casinos");
-  if(/written by (the )?(wm|webmaster)/.test(t)) admin.push("Written by WM");
-  if(/no ?index/.test(t)) admin.push("NO INDEX");
+  const fixed = termsOf(item);
+  row["Sponsor Tag Type"] = fixed.sponsorTag;
+  row["Link Type"] = fixed.linkType || "Do follow";
+  row["Placement"] = fixed.placement;
+  row["Price Validity"] = fixed.priceValidity;
+  const admin = fixed.adminComments.slice();
   row["Admin Comments"] = admin.join("\n");
   /* User Comments is the team's, by hand: here only who accepted and from
      which list, so the row can be traced. */

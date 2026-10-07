@@ -335,6 +335,23 @@ Licensed Casinos", "Written by WM", "NON-Gamstop Casinos - 500 EUR",
 column is empty in every sample row; the unlicensed price lives in Admin
 Comments today.
 
+## Screen, second pass (07/10, after Senad)
+
+- The sender is **Publisher or Broker**, chosen on the rail and remembered.
+  On a broker list the first decision is **Webmaster** (write to the real
+  owner), the banner says the broker's price is the ceiling, and an accepted
+  row gets Type = Broker.
+- Four decisions per row: Accept, Webmaster, Ask, Reject.
+- Changed rows show the **difference against the recorded price** per niche:
+  "+70 · 35% above" in amber, "−30 · 15% below" in green.
+- Terms are shown as the sheet's **fixed values** (Do follow, permanent,
+  Fixed, Marked by WM) read from the row's text, or inherited from a line
+  the email states once for the whole list, marked "whole list".
+- Two folded outputs at the foot: the rows Accept will write, previewed in
+  the sheet's columns, and the sites to write to the webmaster in the
+  BROKER OUTREACH layout of Senad's sheet (Domain, Contact Email, Additional
+  Comments with what the broker offered). Both copy as tab-separated.
+
 ## Not in scope unless asked
 
 Automatic quality checks of a site (traffic, DR), scraping the publisher's

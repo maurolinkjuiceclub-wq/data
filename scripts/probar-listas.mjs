@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -142,6 +142,21 @@ caso("star: header positional", eq(star.columns, ["general", "casino", "cbd+cryp
 caso("star: neuheute prices", star.items[0].prices.general.amount === 99 && star.items[0].prices.casino.amount === 269 && star.items[0].prices.cbd.amount === 180 && star.items[0].prices.crypto.amount === 180, star.items[0]);
 caso("star: bare numbers", star.items[3].prices.casino.amount === 449 && star.items[3].prices.cbd.amount === 249);
 caso("star: services line skipped", star.skipped.length >= 1);
+
+/* --- terms and deltas --- */
+const tf = termsOf({ terms: "do follow, 2 Years, prices valid until 31.12.2026, no index", prices: {} });
+caso("termsOf fixed values", eq([tf.linkType, tf.placement, tf.priceValidity, tf.sponsorTag], ["Do follow", "2 Years", "31.12.2026", ""]), tf);
+caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
+caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));
+const pd = priceDelta([{ niche: "casino", offered: { amount: 269 }, inDatabase: { amount: 199 } }, { niche: "cbd", offered: { amount: 100 }, inDatabase: null }]);
+caso("priceDelta", pd[0].delta === 70 && pd[0].pct === 35 && pd[1].delta === null, pd);
+
+/* --- list-wide terms --- */
+const lt = listTermsOf(star);
+caso("list terms from the skipped lines", lt.any && lt.linkType === "Do follow" && lt.placement === "permanent", lt);
+const inh = withListTerms(star.items[0], lt);
+caso("item inherits list terms", inh.inherited === true && termsOf(inh).placement === "permanent" && star.items[0].terms === "");
+caso("item with own terms keeps them", withListTerms({ terms: "no follow", prices: {} }, lt).terms === "no follow");
 
 /* --- optional: a real copy --- */
 const ruta = process.argv[2];
