@@ -104,7 +104,7 @@ table.outreach th,table.outreach td{padding:8px 10px;border-bottom:1px solid var
 table.outreach thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);border-bottom:1px solid var(--line-strong);font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 table.outreach td{font-family:var(--mono);font-variant-numeric:tabular-nums}
 table.outreach td.dom{font-weight:600;font-size:13px}
-table.outreach td.ancha{white-space:normal;min-width:120px;max-width:320px;width:22%;font-family:var(--sans);font-size:12.5px;color:var(--ink-2)}
+table.outreach td.ancha{white-space:normal;min-width:120px;max-width:240px;width:18%;font-family:var(--sans);font-size:12.5px;color:var(--ink-2)}
 table.outreach tbody tr:hover td{background:var(--accent-wash)}
 table.outreach tbody tr:last-child td{border-bottom:0}
 table.outreach tr.done td{opacity:.55}
@@ -113,14 +113,19 @@ table.outreach tr.done td.dom{color:var(--muted)}
 .pr{display:block;font-size:12px;line-height:1.6}
 .pr.cambia{color:var(--ok-ink);font-weight:600}
 .pr .k{display:inline-block;min-width:5.2em;color:var(--muted);font-weight:400}
-.sender{display:block;font-size:10.5px;color:var(--muted);font-family:var(--sans);line-height:1.5}
+.sender{display:block;font-size:10.5px;color:var(--muted);font-family:var(--sans);line-height:1.5;white-space:normal;max-width:260px}
 .tipo{display:inline-block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;border:1px solid var(--line-strong);border-radius:4px;padding:0 4px;margin-right:5px;color:var(--ink-2);font-family:var(--sans)}
 .tipo.broker{border-color:var(--wait-line);color:var(--wait-ink)}
 .dbrow+.dbrow{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line-strong)}
-td.dec{white-space:nowrap;width:1%}
+td.dec{white-space:nowrap;width:1%;vertical-align:top}
 .seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
-.seg button{background:var(--surface);border:0;border-right:1px solid var(--line-strong);padding:5px 10px;font-size:12px;cursor:pointer;color:var(--ink-2);font-family:var(--sans)}
+.seg button{background:var(--surface);border:0;border-right:1px solid var(--line-strong);padding:5px 10px;font-size:12px;cursor:pointer;color:var(--ink-2);font-family:var(--sans);white-space:nowrap}
 .seg button:last-child{border-right:0}
+/* Four decisions in a 2 by 2 block, so the column stays narrow. */
+td.dec .seg{display:inline-grid;grid-template-columns:1fr 1fr}
+td.dec .seg button{border-right:0;border-bottom:1px solid var(--line-strong);border-left:1px solid var(--line-strong);text-align:left}
+td.dec .seg button:nth-child(odd){border-left:0}
+td.dec .seg button:nth-child(n+3){border-bottom:0}
 .seg button:hover{color:var(--ink);background:var(--surface-2)}
 .seg .on-accept{background:var(--ok-bg);color:var(--ok-ink);font-weight:600}
 .seg .on-reject{background:var(--bad-bg);color:var(--bad-ink);font-weight:600}
@@ -173,7 +178,7 @@ td.dec{white-space:nowrap;width:1%}
   <aside class="rail">
     <form class="rev-form" onsubmit="return false">
       <div><label for="sender" data-i18n="sender">Sender</label><input type="text" id="sender" value="starmagazines.de@gmail.com" autocomplete="off"></div>
-      <div><label data-i18n="stype">The sender is</label><span class="seg stype" role="group"><button type="button" id="stype-publisher" data-stype="Publisher" class="on-type" data-i18n="publisher">Publisher</button><button type="button" id="stype-broker" data-stype="Broker" data-i18n="broker">Broker</button></span></div>
+      <div><label data-i18n="stype">The sender is</label><span class="seg stype" role="group"><button type="button" id="stype-publisher" data-stype="Publisher" class="on-type" data-i18n="typePublisher">Publisher</button><button type="button" id="stype-broker" data-stype="Broker" data-i18n="typeBroker">Broker</button></span></div>
       <div><label for="label" data-i18n="list">List</label><input type="text" id="label" value="starmagazines 05/10" autocomplete="off"></div>
       <div><label for="list" data-i18n="paste">Paste the list</label><textarea id="list" spellcheck="false"></textarea></div>
       <div class="actions"><button type="button" class="btn primary" id="match" data-i18n="match">Match</button></div>
@@ -208,16 +213,16 @@ td.dec{white-space:nowrap;width:1%}
 import { parseList, indexDatabase, matchList, rowForAccept, formatPrice, senderOf, termsOf, priceDelta, listTermsOf, withListTerms, NICHES, DB_COLUMNS, BUYING_COLUMN } from "./site-lists.js";
 /* ---------- sample database (2026 layout, marked rows are examples) ---------- */
 const SAMPLE_DB = [
-  r("Publisher","starmagazines.de","starmagazines.de@gmail.com","",{general:"€ 99.00",casino:"€ 249.00",cbd:"€ 170.00",crypto:"€ 170.00"},"dofollow","Guest post","permanent","Example row: same prices as the 05/10 list"),
-  r("Publisher","neuheute.ch","starmagazines.de@gmail.com","",{general:"€ 99.00",casino:"€ 199.00",cbd:"€ 150.00",crypto:"€ 150.00"},"dofollow","Guest post","permanent","Example row: casino and CBD were cheaper"),
-  r("Broker","foxinsider.fr","deals@linkdealers.example","Max",{general:"€ 149.00",casino:"€ 349.00"},"dofollow","Guest post","31/12/2026","Example row from a broker"),
-  r("Publisher","technologer.de","redaktion@technologer.example","Petra",{general:"€ 99.00",casino:"€ 449.00",cbd:"€ 249.00",crypto:"€ 249.00"},"dofollow","Guest post","permanent","Example row"),
-  r("Publisher","acefootball.com","jof@acefootball.example","Jozef",{casino:"€ 400.00",general:"€ 300.00"},"dofollow","Guest post","permanent","Example row"),
-  r("Broker","deals-a.example","deals@linkdealers.example","Max",{general:"€ 120.00"},"dofollow","Link insertion","permanent","Example row"),
-  r("Broker","deals-b.example","deals@linkdealers.example","Max",{general:"€ 120.00"},"dofollow","Link insertion","permanent","Example row"),
-  r("Broker","deals-c.example","deals@linkdealers.example","Max",{general:"€ 120.00"},"dofollow","Link insertion","permanent","Example row")
+  r("Publisher","starmagazines.de","starmagazines.de@gmail.com","",{general:"99",casino:"249",cbd:"170",crypto:"170"},"dofollow","Guest post","permanent","Example row: same prices as the 05/10 list"),
+  r("Publisher","neuheute.ch","starmagazines.de@gmail.com","",{general:"99",casino:"199",cbd:"150",crypto:"150"},"dofollow","Guest post","permanent","Example row: casino and CBD were cheaper"),
+  r("Broker","foxinsider.fr","deals@linkdealers.example","Max",{general:"149",casino:"349"},"dofollow","Guest post","31/12/2026","Example row from a broker"),
+  r("Publisher","technologer.de","redaktion@technologer.example","Petra",{general:"99",casino:"449",cbd:"249",crypto:"249"},"dofollow","Guest post","permanent","Example row"),
+  r("Publisher","acefootball.com","jof@acefootball.example","Jozef",{casino:"400",general:"300"},"dofollow","Guest post","permanent","Example row"),
+  r("Broker","deals-a.example","deals@linkdealers.example","Max",{general:"120"},"dofollow","Link insertion","permanent","Example row"),
+  r("Broker","deals-b.example","deals@linkdealers.example","Max",{general:"120"},"dofollow","Link insertion","permanent","Example row"),
+  r("Broker","deals-c.example","deals@linkdealers.example","Max",{general:"120"},"dofollow","Link insertion","permanent","Example row")
 ];
-const SAMPLE_REMOVED = [ r("Publisher","esblog.fr","starmagazines.de@gmail.com","",{general:"€ 89.00"},"dofollow","Guest post","permanent","Example: removed on 20/09, thin content") ];
+const SAMPLE_REMOVED = [ r("Publisher","esblog.fr","starmagazines.de@gmail.com","",{general:"89"},"dofollow","Guest post","permanent","Example: removed on 20/09, thin content") ];
 function r(type, domain, mail, name, buying, tag, link, validity, comment){
   const row = Object.fromEntries(DB_COLUMNS.map(c => [c, ""]));
   row.Type = type; row.Domain = domain; row.TLD = "." + domain.split(".").slice(1).join(".");
@@ -258,7 +263,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until the sheet is connected. A CSV copy can be loaded here; it stays in your browser.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
-    stype:"The sender is", publisher:"Publisher", broker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
+    stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
     brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
     terms:{linkType:"link", placement:"placement", priceValidity:"validity", sponsorTag:"tag"}, saidNothing:"terms not stated", fromList:"Stated once for the whole list, not for this site", fromListShort:"whole list", dAbove:"above", dBelow:"below", recorded:"recorded",
     reset:"Back to sample rows", rows:"Rows Accept will write", rowshint:"Sheet not connected yet: copy the rows.", copy:"Copy", copied:"Copied",
@@ -274,7 +279,7 @@ const T = {
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta conectar la hoja. Puedes cargar una copia CSV; se queda en tu navegador.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
-    stype:"El remitente es", publisher:"Publisher", broker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
+    stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
     brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
     terms:{linkType:"enlace", placement:"duración", priceValidity:"validez", sponsorTag:"etiqueta"}, saidNothing:"sin condiciones", fromList:"Dicho una vez para toda la lista, no para este sitio", fromListShort:"toda la lista", dAbove:"más", dBelow:"menos", recorded:"registrado",
     reset:"Volver a la muestra", rows:"Filas que escribirá Aceptar", rowshint:"La hoja aún no está conectada: copia las filas.", copy:"Copiar", copied:"Copiado",
@@ -375,7 +380,9 @@ function termsCells(item){
   const chips = [["linkType", f.linkType], ["placement", f.placement], ["priceValidity", f.priceValidity], ["sponsorTag", f.sponsorTag]]
     .map(([k, v]) => v ? `<span class="fv" title="${esc(t().terms[k])}">${esc(v)}</span>` : "").join("");
   const admin = f.adminComments.map(c => `<span class="fv off">${esc(c)}</span>`).join("");
-  const raw = item.terms ? `<span class="raw">${item.inherited ? `<span class="fv off" title="${esc(t().fromList)}">${esc(t().fromListShort)}</span>` : ""}${esc(item.terms)}</span>` : "";
+  const raw = !item.terms ? "" : item.inherited
+    ? `<span class="fv off" title="${esc(t().fromList)}: ${esc(item.terms)}">${esc(t().fromListShort)}</span>`
+    : `<span class="raw">${esc(item.terms)}</span>`;
   return (chips || admin) ? chips + admin + raw : (item.terms ? raw : `<span class="sender">${t().saidNothing}</span>`);
 }
 function dbCells(rows){
