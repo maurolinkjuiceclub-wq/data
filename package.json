@@ -1,0 +1,9 @@
+{
+  "name": "site-lists",
+  "private": true,
+  "type": "module",
+  "description": "Offers page for Link Juice Club: match publisher site lists against the database and decide row by row. No build step; src/ is served as it is.",
+  "scripts": {
+    "test": "node scripts/probar-listas.mjs"
+  }
+}

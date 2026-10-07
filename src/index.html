@@ -1,0 +1,407 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<!-- Site lists: paste what a publisher or broker sent, match it against the
+     database, decide every row. Served at /lists/ next to the desk, behind
+     the same Cloudflare Access. The parsing and matching live in
+     site-lists.js (shared with the Worker and tested by
+     scripts/probar-listas.mjs); this file is only the screen.
+     Plan and decisions: BRIEF.md. -->
+<title>LJC Site Lists</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<style>
+/* Same system as the desk (src/mesa.html): dark by default in neutral greys, a surface scale instead of borders, one blue accent; green and amber mean state, never decoration. Layout: the desk's bar on top, then a full-width work screen like "Our outreach". */
+:root{
+  --paper:#161616; --surface:#1e1e1e; --surface-2:#252525; --surface-3:#2f2f2f;
+  --ink:#ededed; --ink-2:#b9b9b9; --muted:#8d8d8d; --line:#2c2c2c; --line-strong:#414141;
+  --accent:#6ea8fe; --accent-ink:#9cc4ff; --accent-wash:#1c2534;
+  --ok-bg:#16301f; --ok-ink:#7fd39b; --ok-line:#3f8a58;
+  --wait-bg:#33260f; --wait-ink:#e8b565; --wait-line:#9a7a3a;
+  --bad:#e0645b; --bad-ink:#f08a82; --bad-bg:#3a1f1d; --bad-line:#6e3531;
+  --shadow:0 1px 2px rgba(0,0,0,.45),0 8px 24px -16px rgba(0,0,0,.9);
+  --radio:8px;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color-scheme:dark;
+}
+@media (prefers-color-scheme:light){ :root:not([data-theme="dark"]){
+  --paper:#f6f6f6; --surface:#ffffff; --surface-2:#efefef; --surface-3:#e4e4e4;
+  --ink:#161616; --ink-2:#3d3d3d; --muted:#6b6b6b; --line:#e3e3e3; --line-strong:#cbcbcb;
+  --accent:#1f5fd0; --accent-ink:#164aa6; --accent-wash:#e9effb;
+  --ok-bg:#ddf2e4; --ok-ink:#1a6b3c; --ok-line:#a6dcba;
+  --wait-bg:#fcecd4; --wait-ink:#8a5000; --wait-line:#eecb94;
+  --bad:#c0392b; --bad-ink:#b3261e; --bad-bg:#fbe5e2; --bad-line:#eeb3ab;
+  --shadow:0 1px 2px rgba(16,24,40,.04); color-scheme:light } }
+:root[data-theme="light"]{
+  --paper:#f6f6f6; --surface:#ffffff; --surface-2:#efefef; --surface-3:#e4e4e4;
+  --ink:#161616; --ink-2:#3d3d3d; --muted:#6b6b6b; --line:#e3e3e3; --line-strong:#cbcbcb;
+  --accent:#1f5fd0; --accent-ink:#164aa6; --accent-wash:#e9effb;
+  --ok-bg:#ddf2e4; --ok-ink:#1a6b3c; --ok-line:#a6dcba;
+  --wait-bg:#fcecd4; --wait-ink:#8a5000; --wait-line:#eecb94;
+  --bad:#c0392b; --bad-ink:#b3261e; --bad-bg:#fbe5e2; --bad-line:#eeb3ab;
+  --shadow:0 1px 2px rgba(16,24,40,.04); color-scheme:light }
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+button{font-family:inherit;font-size:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
+
+/* ---------- the bar ---------- */
+.bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:0 16px;min-height:46px;background:var(--surface);border-bottom:1px solid var(--line)}
+.marca{font-weight:600;font-size:14px;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;margin:0}
+.estado{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0;font-size:12px;color:var(--muted)}
+.lang{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
+.lang button{background:var(--surface);border:0;padding:3px 8px;cursor:pointer;font-size:10.5px;letter-spacing:.05em;font-weight:600;color:var(--muted)}
+.lang button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+.sello{font-family:var(--mono);font-size:11px;color:var(--muted);background:none;border:1px solid transparent;border-radius:6px;padding:3px 7px;white-space:nowrap}
+
+/* ---------- database panel, behind its seal ---------- */
+.sello{cursor:pointer}
+.sello:hover,.sello[aria-expanded="true"]{border-color:var(--line-strong);color:var(--ink)}
+.dbpanel{background:var(--surface);border-bottom:1px solid var(--line)}
+.dbpanel-in{display:grid;gap:12px;padding:14px 16px;max-width:980px}
+@media (min-width:720px){.dbpanel-in{padding:14px 24px}}
+.lbl,.rev-form label,.dbpanel label{display:block;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;margin-bottom:4px}
+.hint{margin:0;font-size:12.5px;color:var(--muted)}
+.par{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(min(100%,16rem),1fr))}
+input[type=file]{font-size:12.5px;color:var(--ink-2);max-width:100%}
+.dbmeta{font-family:var(--mono);font-size:11.5px;color:var(--muted);overflow-wrap:anywhere;margin-right:auto}
+
+/* ---------- shell: the list on a rail, the work beside it ---------- */
+.shell{display:grid;grid-template-columns:minmax(0,1fr);gap:0;min-height:calc(100vh - 46px)}
+@media (min-width:900px){.shell{grid-template-columns:360px minmax(0,1fr)}}
+.rail{background:var(--surface);border-right:1px solid var(--line);padding:16px}
+.work{padding:16px;min-width:0}
+@media (min-width:720px){.rail{padding:18px 20px}.work{padding:18px 24px 60px}}
+.rev-form{display:grid;gap:12px;margin:0;align-content:start;min-width:0}
+.rev-form input[type=text],.rev-form textarea{width:100%;padding:7px 9px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:13px}
+.rev-form textarea{min-height:260px;resize:vertical;font-family:var(--mono);font-size:12px;line-height:1.5}
+.actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.btn{border:1px solid var(--line-strong);background:var(--surface);padding:8px 14px;border-radius:7px;cursor:pointer;font-size:13.5px;color:var(--ink)}
+.btn:hover{border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--surface);font-weight:500}
+.btn.primary:hover{filter:brightness(1.08);color:var(--surface);border-color:var(--accent)}
+.btn.sutil{border-color:transparent;background:none;color:var(--muted);font-size:12.5px;padding:8px 8px}
+.btn.sutil:hover{color:var(--accent-ink);border-color:var(--line-strong)}
+.said{font-size:12.5px;color:var(--muted);margin:0}
+
+/* ---------- the work: one table, group tabs above it ---------- */
+.gtabs{display:flex;gap:4px;flex-wrap:wrap;align-items:center;border-bottom:1px solid var(--line);padding-bottom:0;margin-bottom:12px}
+.gtab{background:transparent;border:0;border-bottom:2px solid transparent;padding:8px 12px;cursor:pointer;font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:7px;white-space:nowrap}
+.gtab:hover{color:var(--ink)}
+.gtab[aria-selected="true"]{color:var(--ink);font-weight:600;border-bottom-color:var(--accent)}
+.gtab .n{font-family:var(--mono);font-size:10.5px;font-variant-numeric:tabular-nums;border-radius:20px;padding:1px 6px;min-width:18px;text-align:center;background:var(--surface-3);color:var(--ink-2)}
+.gtab[aria-selected="true"] .n{background:var(--accent);color:var(--surface)}
+.gtab.ok .n{background:var(--ok-bg);color:var(--ok-ink)}
+.gtab.wait .n{background:var(--wait-bg);color:var(--wait-ink)}
+.gtab[aria-selected="true"].ok .n,.gtab[aria-selected="true"].wait .n{background:var(--accent);color:var(--surface)}
+.progreso{margin-left:auto;display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted);padding:6px 0;font-variant-numeric:tabular-nums}
+.progreso i{display:block;width:96px;height:4px;background:var(--surface-3);border-radius:2px;overflow:hidden}
+.progreso i b{display:block;height:100%;background:var(--accent);width:0}
+@media (prefers-reduced-motion:no-preference){.progreso i b{transition:width .2s}}
+.aviso{border:1px solid var(--wait-line);background:var(--wait-bg);color:var(--wait-ink);border-radius:7px;padding:8px 12px;margin:0 0 12px;font-size:12.5px}
+.ghint{font-size:12px;color:var(--muted);margin:0 0 8px}
+.tabla-wrap{overflow-x:auto;border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);box-shadow:var(--shadow)}
+table.outreach{border-collapse:separate;border-spacing:0;font-size:12.5px;width:100%}
+table.outreach th,table.outreach td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;white-space:nowrap}
+table.outreach thead th{position:sticky;top:0;z-index:2;background:var(--surface-2);border-bottom:1px solid var(--line-strong);font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+table.outreach td{font-family:var(--mono);font-variant-numeric:tabular-nums}
+table.outreach td.dom{font-weight:600;font-size:13px}
+table.outreach td.ancha{white-space:normal;min-width:120px;max-width:320px;width:22%;font-family:var(--sans);font-size:12.5px;color:var(--ink-2)}
+table.outreach tbody tr:hover td{background:var(--accent-wash)}
+table.outreach tbody tr:last-child td{border-bottom:0}
+table.outreach tr.done td{opacity:.55}
+table.outreach tr.done td.dec,table.outreach tr.done td.dom{opacity:1}
+table.outreach tr.done td.dom{color:var(--muted)}
+.pr{display:block;font-size:12px;line-height:1.6}
+.pr.cambia{color:var(--ok-ink);font-weight:600}
+.pr .k{display:inline-block;min-width:5.2em;color:var(--muted);font-weight:400}
+.sender{display:block;font-size:10.5px;color:var(--muted);font-family:var(--sans);line-height:1.5}
+.tipo{display:inline-block;font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;border:1px solid var(--line-strong);border-radius:4px;padding:0 4px;margin-right:5px;color:var(--ink-2);font-family:var(--sans)}
+.tipo.broker{border-color:var(--wait-line);color:var(--wait-ink)}
+.dbrow+.dbrow{margin-top:6px;padding-top:6px;border-top:1px dashed var(--line-strong)}
+td.dec{white-space:nowrap;width:1%}
+.seg{display:inline-flex;border:1px solid var(--line-strong);border-radius:7px;overflow:hidden}
+.seg button{background:var(--surface);border:0;border-right:1px solid var(--line-strong);padding:5px 10px;font-size:12px;cursor:pointer;color:var(--ink-2);font-family:var(--sans)}
+.seg button:last-child{border-right:0}
+.seg button:hover{color:var(--ink);background:var(--surface-2)}
+.seg .on-accept{background:var(--ok-bg);color:var(--ok-ink);font-weight:600}
+.seg .on-reject{background:var(--bad-bg);color:var(--bad-ink);font-weight:600}
+.seg .on-ask{background:var(--wait-bg);color:var(--wait-ink);font-weight:600}
+.empty{color:var(--muted);font-style:italic;padding:14px 12px;font-size:13px}
+
+/* ---------- export, folded ---------- */
+.export{margin-top:22px;border-top:1px solid var(--line);padding-top:10px}
+.panel-h{width:100%;display:flex;align-items:center;gap:8px;background:transparent;border:0;cursor:pointer;padding:6px 2px;text-align:left;color:var(--muted);font-size:11px;letter-spacing:.08em;text-transform:uppercase;font-weight:700}
+.panel-h:hover{color:var(--ink)}
+.panel-h .caret{font-size:9px;transition:transform .15s}
+.panel-h[aria-expanded="false"] .caret{transform:rotate(-90deg)}
+@media (prefers-reduced-motion:reduce){.panel-h .caret{transition:none}}
+#export-body{display:grid;gap:10px;padding-top:8px}
+.inp{font-family:var(--mono);font-size:11.5px;background:var(--surface-2);color:var(--ink);border:1px solid var(--line-strong);border-radius:6px;padding:7px 9px;width:100%;min-height:110px;resize:vertical;line-height:1.5}
+</style>
+</head><body>
+<header class="bar">
+  <h1 class="marca" data-i18n="title">Site lists</h1>
+  <div class="estado">
+    <button type="button" class="sello" id="state" aria-expanded="false" aria-controls="dbpanel"></button>
+    <span class="lang" role="group" aria-label="Language"><button type="button" id="lang-en" aria-pressed="true">EN</button><button type="button" id="lang-es" aria-pressed="false">ES</button></span>
+  </div>
+</header>
+
+<div class="dbpanel" id="dbpanel" hidden>
+  <div class="dbpanel-in">
+    <div><span class="lbl" data-i18n="db">Database</span><p class="hint" data-i18n="dbhint"></p></div>
+    <div class="par">
+      <div><label for="dbfile">Import Database · CSV</label><input type="file" id="dbfile" accept=".csv,text/csv"></div>
+      <div><label for="rmfile">removed sites · CSV</label><input type="file" id="rmfile" accept=".csv,text/csv"></div>
+    </div>
+    <div class="actions"><span class="dbmeta" id="dbmeta"></span><button type="button" class="btn sutil" id="reset" data-i18n="reset"></button></div>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="rail">
+    <form class="rev-form" onsubmit="return false">
+      <div><label for="sender" data-i18n="sender">Sender</label><input type="text" id="sender" value="starmagazines.de@gmail.com" autocomplete="off"></div>
+      <div><label for="label" data-i18n="list">List</label><input type="text" id="label" value="starmagazines 05/10" autocomplete="off"></div>
+      <div><label for="list" data-i18n="paste">Paste the list</label><textarea id="list" spellcheck="false"></textarea></div>
+      <div class="actions"><button type="button" class="btn primary" id="match" data-i18n="match">Match</button></div>
+      <p class="said" id="parsenote"></p>
+    </form>
+  </aside>
+
+  <main class="work">
+    <div id="results"></div>
+    <section class="export" id="export" hidden>
+      <button type="button" class="panel-h" id="export-h" aria-expanded="false" aria-controls="export-body"><span class="caret" aria-hidden="true">▾</span><span id="export-t"></span></button>
+      <div id="export-body" hidden>
+        <p class="hint" data-i18n="rowshint"></p>
+        <textarea id="tsv" class="inp" readonly spellcheck="false"></textarea>
+        <div class="actions"><button type="button" class="btn" id="copy" data-i18n="copy">Copy</button><span class="said" id="copynote"></span></div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script type="module">
+import { parseList, indexDatabase, matchList, rowForAccept, formatPrice, senderOf, NICHES, DB_COLUMNS, BUYING_COLUMN } from "./site-lists.js";
+/* ---------- sample database (2026 layout, marked rows are examples) ---------- */
+const SAMPLE_DB = [
+  r("Publisher","starmagazines.de","starmagazines.de@gmail.com","",{general:"€ 99.00",casino:"€ 249.00",cbd:"€ 170.00",crypto:"€ 170.00"},"dofollow","Guest post","permanent","Example row: same prices as the 05/10 list"),
+  r("Publisher","neuheute.ch","starmagazines.de@gmail.com","",{general:"€ 99.00",casino:"€ 199.00",cbd:"€ 150.00",crypto:"€ 150.00"},"dofollow","Guest post","permanent","Example row: casino and CBD were cheaper"),
+  r("Broker","foxinsider.fr","deals@linkdealers.example","Max",{general:"€ 149.00",casino:"€ 349.00"},"dofollow","Guest post","31/12/2026","Example row from a broker"),
+  r("Publisher","technologer.de","redaktion@technologer.example","Petra",{general:"€ 99.00",casino:"€ 449.00",cbd:"€ 249.00",crypto:"€ 249.00"},"dofollow","Guest post","permanent","Example row"),
+  r("Publisher","acefootball.com","jof@acefootball.example","Jozef",{casino:"€ 400.00",general:"€ 300.00"},"dofollow","Guest post","permanent","Example row"),
+  r("Broker","deals-a.example","deals@linkdealers.example","Max",{general:"€ 120.00"},"dofollow","Link insertion","permanent","Example row"),
+  r("Broker","deals-b.example","deals@linkdealers.example","Max",{general:"€ 120.00"},"dofollow","Link insertion","permanent","Example row"),
+  r("Broker","deals-c.example","deals@linkdealers.example","Max",{general:"€ 120.00"},"dofollow","Link insertion","permanent","Example row")
+];
+const SAMPLE_REMOVED = [ r("Publisher","esblog.fr","starmagazines.de@gmail.com","",{general:"€ 89.00"},"dofollow","Guest post","permanent","Example: removed on 20/09, thin content") ];
+function r(type, domain, mail, name, buying, tag, link, validity, comment){
+  const row = Object.fromEntries(DB_COLUMNS.map(c => [c, ""]));
+  row.Type = type; row.Domain = domain; row.TLD = "." + domain.split(".").slice(1).join(".");
+  row["Webmaster Contact"] = mail; row["Contact Name"] = name;
+  for(const k in buying) row[BUYING_COLUMN[k]] = buying[k];
+  row["Sponsor Tag Type"] = tag; row["Link Type"] = link; row["Price Validity"] = validity;
+  row["Admin Comments"] = comment; row["Last Updated"] = "05/10/2026";
+  return row;
+}
+
+const STAR = `Unsere verfügbaren Webseiten und Preise (Allgemein / Glücksspiel / Vape-CBD-Crypto):
+neuheute.ch 99 € / 269 € / 180 € · foxinsider.fr 99 / 249 / 170 · esblog.fr 89 / 249 / 170 · elitethemen.de 99 / 249 / 170 · starmagazines.de 99 € / 249 € / 170 € · glanzinsider.de 88 / 249 / 170 · klarnotizen.de 89 / 239 / 160 · tagespromi.de 99 / 269 / 180 · kuriermag.de 95 / 249 / 170 · denkmagazine.de 88 / 239 / 160 · blinkinsider.de 99 / 259 / 180 · promiquelle.de 95 / 269 / 180 · weltblicker.de 88 / 239 / 160 · neuzone.de 99 / 259 / 170 · neuewissen.de 89 / 249 / 160 · blickreport.de 95 / 269 / 180 · technologer.de 99 / 449 / 249 · insidermag.de 99 / 449 / 249 · tageblatts.de 99 / 400 / 200 · heuteinsider.de 99 / 349 / 249 · gmweekly.de 99 / 349 / 220 · publikneues.de 99 / 349 / 170 · jetmagazin.de 99 / 249 / 170 · smartmaga.de 99 / 249 / 170 · heutenetz.de 99 / 249 / 170 · reportmagazin.de 99 / 249 / 170 · pressradar.de 99 / 249 / 170 · visionmagazines.de 99 / 249 / 170 · lebenreport.de 99 / 249 / 170 · flashtimes.de 99 / 249 / 170 · themenkern.de 99 / 249 / 170 · fokusprime.de 99 / 249 / 170 · biowissen.at 99 / 400 / 200
+
+Unsere Leistungen: Dauerhafte Veröffentlichung von Gastbeiträgen · Do-Follow-Links · Verschiedene Nischen, darunter Krypto, Gambling, CBD und Vape`;
+
+/* ---------- state ---------- */
+let dbRows = SAMPLE_DB, rmRows = SAMPLE_REMOVED, dbSource = "sample rows";
+let index = indexDatabase(dbRows, rmRows);
+let groups = null, items = [], lastParsed = null, view = "changed";
+function noteParse(){
+  if(!lastParsed) return;
+  const cols = lastParsed.columns ? lastParsed.columns.join(", ") : t().noheader;
+  $("parsenote").textContent = t().parsed(items.length, lastParsed.skipped.length, cols);
+}
+const decisions = {};   /* domain -> accept | reject | ask */
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- two languages, as the desk ---------- */
+const T = {
+  en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
+    dbhint:"Sample rows until the sheet is connected. A CSV copy can be loaded here; it stays in your browser.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
+    reset:"Back to sample rows", rows:"Rows Accept will write", rowshint:"Sheet not connected yet: copy the rows.", copy:"Copy", copied:"Copied",
+    state:(src)=>`database: ${src} · sheet not connected`, meta:(n,d,c,r)=>`${n} rows · ${d} domains · ${c} contacts · ${r} removed`,
+    parsed:(n,s,cols)=>`${n} domains · ${s} lines skipped${cols ? " · " + cols : ""}`, noheader:"no header: 1st price general, 2nd casino",
+    unchanged:"unchanged", changed:"changed", fromSender:"from this sender", unknown:"unknown", removed:"removed", decided:(a,b)=>`${a} of ${b} decided`,
+    broker:(n)=>`This sender already has ${n} domains in the database: likely a broker.`,
+    removedNote:(n)=>`${n} in removed sites: never written as new.`,
+    gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed",
+    hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab. Never written as new.", hAll:"",
+    thDomain:"Domain", thOffered:"Offered", thDb:"In the database", thRemoved:"Removed sites", thTerms:"Terms", thDecision:"Decision",
+    accept:"Accept", reject:"Reject", ask:"Ask", none:"none", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
+    niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
+  es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
+    dbhint:"Filas de muestra hasta conectar la hoja. Puedes cargar una copia CSV; se queda en tu navegador.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
+    reset:"Volver a la muestra", rows:"Filas que escribirá Aceptar", rowshint:"La hoja aún no está conectada: copia las filas.", copy:"Copiar", copied:"Copiado",
+    state:(src)=>`base: ${src} · hoja sin conectar`, meta:(n,d,c,r)=>`${n} filas · ${d} dominios · ${c} contactos · ${r} removidos`,
+    parsed:(n,s,cols)=>`${n} dominios · ${s} líneas omitidas${cols ? " · " + cols : ""}`, noheader:"sin cabecera: 1.º precio general, 2.º casino",
+    unchanged:"iguales", changed:"cambiados", fromSender:"de este remitente", unknown:"desconocidos", removed:"removidos", decided:(a,b)=>`${a} de ${b} decididos`,
+    broker:(n)=>`Este remitente ya tiene ${n} dominios en la base: probable broker.`,
+    removedNote:(n)=>`${n} en removed sites: nunca se escriben como nuevos.`,
+    gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos",
+    hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites. Nunca se escriben como nuevos.", hAll:"",
+    thDomain:"Dominio", thOffered:"Ofrece", thDb:"En la base", thRemoved:"Removed sites", thTerms:"Condiciones", thDecision:"Decisión",
+    accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
+    niche:{casino:"Casino",unlicensedCasino:"Casino s/lic.",crypto:"Cripto",forex:"Forex",cbd:"CBD",dating:"Citas",general:"General"} }
+};
+let lang = "en";
+try{ lang = localStorage.getItem("ljc-lists-lang") === "es" ? "es" : "en"; }catch(e){}
+const t = () => T[lang];
+function applyLang(){
+  document.documentElement.lang = lang;
+  document.querySelectorAll("[data-i18n]").forEach(el => { el.textContent = t()[el.dataset.i18n]; });
+  $("lang-en").setAttribute("aria-pressed", String(lang === "en"));
+  $("lang-es").setAttribute("aria-pressed", String(lang === "es"));
+  describeDb();
+  if(groups) { noteParse(); render(); }
+}
+$("lang-en").addEventListener("click", () => { lang = "en"; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} applyLang(); });
+$("lang-es").addEventListener("click", () => { lang = "es"; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} applyLang(); });
+
+function storageKey(){ return "ljc-lists:" + ($("label").value || "list").trim(); }
+function loadDecisions(){ try{ Object.assign(decisions, JSON.parse(localStorage.getItem(storageKey()) || "{}")); }catch(e){} }
+function saveDecisions(){ try{ localStorage.setItem(storageKey(), JSON.stringify(decisions)); }catch(e){} }
+
+function describeDb(){
+  const contacts = [...index.bySender.keys()].filter(Boolean).length;
+  $("dbmeta").textContent = `${dbSource}: ` + t().meta(dbRows.length, index.size, contacts, index.removed.size);
+  $("state").textContent = t().state(dbSource);
+}
+
+/* ---------- CSV ---------- */
+function csvToObjects(text){
+  const lines = text.replace(/\r/g, "").split("\n");
+  const rows = []; let cur = []; let cell = ""; let q = false; let head = null;
+  for(const line of lines){
+    for(let i = 0; i < line.length; i++){
+      const ch = line[i];
+      if(ch === '"'){ if(q && line[i + 1] === '"'){ cell += '"'; i++; } else q = !q; }
+      else if(ch === "," && !q){ cur.push(cell); cell = ""; }
+      else cell += ch;
+    }
+    if(q){ cell += "\n"; continue; }
+    cur.push(cell); cell = "";
+    if(!head) head = cur.map(h => h.trim()); else if(cur.length > 1) rows.push(Object.fromEntries(head.map((h, j) => [h, cur[j] ?? ""])));
+    cur = [];
+  }
+  return rows;
+}
+function readFile(input, cb){
+  const f = input.files && input.files[0]; if(!f) return;
+  const rd = new FileReader();
+  rd.onload = () => cb(String(rd.result || ""), f.name);
+  rd.readAsText(f);
+}
+$("state").addEventListener("click", () => { const open = $("dbpanel").hidden; $("dbpanel").hidden = !open; $("state").setAttribute("aria-expanded", String(open)); });
+$("export-h").addEventListener("click", () => { const open = $("export-body").hidden; $("export-body").hidden = !open; $("export-h").setAttribute("aria-expanded", String(open)); });
+$("dbfile").addEventListener("change", () => readFile($("dbfile"), (t, name) => { dbRows = csvToObjects(t); dbSource = name; rebuild(); }));
+$("rmfile").addEventListener("change", () => readFile($("rmfile"), (t) => { rmRows = csvToObjects(t); rebuild(); }));
+$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB; rmRows = SAMPLE_REMOVED; dbSource = "sample rows"; $("dbfile").value = ""; $("rmfile").value = ""; rebuild(); });
+function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); if(items.length) run(); }
+
+/* ---------- matching ---------- */
+function run(){
+  const parsed = parseList($("list").value);
+  items = parsed.items; lastParsed = parsed;
+  noteParse();
+  for(const k in decisions) delete decisions[k];
+  loadDecisions();
+  groups = matchList(items, index, { sender: $("sender").value });
+  render();
+}
+$("match").addEventListener("click", run);
+
+function price(p){ return p ? formatPrice(p) : ""; }
+function offeredCells(item, diffs){
+  const changed = new Set((diffs || []).flat().map(d => d.niche));
+  return NICHES.filter(n => item.prices[n]).map(n => `<span class="pr${changed.has(n) ? " cambia" : ""}"><span class="k">${esc(t().niche[n])}</span>${esc(price(item.prices[n]))}</span>`).join("") || `<span class="sender">${t().noPrice}</span>`;
+}
+function dbCells(rows){
+  if(!rows.length) return `<span class="sender">${t().notInDb}</span>`;
+  return rows.map(row => {
+    const ps = NICHES.filter(n => row[BUYING_COLUMN[n]]).map(n => `<span class="pr"><span class="k">${esc(t().niche[n])}</span>${esc(row[BUYING_COLUMN[n]])}</span>`).join("") || `<span class="sender">${t().noPrice}</span>`;
+    const type = String(row.Type || "").trim();
+    return `<div class="dbrow"><span class="sender">${type ? `<span class="tipo ${type.toLowerCase() === "broker" ? "broker" : ""}">${esc(type)}</span>` : ""}${esc(senderOf(row) || t().noContact)} · ${esc(row["Last Updated"] || "")}</span>${ps}</div>`;
+  }).join("");
+}
+function decisionCell(domain){
+  const d = decisions[domain];
+  return `<span class="seg">` + ["accept","reject","ask"].map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${t()[k]}</button>`).join("") + `</span>`;
+}
+function table(entries, kind){
+  if(!entries.length) return `<div class="tabla-wrap"><div class="empty">${t().empty}</div></div>`;
+  const rows = entries.map(e => {
+    const d = e.item.domain; const done = decisions[d] ? " done" : "";
+    const dbCol = e.removedRows ? dbCells(e.removedRows) : dbCells(e.rows);
+    return `<tr class="${done.trim()}"><td class="dom">${esc(d)}${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offeredCells(e.item, e.diffs)}</td><td>${dbCol}</td><td class="ancha">${esc(e.item.terms) || `<span class=sender>${t().none}</span>`}</td><td class="dec">${decisionCell(d)}</td></tr>`;
+  }).join("");
+  return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+}
+function render(){
+  if(!groups) return;
+  const total = items.length, decided = Object.keys(decisions).filter(k => items.some(i => i.domain === k)).length;
+  const first = groups.unknown.concat(groups.changed, groups.unchanged, groups.removed)[0];
+  const broker = first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "";
+  const sameSender = groups.changed.filter(c => c.sameSender).length;
+  const all = groups.changed.concat(groups.unknown, groups.unchanged, groups.removed);
+  const tabs = [
+    ["changed", "wait", t().gChanged, groups.changed, t().hChanged],
+    ["unknown", "", t().gUnknown, groups.unknown, t().hUnknown],
+    ["unchanged", "ok", t().gUnchanged, groups.unchanged, t().hUnchanged],
+    ["removed", "", t().gRemoved, groups.removed, t().hRemoved],
+    ["all", "", t().all, all, ""]
+  ];
+  if(!tabs.find(x => x[0] === view)) view = "changed";
+  const cur = tabs.find(x => x[0] === view);
+  $("results").innerHTML = `
+    <div class="gtabs" role="tablist">
+      ${tabs.map(([k, cls, label, arr]) => `<button type="button" role="tab" class="gtab ${cls}" data-view="${k}" aria-selected="${k === view}">${label} <span class="n">${arr.length}</span></button>`).join("")}
+      <span class="progreso">${t().decided(decided, total)} <i><b style="width:${total ? Math.round(decided / total * 100) : 0}%"></b></i></span>
+    </div>
+    ${broker}
+    ${cur[4] ? `<p class="ghint">${cur[4]}${view === "changed" && sameSender ? ` ${sameSender} ${t().fromSender}.` : ""}</p>` : ""}
+    ${table(cur[3], view === "removed" ? "removed" : view)}`;
+  $("results").querySelectorAll(".gtab").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; render(); }));
+  $("results").querySelectorAll("button[data-dec]").forEach(b => b.addEventListener("click", () => {
+    const dom = b.dataset.dom, dec = b.dataset.dec;
+    if(decisions[dom] === dec) delete decisions[dom]; else decisions[dom] = dec;
+    saveDecisions(); render();
+  }));
+  renderExport();
+}
+function renderExport(){
+  const accepted = items.filter(i => decisions[i.domain] === "accept");
+  $("export").hidden = !accepted.length;
+  if(!accepted.length) return;
+  $("export-t").textContent = t().exportT(accepted.length);
+  const who = "you";
+  const label = $("label").value.trim();
+  const sender = $("sender").value.trim();
+  const type = (groups && groups.unknown.concat(groups.changed)[0] && groups.unknown.concat(groups.changed)[0].brokerHint) ? "Broker" : "Publisher";
+  const lines = [DB_COLUMNS.join("\t")].concat(accepted.map(i => DB_COLUMNS.map(c => String(rowForAccept(i, { type, sender, who, listLabel: label })[c]).replace(/\t|\n/g, " ")).join("\t")));
+  $("tsv").value = lines.join("\n");
+}
+$("copy").addEventListener("click", () => {
+  const t = $("tsv").value;
+  const done = () => { $("copynote").textContent = t().copied; setTimeout(() => { $("copynote").textContent = ""; }, 1500); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, () => { $("tsv").select(); });
+  else $("tsv").select();
+});
+
+/* ---------- boot ---------- */
+$("list").value = STAR;
+applyLang();
+run();
+
+</script>
+</body></html>
