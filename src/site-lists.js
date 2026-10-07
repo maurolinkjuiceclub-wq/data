@@ -173,14 +173,44 @@ export function parseList(text){
 
 /* ---------- the database side ---------- */
 
-/* Column names of "Import Database" as the sheet has them (06/10). */
+/* Column names of "Import Database" as the sheet has them, read through the
+   Drive connector on 07/10/2026. In the sheet several carry a line break or
+   a double space ("Ahrefs \nDomain Rating", "Unlicensed \nCasino"); here they
+   are written in one line and matched through `headerKey`, which collapses
+   whitespace and case. "removed sites" has 43 of these (no Unlicensed
+   Casino) and spells "Majestic Citatian Flow"; headerKey tolerates that too. */
 export const DB_COLUMNS = ["Type", "TLD", "Domain", "Webmaster Contact", "Webmaster Extra Contact", "Contact Name", "IP Address",
-  "Ahrefs DR", "Ahrefs Referring Domains", "Ahrefs Organic Traffic", "Ahrefs URL Rating", "Ahrefs Top 3 Keywords", "Ahrefs Top 4-10 Keywords",
-  "Majestic TF", "Majestic CF", "MOZ Spam Score", "MOZ DA", "Semrush AS", "TF/CF", "RD/OT",
+  "Ahrefs Domain Rating", "Ahrefs Referring Domains", "Ahrefs Organic Traffic", "Ahrefs URL Rating", "Ahrefs Top 3 Keywords", "Ahrefs Top 4-10 Keywords",
+  "Majestic Trust Flow", "Majestic Citation Flow", "MOZ Spam Score", "MOZ Domain Authority", "Semrush Authority Score", "TF / CF", "RD / OT",
   "Buying Casino", "Buying Unlicensed Casino", "Buying Crypto", "Buying Forex", "Buying CBD", "Buying Dating", "Buying General",
   "Casino", "Unlicensed Casino", "Crypto", "Forex", "CBD", "Dating", "General",
   "Sponsor Tag Type", "Link Type", "Placement", "Price Validity", "Admin Comments", "User Comments", "Last Updated",
   "Main Country", "Main Country Traffic", "Domain Language", "Website Topic"];
+
+/* "Ahrefs \nDomain Rating" and "Ahrefs  Domain Rating" are the same column. */
+export function headerKey(h){
+  return String(h || "").toLowerCase().replace(/\s+/g, " ").trim().replace("citatian", "citation");
+}
+const KEY_TO_COLUMN = new Map(DB_COLUMNS.map(c => [headerKey(c), c]));
+
+/* Renames a row read from the sheet (or a CSV of it) to the one-line column
+   names above, so the rest of the module can use `row["Buying Casino"]`.
+   Columns the module does not know are kept as they are. */
+export function normaliseRow(row){
+  const out = {};
+  for(const k in row){ out[KEY_TO_COLUMN.get(headerKey(k)) || k] = row[k]; }
+  return out;
+}
+
+/* Fixed values the database accepts (CLAUDE.md of the desk, Gary 07/10, and
+   the sample rows of 07/10). Anything else goes to a comment, not a column. */
+export const FIXED = {
+  type: ["Publisher", "Broker"],
+  linkType: ["Do follow", "No follow"],
+  placement: ["1 Year", "2 Years", "permanent"],
+  priceValidity: ["Fixed", "Not fixed"],   /* or a date */
+  sponsorTag: ["", "Marked by WM", "rel=sponsored"]
+};
 export const BUYING_COLUMN = { casino: "Buying Casino", unlicensedCasino: "Buying Unlicensed Casino", crypto: "Buying Crypto", forex: "Buying Forex", cbd: "Buying CBD", dating: "Buying Dating", general: "Buying General" };
 
 /* The contact column: "Webmaster Contact" in 2026, "Contact email" in the
@@ -196,14 +226,16 @@ export function indexDatabase(rows, removed){
   const byDomain = new Map();
   const bySender = new Map();
   const add = (map, k, v) => { if(!k) return; const a = map.get(k); if(a) a.push(v); else map.set(k, [v]); };
-  (rows || []).forEach((r, i) => {
+  (rows || []).forEach((raw, i) => {
+    const r = normaliseRow(raw);
     const d = normaliseDomain(r.Domain || r.domain);
     if(!d) return;
     add(byDomain, d.domain, { row: r, index: i });
     add(bySender, senderOf(r), d.domain);
   });
   const removedSet = new Map();
-  (removed || []).forEach((r, i) => {
+  (removed || []).forEach((raw, i) => {
+    const r = normaliseRow(raw);
     const d = normaliseDomain(r.Domain || r.domain);
     if(d) add(removedSet, d.domain, { row: r, index: i });
   });
@@ -262,7 +294,7 @@ export function matchList(items, index, { sender, brokerHintAt = 10 } = {}){
 export function rowForAccept(item, { type = "Publisher", sender = "", contactName = "", who = "", listLabel = "", today = new Date() } = {}){
   const d = String(today.getDate()).padStart(2, "0"), m = String(today.getMonth() + 1).padStart(2, "0"), y = today.getFullYear();
   const row = Object.fromEntries(DB_COLUMNS.map(c => [c, ""]));
-  row.Type = type;
+  row.Type = FIXED.type.includes(type) ? type : "Publisher";
   row.Domain = item.domain;
   row.TLD = "." + item.domain.split(".").slice(1).join(".");
   row["Webmaster Contact"] = sender;
@@ -272,18 +304,34 @@ export function rowForAccept(item, { type = "Publisher", sender = "", contactNam
     if(p) row[BUYING_COLUMN[niche]] = formatPrice(p);
   }
   const t = item.terms.toLowerCase();
-  row["Sponsor Tag Type"] = /no-?follow/.test(t) ? "nofollow" : /sponsored/.test(t) ? "sponsored" : /do-?\s?follow|dofollow/.test(t) ? "dofollow" : "";
-  row["Link Type"] = /insert|niche edit|link insertion|inserci/.test(t) ? "Link insertion" : /guest|art[ií]culo|article|post/.test(t) ? "Guest post" : "";
-  row["Placement"] = /home\s?page|portada/.test(t) ? "Homepage" : "";
-  const until = t.match(/valid(?:o|a)?s?\s*(?:until|hasta|till)\s*([\d.\/-]+)/);
-  row["Price Validity"] = until ? until[1] : /permanent|permanente/.test(t) ? "permanent" : "";
-  row["Admin Comments"] = [who && `Accepted by ${who}`, listLabel && `from list ${listLabel}`, item.terms && `terms: ${item.terms}`].filter(Boolean).join("; ");
+  /* Sponsor Tag Type: blank means no tag. "Marked by WM" when the publisher
+     marks the article themselves; the wording goes to Admin Comments as
+     Marked as "...". rel=sponsored when they say so. */
+  /* The quotes may be gone (a CSV cell strips them), so a bare word after
+     "marked as" counts too. */
+  const marked = item.terms.match(/marked\s+as\s+["“']([^"”']+)["”']/i) || item.terms.match(/marked\s+as\s+([\p{L}\d-]+)/iu);
+  row["Sponsor Tag Type"] = /rel=sponsored|sponsored tag|sponsored link/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
+  row["Link Type"] = /no-?\s?follow/.test(t) ? "No follow" : "Do follow";
+  row["Placement"] = /permanent|lifetime|forever|dauerhaft|permanente/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
+  const until = item.terms.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
+  row["Price Validity"] = until ? until[1] : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
+  const admin = [];
+  if(marked) admin.push(`Marked as "${marked[1]}"`);
+  if(item.prices.unlicensedCasino) admin.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
+  else if(/unlicen[cs]ed casinos? accepted/.test(t)) admin.push("Unlicensed Casinos Accepted");
+  else if(/only licen[cs]ed/.test(t)) admin.push("Only Licensed Casinos");
+  if(/written by (the )?(wm|webmaster)/.test(t)) admin.push("Written by WM");
+  if(/no ?index/.test(t)) admin.push("NO INDEX");
+  row["Admin Comments"] = admin.join("\n");
+  /* User Comments is the team's, by hand: here only who accepted and from
+     which list, so the row can be traced. */
+  row["User Comments"] = [who && `Accepted by ${who}`, listLabel && `from list ${listLabel}`].filter(Boolean).join("; ");
   row["Last Updated"] = `${d}/${m}/${y}`;
   return row;
 }
 
-/* The database writes prices as text, "€ 400.00" in the 2024 copy. */
+/* The 2026 database writes prices as bare numbers in EUR (1100, 250), read
+   on 07/10. The 2024 Latam copy wrote "€ 400.00"; parsePrice reads both. */
 export function formatPrice(p){
-  const sym = p.currency === "USD" ? "$" : p.currency === "GBP" ? "£" : "€";
-  return `${sym} ${p.amount.toFixed(2)}`;
+  return Number.isInteger(p.amount) ? String(p.amount) : p.amount.toFixed(2);
 }

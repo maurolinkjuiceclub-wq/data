@@ -287,6 +287,51 @@ the copy, and the Worker is the only thing that holds the key.
    Mauro on 06/10: style of the desk, not a copy of its bar or tabs.
 4. Acceptance test with starmagazines on the copy.
 
+## What Senad's Drive shows (read 07/10)
+
+Two files owned by senad.linkjuiceclub@gmail.com, shared with Mauro:
+
+- **"Latam Outreach — Simon"** (sheet). Tabs: *Database* (5,470 rows in the
+  database's column layout, 43 columns, no Unlicensed Casino yet), *BROKER
+  OUTREACH* (1,803 rows: Domain, Country, Date Sent, WhatsApp, Contact Email,
+  Alternative contact, Replied?, Database?, Additional Comments), *BROKER +
+  UNSURE SITES* (3,660 rows in the database layout, Type blank / Broker /
+  Exclusive), *OUTREACH NEW SITES* (3,578 rows, same tracking columns plus
+  Status Email), *Templates*, *Old Mauro Broker Sites*.
+- **"Broker/ Normal Outreach"** (doc). Email templates for the broker case:
+  "[Website] was recently presented to us by a third party": write to the
+  webmaster directly and ask whether they manage partnerships; "Better
+  Price": when the site is listed cheaper on a platform, ask the webmaster to
+  match; closings for "prices are good", "got a discount", "no discount".
+
+So the broker workflow, as far as the files show it: a broker's list is a
+source of *leads*, not of prices. Each site goes to BROKER + UNSURE SITES,
+the team writes to the real webmaster, and the direct price is what enters
+the Database. The broker's price is kept as the ceiling to negotiate under.
+This matches decision 3 (the broker's offer is shown, the person decides)
+and sharpens it: for an unknown domain from a broker, the natural action is
+"write to the webmaster", not "accept the broker's price". To confirm with
+Senad.
+
+## The 2026 headers, verified 07/10
+
+Read through the Drive connector, first row of "Import Database": 45 columns
+A to AS. Several headers carry a line break or a double space in the sheet
+("Ahrefs \nDomain Rating", "Unlicensed \nCasino", "Semrush  Authority Score"),
+so the module matches headers by collapsed whitespace, not by exact text.
+"removed sites" has 43 columns (no Unlicensed Casino) and spells "Majestic
+Citatian Flow". Prices are **bare numbers in EUR** (1100, 250), not "€ 400.00"
+as in the 2024 Latam copy; `formatPrice` now writes bare numbers. Fixed
+values seen in the rows: Type blank / Publisher / Broker; Link Type "Do
+follow"; Placement "permanent", "1 Year", "2 Years"; Price Validity "Fixed";
+Sponsor Tag Type "Marked by WM", "rel=sponsored". Admin Comments phrases:
+"Unlicensed Casinos - 1100 EUR", "Unlicensed Casinos Accepted", "Only
+Licensed Casinos", "Written by WM", "NON-Gamstop Casinos - 500 EUR",
+"REMOVED FROM THE LIST". User Comments: "Unlicensed Casinos Accepted",
+"Marked as \"Bet\"", "Only Licensed Casinos". The Buying Unlicensed Casino
+column is empty in every sample row; the unlicensed price lives in Admin
+Comments today.
+
 ## Not in scope unless asked
 
 Automatic quality checks of a site (traffic, DR), scraping the publisher's

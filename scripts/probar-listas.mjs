@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -105,14 +105,31 @@ caso("unknown domain", gu.unknown.length === 1 && gu.unknown[0].rows.length === 
 const fila = rowForAccept(gamma, { sender: "g@gamma.net", contactName: "Gina", who: "mauro@linkjuiceclub.com", listLabel: "gamma 06/10", today: new Date(2026, 9, 6) });
 caso("row has every column", eq(Object.keys(fila), DB_COLUMNS));
 caso("row type and tld", fila.Type === "Publisher" && fila.TLD === ".net" && fila.Domain === "gamma.net");
-caso("row buying prices as text", fila["Buying General"] === "€ 99.99" && fila["Buying Casino"] === "$ 999.99");
+caso("row buying prices as bare numbers", fila["Buying General"] === "99.99" && fila["Buying Casino"] === "999.99", [fila["Buying General"], fila["Buying Casino"]]);
 caso("row sell prices empty", fila.General === "" && fila.Casino === "");
-caso("row sponsored tag", fila["Sponsor Tag Type"] === "sponsored");
+caso("row sponsored tag", fila["Sponsor Tag Type"] === "rel=sponsored", fila["Sponsor Tag Type"]);
 caso("row date dd/mm/yyyy", fila["Last Updated"] === "06/10/2026");
-caso("row admin comment", /Accepted by mauro@linkjuiceclub.com; from list gamma 06\/10; terms: sponsored/.test(fila["Admin Comments"]), fila["Admin Comments"]);
+caso("row user comment traces the accept", fila["User Comments"] === "Accepted by mauro@linkjuiceclub.com; from list gamma 06/10", fila["User Comments"]);
+caso("row admin comments only fixed phrases", fila["Admin Comments"] === "", fila["Admin Comments"]);
 const filaBeta = rowForAccept(beta, {});
 caso("row validity date", filaBeta["Price Validity"] === "31.12.2026", filaBeta["Price Validity"]);
-caso("row dofollow permanent", rowForAccept(alpha, {})["Sponsor Tag Type"] === "dofollow" && rowForAccept(alpha, {})["Price Validity"] === "permanent");
+const filaAlpha = rowForAccept(alpha, {});
+caso("row Do follow and permanent placement", filaAlpha["Link Type"] === "Do follow" && filaAlpha["Placement"] === "permanent" && filaAlpha["Sponsor Tag Type"] === "", [filaAlpha["Link Type"], filaAlpha["Placement"]]);
+caso("row integer price", filaAlpha["Buying General"] === "300" && filaAlpha["Buying Casino"] === "400");
+
+/* --- the 2026 headers, with their line breaks and double spaces --- */
+caso("headerKey collapses whitespace", headerKey("Ahrefs \nDomain Rating") === headerKey("Ahrefs  Domain Rating") && headerKey("Unlicensed \nCasino") === "unlicensed casino");
+caso("headerKey tolerates Citatian", headerKey("Majestic\nCitatian Flow") === "majestic citation flow");
+const sheetRow = normaliseRow({ "Type": "Broker", "Domain": "tgtube.co.uk", "Ahrefs \nDomain Rating": "49", "Buying Casino": "500", "Unlicensed \nCasino": "", "Majestic\nCitatian Flow": "26" });
+caso("normaliseRow maps sheet headers", sheetRow["Ahrefs Domain Rating"] === "49" && sheetRow["Majestic Citation Flow"] === "26" && sheetRow["Buying Casino"] === "500", sheetRow);
+const idxSheet = indexDatabase([{ "Domain": "tgtube.co.uk", "Webmaster Contact": "x@y.z", "Buying  Casino": "500" }], []);
+const gSheet = matchList(parseList("tgtube.co.uk 500").items, idxSheet);
+caso("sheet row with bare price matches as changed (general vs casino)", gSheet.changed.length === 1 && gSheet.changed[0].diffs[0][0].niche === "general", gSheet.changed[0] && gSheet.changed[0].diffs);
+const gSheet2 = matchList(parseList("Domain\tCasino\ntgtube.co.uk\t500").items, idxSheet);
+caso("sheet row with bare price matches as unchanged", gSheet2.unchanged.length === 1, gSheet2);
+const marked = rowForAccept(parseList("alpha.com\t300\tarticle marked as \"Werbung\"; unlicensed casinos accepted; written by WM").items[0], {});
+caso("Marked by WM with the marking in Admin Comments", marked["Sponsor Tag Type"] === "Marked by WM" && marked["Admin Comments"] === "Marked as \"Werbung\"\nUnlicensed Casinos Accepted\nWritten by WM", marked["Admin Comments"]);
+caso("FIXED lists", FIXED.placement.includes("2 Years") && FIXED.linkType.includes("No follow"));
 
 
 /* --- the starmagazines email of 05/10, as it came --- */
