@@ -310,8 +310,11 @@ the team writes to the real webmaster, and the direct price is what enters
 the Database. The broker's price is kept as the ceiling to negotiate under.
 This matches decision 3 (the broker's offer is shown, the person decides)
 and sharpens it: for an unknown domain from a broker, the natural action is
-"write to the webmaster", not "accept the broker's price". To confirm with
-Senad.
+"write to the webmaster", not "accept the broker's price". **Confirmed by
+Senad, 07/10 09:05**: "Yes, and we tend to contact the real webmaster of the
+sites the broker provided or individual sites provided by them." He is
+writing the full process in a Google Doc; the rest of this section waits for
+it.
 
 ## The 2026 headers, verified 07/10
 
