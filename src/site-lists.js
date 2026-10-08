@@ -341,10 +341,12 @@ export function priceDiff(item, row){
    - removed: in "removed sites" (shown apart, never written as new).
    `sender` is the email the list came from; when the database already has it
    on `brokerHintAt` or more domains, `brokerHint` is set on every item. */
-export function matchList(items, index, { sender, brokerHintAt = 10 } = {}){
+export function matchList(items, index, { sender, brokerHintAt = 10, senderCount } = {}){
   const groups = { unchanged: [], changed: [], unknown: [], removed: [] };
   const mail = String(sender || "").trim().toLowerCase();
-  const known = mail ? (index.bySender.get(mail) || []).length : 0;
+  /* senderCount comes from the Worker, which sees the whole sheet; the
+     local index only sees the rows it was given. */
+  const known = senderCount != null ? senderCount : (mail ? (index.bySender.get(mail) || []).length : 0);
   const brokerHint = known >= brokerHintAt ? known : 0;
   for(const item of items){
     const hit = index.byDomain.get(item.domain) || [];

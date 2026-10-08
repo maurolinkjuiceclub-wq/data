@@ -2,7 +2,8 @@
 <!-- Site lists: paste what a publisher or broker sent, match it against the
      database, decide every row. The parsing and matching live in
      site-lists.js (tested by scripts/probar-listas.mjs); this file is only
-     the screen. Plan and decisions: BRIEF.md. -->
+     the screen. The Worker (worker.js) reads and writes the sheet.
+     Plan and decisions: BRIEF.md. -->
 <title>LJC Site Lists</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -243,6 +244,22 @@ Unsere Leistungen: Dauerhafte Veröffentlichung von Gastbeiträgen · Do-Follow-
 let dbRows = SAMPLE_DB, rmRows = SAMPLE_REMOVED, dbSource = "sample rows";
 let index = indexDatabase(dbRows, rmRows);
 let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
+/* The Worker, when the page is served next to it. In the claude.ai copy
+   there is no Worker: the fetch fails and the page stays on sample rows. */
+let remote = null;      /* { rows, readAt } when /api/status says connected */
+let lastMatch = null;   /* the Worker's answer for the current list */
+const written = {};     /* domain -> updatedRange, rows the Worker appended */
+async function checkRemote(){
+  try{
+    const r = await fetch("/api/status", { headers: { accept: "application/json" } });
+    if(!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who } : null;
+    remoteWhy = j.connected ? "" : (j.reason || "");
+  }catch(e){ remote = null; remoteWhy = ""; }
+  describeDb();
+}
+let remoteWhy = "";
 try{ stype = localStorage.getItem("ljc-lists-stype") === "Broker" ? "Broker" : "Publisher"; }catch(e){}
 function setStype(v){
   stype = v; try{ localStorage.setItem("ljc-lists-stype", v); }catch(e){}
@@ -264,6 +281,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until the sheet is connected. A CSV copy can be loaded here; it stays in your browser.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
+    sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
     orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
     stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
     brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
@@ -281,6 +299,7 @@ const T = {
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta conectar la hoja. Puedes cargar una copia CSV; se queda en tu navegador.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
+    sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
     orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
     stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
     brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
@@ -318,7 +337,13 @@ function saveDecisions(){ try{ localStorage.setItem(storageKey(), JSON.stringify
 function describeDb(){
   const contacts = [...index.bySender.keys()].filter(Boolean).length;
   $("dbmeta").textContent = `${dbSource}: ` + t().meta(dbRows.length, index.size, contacts, index.removed.size);
-  $("state").textContent = t().state(dbSource);
+  if(remote){
+    const at = new Date(remote.readAt); const hh = String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
+    $("state").textContent = t().sheetState(remote.rows, hh);
+    document.querySelector("[data-i18n=dbhint]").textContent = t().dbhintLive;
+  }else{
+    $("state").textContent = t().state(dbSource) + (remoteWhy ? " · " + remoteWhy : "");
+  }
 }
 
 /* ---------- CSV ---------- */
@@ -363,6 +388,22 @@ function run(){
   loadDecisions();
   groups = matchList(items, index, { sender: $("sender").value });
   render();
+  if(remote) matchRemote();
+}
+async function matchRemote(){
+  const sender = $("sender").value.trim();
+  try{
+    const r = await fetch("/api/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: items.map(i => i.domain), sender }) });
+    if(!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    lastMatch = j;
+    const idx = indexDatabase(Object.values(j.rows || {}).flat(), Object.values(j.removed || {}).flat());
+    groups = matchList(items, idx, { sender, senderCount: j.senderCount });
+    remote = { ...remote, rows: j.total, readAt: j.readAt };
+    describeDb(); render();
+  }catch(e){
+    remote = null; remoteWhy = "match failed"; describeDb();
+  }
 }
 $("match").addEventListener("click", run);
 
@@ -398,6 +439,7 @@ function dbCells(rows){
 }
 function decisionCell(domain){
   const d = decisions[domain];
+  if(written[domain]) return `<span class="fv" style="border-color:var(--ok-line);color:var(--ok-ink)" title="${esc(written[domain])}">${esc(t().written(""))}</span>`;
   const keys = stype === "Broker" ? ["webmaster","accept","ask","reject"] : ["accept","webmaster","ask","reject"];
   return `<span class="seg">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${t()[k]}</button>`).join("") + `</span>`;
 }
@@ -437,10 +479,29 @@ function render(){
   $("results").querySelectorAll(".gtab").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; render(); }));
   $("results").querySelectorAll("button[data-dec]").forEach(b => b.addEventListener("click", () => {
     const dom = b.dataset.dom, dec = b.dataset.dec;
+    if(written[dom]) return;   /* already in the sheet: no undo from here */
+    if(remote && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
     if(decisions[dom] === dec) delete decisions[dom]; else decisions[dom] = dec;
     saveDecisions(); render();
   }));
   renderExport();
+}
+async function acceptRemote(dom, btn){
+  const item = items.find(i => i.domain === dom); if(!item) return;
+  const row = rowForAccept(item, { type: stype, sender: $("sender").value.trim(), who: remote.who || "", listLabel: $("label").value.trim() });
+  btn.disabled = true; btn.textContent = t().writing;
+  try{
+    const r = await fetch("/api/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row }) });
+    const j = await r.json().catch(() => ({}));
+    if(!r.ok || !j.ok) throw new Error(j.error || String(r.status));
+    written[dom] = j.updatedRange || "ok";
+    decisions[dom] = "accept"; saveDecisions();
+    render();
+  }catch(e){
+    btn.disabled = false; render();
+    const note = document.createElement("div"); note.className = "aviso"; note.textContent = t().writeFail + " " + dom;
+    $("results").prepend(note); setTimeout(() => note.remove(), 6000);
+  }
 }
 function renderExport(){
   const accepted = items.filter(i => decisions[i.domain] === "accept");
@@ -448,7 +509,9 @@ function renderExport(){
   const sender = $("sender").value.trim();
   $("export").hidden = !accepted.length;
   if(accepted.length){
-    $("export-t").textContent = t().exportT(accepted.length);
+    const done = accepted.filter(i => written[i.domain]).length;
+    $("export-t").textContent = remote && done ? t().writtenT(done) : t().exportT(accepted.length);
+    document.querySelector("[data-i18n=rowshint]").textContent = remote && done ? t().writtenHint : t().rowshint;
     const rows = accepted.map(i => rowForAccept(i, { type: stype, sender, who: "you", listLabel: label }));
     const show = ["Type", "Domain", "Webmaster Contact", ...NICHES.map(n => BUYING_COLUMN[n]), "Sponsor Tag Type", "Link Type", "Placement", "Price Validity", "Admin Comments", "Last Updated"];
     const used = show.filter(c => c === "Type" || c === "Domain" || rows.some(r => r[c]));
@@ -522,7 +585,7 @@ $("stype-broker").addEventListener("click", () => setStype("Broker"));
 $("list").value = STAR;
 setStype(stype);
 applyLang();
-run();
+checkRemote().then(run);
 
 </script>
 </body></html>

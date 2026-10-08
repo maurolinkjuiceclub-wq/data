@@ -1,0 +1,14 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "site-lists",
+  "compatibility_date": "2026-09-21",
+  "observability": { "enabled": true },
+  // The Worker answers /api/ only; the page and its module are static files.
+  "main": "src/worker.js",
+  "assets": { "directory": "dist", "binding": "ASSETS" },
+  // SHEET_ID is the copy while we test; Gary switches it to the real sheet.
+  // ACCESS_AUD is the Application Audience tag of this site's Access app,
+  // filled in once the hostname exists. GOOGLE_SA is a secret:
+  //   wrangler secret put GOOGLE_SA   (paste the service account's JSON)
+  "vars": { "SHEET_ID": "1ZyoUsX9RtaK3FgopDE92AXC8OSa6X2AH8qIdFPqI8rg", "ACCESS_AUD": "" }
+}

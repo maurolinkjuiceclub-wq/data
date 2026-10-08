@@ -272,11 +272,16 @@ the copy, and the Worker is the only thing that holds the key.
    and the row Accept writes. `node scripts/probar-listas.mjs` runs 51
    checks; with the path of the 2024 Latam CSV it also indexes the real copy
    (2,751 rows, 2,187 domains, 17 duplicated, 1,557 prices all parsed).
-2. Worker: read both tabs through the Sheets API with the service account,
-   cache for a few minutes, answer lookups; write one row on Accept. Waiting
-   on Gary (asked 06/10 and 07/10: service account as Editor on the copy,
-   which platform imports the sheet and what it validates, how a list is
-   handled today).
+2. **Written 08/10, not yet live.** `src/worker.js`: service-account token
+   signed with WebCrypto, both tabs read through the Sheets API and kept in
+   memory five minutes, `/api/match` by normalised domain with the sender's
+   row count, `/api/accept` appends one row in the sheet's own column order
+   and names who accepted from the Access token. 18 checks against a
+   stand-in for Google. The page uses it when served next to it: the seal
+   shows the sheet's row count and read time, Accept writes at once and the
+   row is marked "Written to the sheet". Waiting on Gary for the key
+   (`GOOGLE_SA`), the Cloudflare secrets on this repository, and the Access
+   application for the hostname.
 3. **Screen done 07/10**, as its own page, not a desk tab: `src/site-lists.html`,
    served at `/lists/` next to the desk behind the same Cloudflare Access, EN/ES,
    the desk's tokens and type. Form on a rail, one table with group tabs
