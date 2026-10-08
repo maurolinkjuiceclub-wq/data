@@ -1,5 +1,6 @@
 <header class="bar">
   <h1 class="marca" data-i18n="title">Site lists</h1>
+  <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button></span>
   <div class="estado">
     <button type="button" class="sello" id="state" aria-expanded="false" aria-controls="dbpanel"></button>
     <span class="lang" role="group" aria-label="Language"><button type="button" id="lang-en" aria-pressed="true">EN</button><button type="button" id="lang-es" aria-pressed="false">ES</button></span>
@@ -17,7 +18,7 @@
   </div>
 </div>
 
-<div class="shell">
+<div class="shell" id="screen-list">
   <aside class="rail">
     <form class="rev-form" onsubmit="return false">
       <div><label for="sender" data-i18n="sender">Sender</label><input type="text" id="sender" value="redaktion@sternmagazin.example" autocomplete="off"></div>
@@ -51,4 +52,27 @@
       </div>
     </section>
   </main>
+</div>
+
+<div class="dbscreen" id="screen-db" hidden>
+  <div class="dbtools">
+    <input type="search" id="db-q" class="dbq" autocomplete="off" spellcheck="false">
+    <select id="db-type"><option value="" data-i18n="fType">Type: all</option><option value="Publisher">Publisher</option><option value="Broker">Broker</option><option value="-" data-i18n="fTypeBlank">Type: blank</option></select>
+    <select id="db-country"><option value="" data-i18n="fCountry">Country: all</option></select>
+    <select id="db-lang"><option value="" data-i18n="fLang">Language: all</option></select>
+    <select id="db-niche"><option value="" data-i18n="fNiche">Priced for: any</option><option value="casino">Casino</option><option value="unlicensedCasino">Unlicensed casino</option><option value="crypto">Crypto</option><option value="forex">Forex</option><option value="cbd">CBD</option><option value="dating">Dating</option><option value="general">General</option></select>
+    <label class="chk"><input type="checkbox" id="db-removed"> <span data-i18n="fRemoved">removed sites</span></label>
+    <label class="chk"><input type="checkbox" id="db-wide"> <span data-i18n="fWide">all 45 columns</span></label>
+    <span class="said" id="db-count"></span>
+  </div>
+  <div class="dbmain">
+    <div class="dbgrid" id="db-grid">
+      <div class="dbhead" id="db-head"></div>
+      <div class="dbbody" id="db-body"><div class="dbspacer" id="db-top"></div><div id="db-rows"></div><div class="dbspacer" id="db-bottom"></div></div>
+    </div>
+    <aside class="dbdetail" id="db-detail" hidden>
+      <div class="dbdetail-h"><b id="db-detail-dom"></b><button type="button" class="btn sutil" id="db-detail-x" aria-label="Close">×</button></div>
+      <dl id="db-detail-body"></dl>
+    </aside>
+  </div>
 </div>

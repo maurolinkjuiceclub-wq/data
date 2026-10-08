@@ -70,6 +70,8 @@ const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until the sheet is connected. A CSV copy can be loaded here; it stays in your browser.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
     sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
+    modeList:"List", modeDb:"Database", fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
+    dbSearch:"Search domain, contact or name", dbCount:(n, total)=>`${n.toLocaleString("en")} of ${total.toLocaleString("en")} rows`, dbEmpty:"No row matches.", dbLoading:"Loading…", dbRemovedTab:"removed sites", dbCols:{Domain:"Domain", Type:"Type", Contact:"Contact", Country:"Country", Language:"Language", Updated:"Updated", Terms:"Terms"},
     orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
     stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
     brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
@@ -88,6 +90,8 @@ const T = {
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta conectar la hoja. Puedes cargar una copia CSV; se queda en tu navegador.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
     sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
+    modeList:"Lista", modeDb:"Base de datos", fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
+    dbSearch:"Buscar dominio, contacto o nombre", dbCount:(n, total)=>`${n.toLocaleString("es")} de ${total.toLocaleString("es")} filas`, dbEmpty:"Ninguna fila coincide.", dbLoading:"Cargando…", dbRemovedTab:"removed sites", dbCols:{Domain:"Dominio", Type:"Tipo", Contact:"Contacto", Country:"País", Language:"Idioma", Updated:"Actualizado", Terms:"Condiciones"},
     orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
     stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
     brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
@@ -114,6 +118,7 @@ function applyLang(){
   $("lang-es").setAttribute("aria-pressed", String(lang === "es"));
   describeDb();
   if(groups) { noteParse(); render(); }
+  try{ $("db-q").placeholder = t().dbSearch; if(mode === "db") dbDraw(); }catch(e){}
 }
 $("lang-en").addEventListener("click", () => { lang = "en"; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} applyLang(); });
 $("lang-es").addEventListener("click", () => { lang = "es"; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} applyLang(); });
@@ -164,7 +169,7 @@ $("wm-h").addEventListener("click", () => { const open = $("wm-body").hidden; $(
 $("dbfile").addEventListener("change", () => readFile($("dbfile"), (t, name) => { dbRows = csvToObjects(t); dbSource = name; rebuild(); }));
 $("rmfile").addEventListener("change", () => readFile($("rmfile"), (t) => { rmRows = csvToObjects(t); rebuild(); }));
 $("reset").addEventListener("click", () => { dbRows = SAMPLE_DB; rmRows = SAMPLE_REMOVED; dbSource = "sample rows"; $("dbfile").value = ""; $("rmfile").value = ""; rebuild(); });
-function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); if(items.length) run(); }
+function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); dbState.facets = null; $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
 
 /* ---------- matching ---------- */
 function run(){
@@ -367,6 +372,149 @@ $("listfile").addEventListener("change", async () => {
   }
 });
 
+
+/* ---------- the database screen ----------
+   Gary, 08/10: "I think it's best if you show the full database here?".
+   Read only. The rows come from the CSV or sample rows in the browser, or,
+   when the Worker is there, from /api/rows page by page. Only the rows on
+   screen are drawn, so 103k rows cost nothing. */
+let mode = "list";
+const ROW_H = 34;
+const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, facets: null, remotePages: new Map(), remoteTotal: 0, pending: null };
+const NARROW = [
+  ["Domain", 220], ["Type", 90], ["Contact", 230], ["Country", 120], ["Language", 100],
+  ["Buying Casino", 84], ["Buying Unlicensed Casino", 84], ["Buying Crypto", 84], ["Buying Forex", 84], ["Buying CBD", 84], ["Buying Dating", 84], ["Buying General", 84],
+  ["Terms", 230], ["Updated", 100]
+];
+const SHORT = { "Buying Casino": "Casino", "Buying Unlicensed Casino": "Unlic.", "Buying Crypto": "Crypto", "Buying Forex": "Forex", "Buying CBD": "CBD", "Buying Dating": "Dating", "Buying General": "General" };
+function setMode(m){
+  mode = m;
+  $("mode-list").setAttribute("aria-selected", String(m === "list"));
+  $("mode-db").setAttribute("aria-selected", String(m === "db"));
+  $("screen-list").hidden = m !== "list";
+  $("screen-db").hidden = m !== "db";
+  if(m === "db") dbRefresh();
+}
+function dbSourceRows(){ return dbState.removed ? rmRows : dbRows; }
+function rowMatches(r, q){
+  if(dbState.type === "-" ? String(r.Type || "").trim() !== "" : dbState.type && String(r.Type || "").trim() !== dbState.type) return false;
+  if(dbState.country && String(r["Main Country"] || "") !== dbState.country) return false;
+  if(dbState.lang && String(r["Domain Language"] || "") !== dbState.lang) return false;
+  if(dbState.niche && !String(r[BUYING_COLUMN[dbState.niche]] || "").trim()) return false;
+  if(q){
+    const hay = (String(r.Domain || "") + " " + senderOf(r) + " " + String(r["Contact Name"] || "") + " " + String(r["Webmaster Extra Contact"] || "")).toLowerCase();
+    if(!hay.includes(q)) return false;
+  }
+  return true;
+}
+function dbFacets(rows){
+  const c = new Map(), l = new Map();
+  for(const r of rows){ const a = String(r["Main Country"] || "").trim(), b = String(r["Domain Language"] || "").trim(); if(a) c.set(a, (c.get(a) || 0) + 1); if(b) l.set(b, (l.get(b) || 0) + 1); }
+  const top = m => [...m.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
+  return { countries: top(c), languages: top(l) };
+}
+function fillSelect(id, values, keep){
+  const sel = $(id); const first = sel.options[0];
+  sel.innerHTML = ""; sel.appendChild(first);
+  values.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v; sel.appendChild(o); });
+  sel.value = values.includes(keep) ? keep : "";
+}
+function dbRefresh(){
+  const rows = remote ? null : dbSourceRows().map(normaliseRow);
+  if(rows){
+    if(!dbState.facets || dbState.facets.source !== rows){ dbState.facets = { ...dbFacets(rows), source: rows }; fillSelect("db-country", dbState.facets.countries, dbState.country); fillSelect("db-lang", dbState.facets.languages, dbState.lang); }
+    const q = dbState.q.trim().toLowerCase();
+    dbState.list = rows.filter(r => rowMatches(r, q));
+    dbState.total = rows.length;
+    $("mode-db-n").textContent = rows.length.toLocaleString(lang === "es" ? "es" : "en");
+    dbDraw();
+  }else{
+    dbState.remotePages.clear();
+    dbRemoteFetch(0, true);
+  }
+}
+function dbColumns(){
+  if(dbState.wide) return DB_COLUMNS.map(c => [c, c === "Domain" ? 220 : /Comments/.test(c) ? 260 : /Contact/.test(c) ? 220 : 110]);
+  return NARROW;
+}
+function dbCell(r, c){
+  if(c === "Domain") return `<div class="d" title="${esc(r.Domain)}">${esc(r.Domain)}</div>`;
+  if(c === "Type"){ const ty = String(r.Type || "").trim(); return `<div>${ty ? `<span class="tipo ${ty.toLowerCase() === "broker" ? "broker" : ""}">${esc(ty)}</span>` : `<span class="mut">—</span>`}</div>`; }
+  if(c === "Contact"){ const s = senderOf(r); return `<div class="s" title="${esc(s)}">${esc(s) || `<span class="mut">—</span>`}</div>`; }
+  if(c === "Country") return `<div class="s">${esc(r["Main Country"] || "")}</div>`;
+  if(c === "Language") return `<div class="s">${esc(r["Domain Language"] || "")}</div>`;
+  if(c === "Updated") return `<div class="mut">${esc(r["Last Updated"] || "")}</div>`;
+  if(c === "Terms"){ const f = [r["Link Type"], r["Placement"], r["Price Validity"], r["Sponsor Tag Type"]].filter(Boolean).join(" · "); return `<div class="s" title="${esc(f)}">${esc(f) || `<span class="mut">—</span>`}</div>`; }
+  if(/^Buying /.test(c)){ const v = String(r[c] ?? "").trim(); return `<div class="num ${v ? "has" : ""}">${v ? esc(v) : "·"}</div>`; }
+  const v = String(r[c] ?? ""); return `<div class="s" title="${esc(v)}">${esc(v)}</div>`;
+}
+function dbDraw(){
+  const cols = dbColumns();
+  const grid = $("db-grid");
+  grid.style.setProperty("--cols", cols.map(([, w]) => w + "px").join(" "));
+  $("db-head").innerHTML = cols.map(([c]) => `<div title="${esc(c)}">${esc(t().dbCols[c] || SHORT[c] || c)}</div>`).join("");
+  const total = remote ? dbState.remoteTotal : dbState.list.length;
+  $("db-count").textContent = t().dbCount(total, remote ? (remote.rows || 0) : dbState.total) + (dbState.removed ? " · " + t().dbRemovedTab : "");
+  if(!total){ $("db-top").style.height = "0px"; $("db-bottom").style.height = "0px"; $("db-rows").innerHTML = `<div class="dbempty">${t().dbEmpty}</div>`; return; }
+  const scroll = grid.scrollTop, h = grid.clientHeight || 600;
+  const first = Math.max(0, Math.floor(scroll / ROW_H) - 10), last = Math.min(total, Math.ceil((scroll + h) / ROW_H) + 10);
+  $("db-top").style.height = (first * ROW_H) + "px";
+  $("db-bottom").style.height = ((total - last) * ROW_H) + "px";
+  const out = [];
+  for(let i = first; i < last; i++){
+    const r = remote ? dbRemoteRow(i) : dbState.list[i];
+    if(!r){ out.push(`<div class="dbr dbloading"><div class="d">${t().dbLoading}</div></div>`); continue; }
+    out.push(`<div class="dbr ${dbState.sel === r ? "sel" : ""}" data-i="${i}">${cols.map(([c]) => dbCell(r, c)).join("")}</div>`);
+  }
+  $("db-rows").innerHTML = out.join("");
+}
+function dbShow(r){
+  dbState.sel = r;
+  $("db-detail-dom").textContent = r.Domain || "";
+  $("db-detail-body").innerHTML = DB_COLUMNS.map(c => { const v = String(r[c] ?? "").trim(); return `<dt>${esc(c)}</dt><dd class="${v ? "" : "e"}">${v ? esc(v) : "—"}</dd>`; }).join("");
+  $("db-detail").hidden = false;
+  dbDraw();
+}
+/* --- the Worker's pages, 300 rows each, fetched for the window on screen --- */
+const PAGE = 300;
+function dbRemoteRow(i){
+  const page = Math.floor(i / PAGE), rows = dbState.remotePages.get(page);
+  if(rows === undefined){ dbRemoteFetch(page * PAGE, false); dbState.remotePages.set(page, null); return null; }
+  return rows ? rows[i - page * PAGE] : null;
+}
+function dbRemoteQuery(offset){
+  const p = new URLSearchParams({ offset: String(offset), limit: String(PAGE) });
+  if(dbState.q.trim()) p.set("q", dbState.q.trim());
+  if(dbState.type) p.set("type", dbState.type);
+  if(dbState.country) p.set("country", dbState.country);
+  if(dbState.lang) p.set("lang", dbState.lang);
+  if(dbState.niche) p.set("niche", dbState.niche);
+  if(dbState.removed) p.set("removed", "1");
+  return p.toString();
+}
+async function dbRemoteFetch(offset, first){
+  const key = dbRemoteQuery(offset);
+  try{
+    const r = await fetch("/api/rows?" + key);
+    if(!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    if(dbRemoteQuery(offset) !== key) return;   /* filters changed meanwhile */
+    dbState.remotePages.set(Math.floor(offset / PAGE), (j.rows || []).map(normaliseRow));
+    dbState.remoteTotal = j.total || 0;
+    if(first && j.facets){ fillSelect("db-country", j.facets.countries || [], dbState.country); fillSelect("db-lang", j.facets.languages || [], dbState.lang); $("mode-db-n").textContent = (j.all || 0).toLocaleString(lang === "es" ? "es" : "en"); }
+    dbDraw();
+  }catch(e){
+    dbState.remoteTotal = 0; dbDraw();
+  }
+}
+let dbTimer = null;
+function dbOnChange(){
+  dbState.q = $("db-q").value; dbState.type = $("db-type").value; dbState.country = $("db-country").value; dbState.lang = $("db-lang").value; dbState.niche = $("db-niche").value;
+  dbState.removed = $("db-removed").checked; dbState.wide = $("db-wide").checked;
+  $("db-grid").scrollTop = 0;
+  clearTimeout(dbTimer); dbTimer = setTimeout(dbRefresh, remote ? 250 : 0);
+}
+
 /* Whatever throws in some viewer's browser is shown on the page, so the
    person can send us the text instead of a blank screen. */
 window.addEventListener("error", ev => {
@@ -395,6 +543,16 @@ bootStep("buttons", () => {
   $("stype-broker").addEventListener("click", () => setStype("Broker"));
 });
 bootStep("list", () => { $("list").value = STAR; });
+bootStep("database screen", () => {
+  $("mode-list").addEventListener("click", () => setMode("list"));
+  $("mode-db").addEventListener("click", () => setMode("db"));
+  ["db-q", "db-type", "db-country", "db-lang", "db-niche", "db-removed", "db-wide"].forEach(id => $(id).addEventListener("input", dbOnChange));
+  $("db-grid").addEventListener("scroll", () => { if(mode === "db") dbDraw(); });
+  $("db-rows").addEventListener("click", ev => { const row = ev.target.closest(".dbr"); if(!row || row.dataset.i == null) return; const i = Number(row.dataset.i); const r = remote ? dbRemoteRow(i) : dbState.list[i]; if(r) dbShow(r); });
+  $("db-detail-x").addEventListener("click", () => { $("db-detail").hidden = true; dbState.sel = null; dbDraw(); });
+  $("db-q").placeholder = t().dbSearch;
+  $("mode-db-n").textContent = dbRows.length.toLocaleString("en");
+});
 bootStep("sender type", () => setStype(stype));
 bootStep("language", () => applyLang());
 bootStep("match", () => run());

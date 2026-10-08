@@ -15,6 +15,9 @@ It shares the desk's look (tokens, type) but none of its code or deploy.
   claude.ai copy and behind the Worker alike. Edit `src/page/`, then run
   `node scripts/build-page.mjs`. Until the sheet is connected it matches
   against sample rows marked as examples, or a CSV loaded in the browser.
+- The **Database** screen (switch in the bar): the whole sheet, read only,
+  with search, filters, the removed tab, 14 or all 45 columns and a detail
+  panel per row; only the rows on screen are drawn.
 - `src/site-lists.js`: parser (text, tab or CSV table, header optional),
   domain and price normalisation, index of the database with the
   "removed sites" exclusion, grouping into changed / unknown / unchanged /

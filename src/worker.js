@@ -112,6 +112,13 @@ async function readTab(env, tab){
   const rows = values.slice(1).map((v, i) => { const o = {}; headers.forEach((h, k) => { o[h] = v[k] == null ? "" : v[k]; }); o._row = i + 2; return normaliseRow(o); });
   return { headers, rows };
 }
+const NICHE_COLUMN = { casino: "Buying Casino", unlicensedCasino: "Buying Unlicensed Casino", crypto: "Buying Crypto", forex: "Buying Forex", cbd: "Buying CBD", dating: "Buying Dating", general: "Buying General" };
+function facetsOf(rows){
+  const c = new Map(), l = new Map();
+  for(const r of rows){ const a = String(r["Main Country"] || "").trim(), b = String(r["Domain Language"] || "").trim(); if(a) c.set(a, (c.get(a) || 0) + 1); if(b) l.set(b, (l.get(b) || 0) + 1); }
+  const top = m => [...m.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
+  return { countries: top(c), languages: top(l) };
+}
 function indexRows(rows){
   const byDomain = new Map(), bySender = new Map();
   for(const r of rows){
@@ -127,7 +134,8 @@ export async function database(env, force){
   if(cache && !force && Date.now() - cache.at < CACHE_MS) return cache;
   const [db, removed] = await Promise.all([readTab(env, TAB_DB), readTab(env, TAB_REMOVED)]);
   const idx = indexRows(db.rows), ridx = indexRows(removed.rows);
-  cache = { at: Date.now(), headers: db.headers, rows: db.rows.length, removedRows: removed.rows.length, byDomain: idx.byDomain, bySender: idx.bySender, removedByDomain: ridx.byDomain };
+  cache = { at: Date.now(), headers: db.headers, rows: db.rows.length, removedRows: removed.rows.length, byDomain: idx.byDomain, bySender: idx.bySender, removedByDomain: ridx.byDomain,
+    list: db.rows, removedList: removed.rows, facets: facetsOf(db.rows), removedFacets: facetsOf(removed.rows) };
   return cache;
 }
 export function forgetCache(){ cache = null; saToken = null; saTokenExp = 0; saInFlight = null; }
@@ -179,6 +187,28 @@ export default {
       return json({ rows, removed, senderCount: sender ? (db.bySender.get(sender) || 0) : 0, readAt: new Date(db.at).toISOString(), total: db.rows });
     }
 
+    /* The database screen: a page of rows after filters, with facets on
+       the first page. Read only. */
+    if(url.pathname === "/api/rows"){
+      let db; try { db = await database(env); } catch(e){ return json({ error: String(e.message || e) }, 502); }
+      const q = url.searchParams;
+      const source = q.get("removed") === "1" ? db.removedList : db.list;
+      const text = String(q.get("q") || "").trim().toLowerCase();
+      const type = q.get("type") || "", country = q.get("country") || "", lang = q.get("lang") || "", niche = q.get("niche") || "";
+      const nicheCol = NICHE_COLUMN[niche];
+      const hit = source.filter(r =>
+        (type === "-" ? String(r.Type || "").trim() === "" : !type || String(r.Type || "").trim() === type) &&
+        (!country || String(r["Main Country"] || "") === country) &&
+        (!lang || String(r["Domain Language"] || "") === lang) &&
+        (!nicheCol || String(r[nicheCol] ?? "").trim() !== "") &&
+        (!text || (String(r.Domain || "") + " " + senderOf(r) + " " + String(r["Contact Name"] || "")).toLowerCase().includes(text)));
+      const offset = Math.max(0, parseInt(q.get("offset") || "0", 10) || 0);
+      const limit = Math.min(500, Math.max(1, parseInt(q.get("limit") || "300", 10) || 300));
+      const out = { total: hit.length, all: source.length, offset, rows: hit.slice(offset, offset + limit) };
+      if(offset === 0) out.facets = q.get("removed") === "1" ? db.removedFacets : db.facets;
+      return json(out);
+    }
+
     if(url.pathname === "/api/accept" && req.method === "POST"){
       if(!who) return json({ error: "who" }, 403);
       let body; try { body = await req.json(); } catch(e){ return json({ error: "json" }, 400); }
@@ -191,7 +221,9 @@ export default {
       let db; try { db = await database(env); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       let res; try { res = await appendRow(env, row, db.headers); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       const d = normaliseDomain(row.Domain).domain;
-      (db.byDomain.get(d) || db.byDomain.set(d, []).get(d)).push(normaliseRow(row));
+      const added = normaliseRow(row);
+      (db.byDomain.get(d) || db.byDomain.set(d, []).get(d)).push(added);
+      db.list.push(added);
       db.rows += 1;
       return json({ ok: true, who, updatedRange: res.updates && res.updates.updatedRange });
     }

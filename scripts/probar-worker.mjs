@@ -88,6 +88,18 @@ caso("accept with a bad domain is refused", r.status === 400 && appended.length 
 r = await pedir("/api/accept", "POST", "{bad", "mauro@linkjuiceclub.com");
 caso("accept with bad json", r.status === 400);
 
+/* --- rows, for the database screen --- */
+r = await pedir("/api/rows?limit=2", "GET", null, "mauro@linkjuiceclub.com");
+caso("rows: first page with facets", r.status === 200 && r.json.total === 4 && r.json.rows.length === 2 && Array.isArray(r.json.facets.countries), r.json);
+r = await pedir("/api/rows?type=Broker", "GET", null, "mauro@linkjuiceclub.com");
+caso("rows: filter by type", r.json.total === 1 && r.json.rows[0].Domain === "beta.es", r.json.rows);
+r = await pedir("/api/rows?q=owner%40beta", "GET", null, "mauro@linkjuiceclub.com");
+caso("rows: search by contact", r.json.total === 1 && r.json.rows[0].Domain === "www.Beta.es", r.json.rows);
+r = await pedir("/api/rows?niche=general&offset=1&limit=1", "GET", null, "mauro@linkjuiceclub.com");
+caso("rows: niche filter and paging", r.json.total === 4 && r.json.rows.length === 1 && r.json.offset === 1 && !r.json.facets, r.json);
+r = await pedir("/api/rows?removed=1", "GET", null, "mauro@linkjuiceclub.com");
+caso("rows: removed tab", r.json.total === 1 && r.json.rows[0].Domain === "gamma.net", r.json.rows);
+
 /* --- access --- */
 r = await pedir("/api/status", "GET", null, "x@y.z", { ...env, SIN_ACCESS: undefined });
 caso("without Access token the API answers 403", r.status === 403, r);

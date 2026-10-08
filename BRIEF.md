@@ -396,6 +396,17 @@ page goes into the desk and the sheet access (the Worker written on 08/10)
 moves into the desk's Worker. The example data on the public page is
 invented. This replaces the "own Cloudflare deploy" line of the build order.
 
+## Database screen (Gary, 08/10: "show the full database here")
+
+A second screen, switched from the bar: the whole database, read only.
+Search by domain, contact or name; filters by Type, country, language and
+"priced for" niche; the removed sites tab; 14 columns by default or all 45.
+Only the rows on screen are drawn, so 103k rows cost nothing (tested with a
+20,000-row CSV: filters answer in about 200 ms). A row opens a detail panel
+with its 45 fields. Rows come from the CSV or sample rows in the browser,
+or from the Worker's `/api/rows` (filters, paging, facets) when served
+next to it. Writing stays on Accept, as agreed.
+
 ## Not in scope unless asked
 
 Automatic quality checks of a site (traffic, DR), scraping the publisher's
