@@ -275,7 +275,7 @@ function noteParse(){
 }
 const decisions = {};   /* domain -> accept | reject | ask */
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
 /* ---------- two languages, as the desk ---------- */
 const T = {
@@ -359,7 +359,7 @@ function csvToObjects(text){
     }
     if(q){ cell += "\n"; continue; }
     cur.push(cell); cell = "";
-    if(!head) head = cur.map(h => h.trim()); else if(cur.length > 1) rows.push(Object.fromEntries(head.map((h, j) => [h, cur[j] ?? ""])));
+    if(!head) head = cur.map(h => h.trim()); else if(cur.length > 1) rows.push(Object.fromEntries(head.map((h, j) => [h, cur[j] == null ? "" : cur[j]])));
     cur = [];
   }
   return rows;
@@ -579,13 +579,40 @@ $("listfile").addEventListener("change", async () => {
   }
 });
 
-/* ---------- boot ---------- */
-$("stype-publisher").addEventListener("click", () => setStype("Publisher"));
-$("stype-broker").addEventListener("click", () => setStype("Broker"));
-$("list").value = STAR;
-setStype(stype);
-applyLang();
-checkRemote().then(run);
+/* Whatever throws in some viewer's browser is shown on the page, so the
+   person can send us the text instead of a blank screen. */
+window.addEventListener("error", ev => {
+  try{
+    const note = document.createElement("div"); note.className = "aviso";
+    note.textContent = "Script error: " + (ev.message || ev.error || "unknown") + (ev.lineno ? " (line " + ev.lineno + ")" : "") + ". Please send this text to Simon.";
+    (document.getElementById("results") || document.body).prepend(note);
+  }catch(e){}
+});
+
+/* ---------- boot ----------
+   Each step on its own, so one that fails in some browser does not leave
+   the page blank: the list and the sample result come first, the Worker
+   check after, and an error is shown instead of swallowed. */
+function bootStep(name, fn){
+  try{ return fn(); }
+  catch(e){
+    console.error("boot:", name, e);
+    const note = document.createElement("div"); note.className = "aviso";
+    note.textContent = "Something failed while loading (" + name + "): " + (e && e.message ? e.message : e) + ". Please send this text to Simon.";
+    ($("results") || document.body).prepend(note);
+  }
+}
+bootStep("buttons", () => {
+  $("stype-publisher").addEventListener("click", () => setStype("Publisher"));
+  $("stype-broker").addEventListener("click", () => setStype("Broker"));
+});
+bootStep("list", () => { $("list").value = STAR; });
+bootStep("sender type", () => setStype(stype));
+bootStep("language", () => applyLang());
+bootStep("match", () => run());
+/* The Worker, if there is one next to the page; the sample result stays
+   until it answers. */
+checkRemote().then(() => { if(remote) run(); }).catch(e => console.error("worker check:", e));
 
 </script>
 </body></html>
