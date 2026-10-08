@@ -76,6 +76,7 @@ const T = {
     sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
     modeList:"List", modeDb:"Database", fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
     dbSearch:"Search domain, contact or name", dbCount:(n, total)=>`${n.toLocaleString("en")} of ${total.toLocaleString("en")} rows`, dbEmpty:"No row matches.", dbLoading:"Loading…", dbRemovedTab:"removed sites", dbCols:{Domain:"Domain", Type:"Type", Contact:"Contact", Country:"Country", Language:"Language", Updated:"Updated", Terms:"Terms"},
+    openInDb:"Open its record in the database", backToList:"Back to the list",
     orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
     stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
     brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
@@ -96,6 +97,7 @@ const T = {
     sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
     modeList:"Lista", modeDb:"Base de datos", fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
     dbSearch:"Buscar dominio, contacto o nombre", dbCount:(n, total)=>`${n.toLocaleString("es")} de ${total.toLocaleString("es")} filas`, dbEmpty:"Ninguna fila coincide.", dbLoading:"Cargando…", dbRemovedTab:"removed sites", dbCols:{Domain:"Dominio", Type:"Tipo", Contact:"Contacto", Country:"País", Language:"Idioma", Updated:"Actualizado", Terms:"Condiciones"},
+    openInDb:"Abrir su ficha en la base", backToList:"Volver a la lista",
     orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
     stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
     brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
@@ -245,7 +247,7 @@ function table(entries, kind){
   const rows = entries.map(e => {
     const d = e.item.domain; const done = decisions[d] ? " done" : "";
     const dbCol = e.removedRows ? dbCells(e.removedRows) : dbCells(e.rows);
-    return `<tr class="${done.trim()}"><td class="dom">${esc(d)}${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offeredCells(e.item, e.diffs)}</td><td>${dbCol}</td><td class="ancha">${termsCells(e.item)}</td><td class="dec">${decisionCell(d)}</td></tr>`;
+    return `<tr class="${done.trim()}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offeredCells(e.item, e.diffs)}</td><td>${dbCol}</td><td class="ancha">${termsCells(e.item)}</td><td class="dec">${decisionCell(d)}</td></tr>`;
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -274,6 +276,7 @@ function render(){
     ${cur[4] ? `<p class="ghint">${cur[4]}${view === "changed" && sameSender ? ` ${sameSender} ${t().fromSender}.` : ""}</p>` : ""}
     ${table(cur[3], view === "removed" ? "removed" : view)}`;
   $("results").querySelectorAll(".gtab").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; render(); }));
+  $("results").querySelectorAll("button[data-open]").forEach(b => b.addEventListener("click", () => openInDb(b.dataset.open)));
   $("results").querySelectorAll("button[data-dec]").forEach(b => b.addEventListener("click", () => {
     const dom = b.dataset.dom, dec = b.dataset.dec;
     if(written[dom]) return;   /* already in the sheet: no undo from here */
@@ -392,7 +395,7 @@ const NARROW = [
 ];
 const SHORT = { "Buying Casino": "Casino", "Buying Unlicensed Casino": "Unlic.", "Buying Crypto": "Crypto", "Buying Forex": "Forex", "Buying CBD": "CBD", "Buying Dating": "Dating", "Buying General": "General" };
 function setMode(m){
-  mode = m;
+  mode = m; try{ localStorage.setItem("ljc-lists-mode", m); }catch(e){}
   $("mode-list").setAttribute("aria-selected", String(m === "list"));
   $("mode-db").setAttribute("aria-selected", String(m === "db"));
   $("screen-list").hidden = m !== "list";
@@ -470,6 +473,20 @@ function dbShow(r){
   $("db-detail").hidden = false;
   dbDraw();
 }
+/* A domain clicked on the list: the Database screen, searched for it, with
+   its record open when there is one. The list is one click away again. */
+function openInDb(domain){
+  $("db-q").value = domain; $("db-type").value = ""; $("db-niche").value = ""; $("db-removed").checked = false;
+  dbState.country = ""; dbState.lang = "";
+  dbOnChange();
+  setMode("db");
+  setTimeout(() => {
+    const r = remote ? dbRemoteRow(0) : dbState.list[0];
+    if(r && normaliseDomain(r.Domain) && normaliseDomain(r.Domain).domain === domain) dbShow(r);
+    else { $("db-detail").hidden = true; dbState.sel = null; }
+  }, remote ? 400 : 0);
+}
+
 /* --- the Worker's pages, 300 rows each, fetched for the window on screen --- */
 const PAGE = 300;
 function dbRemoteRow(i){
@@ -503,9 +520,20 @@ async function dbRemoteFetch(offset, first){
   }
 }
 let dbTimer = null;
+const DB_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "removed", "wide"];
+function dbSaveFilters(){ try{ localStorage.setItem("ljc-lists-dbfilters", JSON.stringify(Object.fromEntries(DB_FILTER_KEYS.map(k => [k, dbState[k]])))); }catch(e){} }
+function dbRestoreFilters(){
+  try{
+    const f = JSON.parse(localStorage.getItem("ljc-lists-dbfilters") || "{}");
+    DB_FILTER_KEYS.forEach(k => { if(f[k] != null) dbState[k] = f[k]; });
+    $("db-q").value = dbState.q; $("db-type").value = dbState.type; $("db-niche").value = dbState.niche;
+    $("db-removed").checked = !!dbState.removed; $("db-wide").checked = !!dbState.wide;
+  }catch(e){}
+}
 function dbOnChange(){
   dbState.q = $("db-q").value; dbState.type = $("db-type").value; dbState.country = $("db-country").value; dbState.lang = $("db-lang").value; dbState.niche = $("db-niche").value;
   dbState.removed = $("db-removed").checked; dbState.wide = $("db-wide").checked;
+  dbSaveFilters();
   $("db-grid").scrollTop = 0;
   clearTimeout(dbTimer); dbTimer = setTimeout(dbRefresh, remote ? 250 : 0);
 }
@@ -547,7 +575,9 @@ bootStep("database screen", () => {
   $("db-detail-x").addEventListener("click", () => { $("db-detail").hidden = true; dbState.sel = null; dbDraw(); });
   $("db-q").placeholder = t().dbSearch;
   $("mode-db-n").textContent = dbRows.length.toLocaleString("en");
+  dbRestoreFilters();
 });
+bootStep("remembered screen", () => { let m = "list"; try{ m = localStorage.getItem("ljc-lists-mode") === "db" ? "db" : "list"; }catch(e){} if(m === "db") setMode("db"); });
 bootStep("sender type", () => setStype(stype));
 bootStep("language", () => applyLang());
 bootStep("match", () => run());

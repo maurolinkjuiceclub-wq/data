@@ -414,6 +414,10 @@ with its 45 fields. Rows come from the CSV or sample rows in the browser,
 or from the Worker's `/api/rows` (filters, paging, facets) when served
 next to it. Writing stays on Accept, as agreed.
 
+Small things, 08/10 afternoon: the screen (List or Database) and the
+Database filters are remembered in the browser; a domain on the list opens
+its record in the Database screen with one click.
+
 ## Not in scope unless asked
 
 Automatic quality checks of a site (traffic, DR), scraping the publisher's
