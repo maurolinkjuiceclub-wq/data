@@ -41,6 +41,7 @@ let groups = null, items = [], lastParsed = null, view = "changed", stype = "Pub
 let remote = null;      /* { rows, readAt } when /api/status says connected */
 let lastMatch = null;   /* the Worker's answer for the current list */
 const written = {};     /* domain -> updatedRange, rows the Worker appended */
+const acceptIds = {};   /* domain -> request id, kept across retries */
 async function checkRemote(){
   try{
     const r = await fetch("/api/status", { headers: { accept: "application/json" } });
@@ -239,7 +240,8 @@ function dbCells(rows){
 function decisionCell(domain){
   const d = decisions[domain];
   if(written[domain]) return `<span class="fv" style="border-color:var(--ok-line);color:var(--ok-ink)" title="${esc(written[domain])}">${esc(t().written(""))}</span>`;
-  const keys = stype === "Broker" ? ["webmaster","accept","ask","reject"] : ["accept","webmaster","ask","reject"];
+  /* A removed site is never written as new (CLAUDE.md rule 4): no Accept. */
+  const keys = removedDomains.has(domain) ? ["webmaster","ask","reject"] : stype === "Broker" ? ["webmaster","accept","ask","reject"] : ["accept","webmaster","ask","reject"];
   return `<span class="seg">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${t()[k]}</button>`).join("") + `</span>`;
 }
 function table(entries, kind){
@@ -251,8 +253,10 @@ function table(entries, kind){
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
+let removedDomains = new Set();
 function render(){
   if(!groups) return;
+  removedDomains = new Set(groups.removed.map(e => e.item.domain));
   const total = items.length, decided = Object.keys(decisions).filter(k => items.some(i => i.domain === k)).length;
   const first = groups.unknown.concat(groups.changed, groups.unchanged, groups.removed)[0];
   const broker = stype === "Broker" ? `<div class="aviso acc">${t().brokerHint}</div>` : (first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "");
@@ -288,10 +292,13 @@ function render(){
 }
 async function acceptRemote(dom, btn){
   const item = items.find(i => i.domain === dom); if(!item) return;
-  const row = rowForAccept(item, { type: stype, sender: $("sender").value.trim(), who: remote.who || "", listLabel: $("label").value.trim() });
+  /* The Worker writes who accepted from the Access token; the page does
+     not. The request id lets a retry after a lost answer not write twice. */
+  const row = rowForAccept(item, { type: stype, sender: $("sender").value.trim(), who: "", listLabel: $("label").value.trim() });
+  const requestId = (acceptIds[dom] = acceptIds[dom] || (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
   btn.disabled = true; btn.textContent = t().writing;
   try{
-    const r = await fetch("/api/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row }) });
+    const r = await fetch("/api/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row, requestId }) });
     const j = await r.json().catch(() => ({}));
     if(!r.ok || !j.ok) throw new Error(j.error || String(r.status));
     written[dom] = j.updatedRange || "ok";

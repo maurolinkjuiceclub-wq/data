@@ -18,7 +18,7 @@
 
    Tested by scripts/probar-worker.mjs with Google replaced by a stand-in.
    No email is sent from here. */
-import { normaliseDomain, normaliseRow, prepareRow, rowMatchesFilters, facetsOf, headerKey, DB_COLUMNS, senderOf } from "./site-lists.js";
+import { normaliseDomain, prepareRow, rowMatchesFilters, facetsOf, indexDatabase, headerKey, DB_COLUMNS, senderOf } from "./site-lists.js";
 
 const TAB_DB = "Import Database";
 const TAB_REMOVED = "removed sites";
@@ -35,10 +35,11 @@ let accessKeys = null, accessKeysAt = 0;
 async function accessPublicKeys(){
   if(accessKeys && Date.now() - accessKeysAt < 3600000) return accessKeys;
   const r = await fetch(ACCESS_TEAM + "/cdn-cgi/access/certs");
-  const j = await r.json();
-  accessKeys = (j && j.keys) || [];
-  accessKeysAt = Date.now();
-  return accessKeys;
+  if(!r.ok) return accessKeys || [];           /* keep the last good set, do not cache a failure */
+  const j = await r.json().catch(() => null);
+  const keys = (j && Array.isArray(j.keys)) ? j.keys : [];
+  if(keys.length){ accessKeys = keys; accessKeysAt = Date.now(); }
+  return accessKeys || [];
 }
 function b64url(t){
   t = String(t).replace(/-/g, "+").replace(/_/g, "/");
@@ -112,26 +113,35 @@ async function readTab(env, tab){
   const rows = values.slice(1).map((v, i) => { const o = {}; headers.forEach((h, k) => { o[h] = v[k] == null ? "" : v[k]; }); o._row = i + 2; return prepareRow(o); });
   return { headers, rows };
 }
-function indexRows(rows){
-  const byDomain = new Map(), bySender = new Map();
-  for(const r of rows){
-    const d = normaliseDomain(r.Domain);
-    if(!d) continue;
-    (byDomain.get(d.domain) || byDomain.set(d.domain, []).get(d.domain)).push(r);
-    const s = senderOf(r);
-    if(s) bySender.set(s, (bySender.get(s) || 0) + 1);
-  }
-  return { byDomain, bySender };
-}
-export async function database(env, force){
-  if(cache && !force && Date.now() - cache.at < CACHE_MS) return cache;
+/* One index for both tabs, the module's own (review of 08/10: the Worker
+   had its own indexer and the two could drift). bySender gives the number
+   of domains a contact already has, for the Broker hint. */
+let dbInFlight = null;
+async function readBoth(env){
   const [db, removed] = await Promise.all([readTab(env, TAB_DB), readTab(env, TAB_REMOVED)]);
-  const idx = indexRows(db.rows), ridx = indexRows(removed.rows);
-  cache = { at: Date.now(), headers: db.headers, rows: db.rows.length, removedRows: removed.rows.length, byDomain: idx.byDomain, bySender: idx.bySender, removedByDomain: ridx.byDomain,
+  const idx = indexDatabase(db.rows, removed.rows);
+  return { at: Date.now(), headers: db.headers, rows: db.rows.length, removedRows: removed.rows.length,
+    byDomain: idx.byDomain, bySender: idx.bySender, removedByDomain: idx.removed,
     list: db.rows, removedList: removed.rows, facets: facetsOf(db.rows), removedFacets: facetsOf(removed.rows) };
-  return cache;
 }
-export function forgetCache(){ cache = null; saToken = null; saTokenExp = 0; saInFlight = null; }
+/* The sheet from memory. A cold or forced read is shared by every request
+   that arrives meanwhile (one pair of downloads, not one per request). A
+   stale cache is served at once and refreshed in the background when the
+   runtime gives us ctx.waitUntil, so no request waits on the re-read. */
+export async function database(env, force, ctx){
+  const fresh = cache && Date.now() - cache.at < CACHE_MS;
+  if(cache && !force && fresh) return cache;
+  if(cache && !force && ctx && ctx.waitUntil){
+    if(!dbInFlight){ dbInFlight = readBoth(env).then(c => { cache = c; return c; }).finally(() => { dbInFlight = null; }); ctx.waitUntil(dbInFlight.catch(() => {})); }
+    return cache;
+  }
+  if(!dbInFlight) dbInFlight = readBoth(env).then(c => { cache = c; return c; }).finally(() => { dbInFlight = null; });
+  return dbInFlight;
+}
+export function forgetCache(){ cache = null; dbInFlight = null; saToken = null; saTokenExp = 0; saInFlight = null; }
+/* Rows leave the Worker without the fields that are only for its own
+   filtering (_q, _type) or bookkeeping (_row). */
+function publicRow(r){ const o = {}; for(const k in r) if(k[0] !== "_") o[k] = r[k]; return o; }
 
 /* ---------- the row Accept appends ---------- */
 function appendValues(row, headers){
@@ -139,7 +149,15 @@ function appendValues(row, headers){
      when the sheet gives none. A column the row does not know stays "". */
   const cols = headers && headers.length ? headers : DB_COLUMNS;
   const byKey = new Map(Object.keys(row).map(k => [headerKey(k), k]));
-  return cols.map(h => { const k = byKey.get(headerKey(h)); return k ? String(row[k] ?? "") : ""; });
+  return cols.map(h => {
+    const k = byKey.get(headerKey(h)); if(!k) return "";
+    const v = row[k];
+    if(v == null) return "";
+    if(typeof v === "number") return v;
+    /* "200" written RAW would be a text cell in a numeric column: a plain
+       number in a string goes as a number. */
+    return /^\d+(\.\d+)?$/.test(String(v).trim()) ? Number(v) : String(v);
+  });
 }
 async function appendRow(env, row, headers){
   const token = await googleToken(env);
@@ -150,47 +168,54 @@ async function appendRow(env, row, headers){
   return r.json();
 }
 
+const BUYING = ["Buying Casino", "Buying Unlicensed Casino", "Buying Crypto", "Buying Forex", "Buying CBD", "Buying Dating", "Buying General"];
+const recentAccepts = new Map();   /* requestId -> updatedRange, the last 500 */
+
 /* ---------- routes ---------- */
 export default {
-  async fetch(req, env){
+  async fetch(req, env, ctx){
     const url = new URL(req.url);
     if(!url.pathname.startsWith("/api/")) return env.ASSETS.fetch(req);
+    /* An Access app with no audience configured would reject everybody with
+       the same 403 as a bad token; say so instead. */
+    if(!env.SIN_ACCESS && !String(env.ACCESS_AUD || "").trim()) return json({ error: "access", reason: "no-aud" }, 403);
     const who = await identity(req, env);
     if(who === null) return json({ error: "access" }, 403);
 
     if(url.pathname === "/api/status"){
       if(!env.GOOGLE_SA || !env.SHEET_ID) return json({ connected: false, reason: !env.SHEET_ID ? "no-sheet-id" : "no-service-account", who });
       try {
-        const db = await database(env, url.searchParams.get("refresh") === "1");
+        const db = await database(env, url.searchParams.get("refresh") === "1", ctx);
         return json({ connected: true, who, rows: db.rows, removedRows: db.removedRows, readAt: new Date(db.at).toISOString(), sheetId: env.SHEET_ID });
       } catch(e){ return json({ connected: false, reason: String(e.message || e), who }, 502); }
     }
 
     if(url.pathname === "/api/match" && req.method === "POST"){
       let body; try { body = await req.json(); } catch(e){ return json({ error: "json" }, 400); }
+      if(!body || typeof body !== "object") return json({ error: "json" }, 400);
       const domains = Array.isArray(body.domains) ? body.domains.slice(0, 2000) : [];
       const sender = String(body.sender || "").trim().toLowerCase();
-      let db; try { db = await database(env); } catch(e){ return json({ error: String(e.message || e) }, 502); }
+      let db; try { db = await database(env, false, ctx); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       const rows = {}, removed = {};
       for(const raw of domains){
         const d = normaliseDomain(raw); if(!d) continue;
-        if(db.byDomain.has(d.domain)) rows[d.domain] = db.byDomain.get(d.domain);
-        if(db.removedByDomain.has(d.domain)) removed[d.domain] = db.removedByDomain.get(d.domain);
+        if(db.byDomain.has(d.domain)) rows[d.domain] = db.byDomain.get(d.domain).map(h => publicRow(h.row));
+        if(db.removedByDomain.has(d.domain)) removed[d.domain] = db.removedByDomain.get(d.domain).map(h => publicRow(h.row));
       }
-      return json({ rows, removed, senderCount: sender ? (db.bySender.get(sender) || 0) : 0, readAt: new Date(db.at).toISOString(), total: db.rows });
+      return json({ rows, removed, senderCount: sender ? (db.bySender.get(sender) || []).length : 0, readAt: new Date(db.at).toISOString(), total: db.rows });
     }
 
     /* The database screen: a page of rows after filters, with facets on
        the first page. Read only. */
     if(url.pathname === "/api/rows"){
-      let db; try { db = await database(env); } catch(e){ return json({ error: String(e.message || e) }, 502); }
+      let db; try { db = await database(env, false, ctx); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       const q = url.searchParams;
       const source = q.get("removed") === "1" ? db.removedList : db.list;
       const filters = { q: q.get("q") || "", type: q.get("type") || "", country: q.get("country") || "", lang: q.get("lang") || "", niche: q.get("niche") || "" };
       const hit = source.filter(r => rowMatchesFilters(r, filters));
       const offset = Math.max(0, parseInt(q.get("offset") || "0", 10) || 0);
       const limit = Math.min(500, Math.max(1, parseInt(q.get("limit") || "300", 10) || 300));
-      const out = { total: hit.length, all: source.length, offset, rows: hit.slice(offset, offset + limit) };
+      const out = { total: hit.length, all: source.length, offset, rows: hit.slice(offset, offset + limit).map(publicRow) };
       if(offset === 0) out.facets = q.get("removed") === "1" ? db.removedFacets : db.facets;
       return json(out);
     }
@@ -200,20 +225,36 @@ export default {
       let body; try { body = await req.json(); } catch(e){ return json({ error: "json" }, 400); }
       const row = body && body.row;
       if(!row || typeof row !== "object" || !normaliseDomain(row.Domain)) return json({ error: "row" }, 400);
+      const d = normaliseDomain(row.Domain).domain;
+      let db; try { db = await database(env, false, ctx); } catch(e){ return json({ error: String(e.message || e) }, 502); }
+      /* CLAUDE.md rule 4: a domain on "removed sites" is never written as new. */
+      if(db.removedByDomain.has(d)) return json({ error: "removed", domain: d }, 409);
       /* The trace of who accepted is the Worker's, not the browser's. */
       const trace = "Accepted by " + who;
-      row["User Comments"] = String(row["User Comments"] || "").replace(/Accepted by [^;]*;?\s*/, "").trim();
-      row["User Comments"] = [trace, row["User Comments"]].filter(Boolean).join("; ");
-      let db; try { db = await database(env); } catch(e){ return json({ error: String(e.message || e) }, 502); }
+      const rest = String(row["User Comments"] || "").replace(/^Accepted by [^;]*;?\s*/, "").trim();
+      row["User Comments"] = [trace, rest].filter(Boolean).join("; ");
+      /* A retry after a lost answer must not write the row twice: the same
+         request id, or the same domain from the same sender with the same
+         buying prices already in the sheet, answers ok without appending. */
+      const rid = String((body && body.requestId) || "").slice(0, 80);
+      if(rid && recentAccepts.has(rid)) return json({ ok: true, who, duplicate: true, updatedRange: recentAccepts.get(rid) });
+      const sender = senderOf(row);
+      const same = (db.byDomain.get(d) || []).find(h => senderOf(h.row) === sender && BUYING.every(c => String(h.row[c] ?? "").trim() === String(row[c] ?? "").trim()));
+      if(same) return json({ ok: true, who, duplicate: true, updatedRange: null });
       let res; try { res = await appendRow(env, row, db.headers); } catch(e){ return json({ error: String(e.message || e) }, 502); }
-      const d = normaliseDomain(row.Domain).domain;
+      const range = res.updates && res.updates.updatedRange;
+      if(rid){ recentAccepts.set(rid, range); if(recentAccepts.size > 500) recentAccepts.delete(recentAccepts.keys().next().value); }
+      /* Patch whatever cache is current now, not the one this request read:
+         a refresh may have replaced it meanwhile. */
+      const live = cache || db;
       const added = prepareRow(row);
-      (db.byDomain.get(d) || db.byDomain.set(d, []).get(d)).push(added);
-      db.list.push(added);
-      db.rows += 1;
-      return json({ ok: true, who, updatedRange: res.updates && res.updates.updatedRange });
+      (live.byDomain.get(d) || live.byDomain.set(d, []).get(d)).push({ row: added, index: live.list.length });
+      if(sender) (live.bySender.get(sender) || live.bySender.set(sender, []).get(sender)).push(d);
+      live.list.push(added);
+      live.rows += 1;
+      return json({ ok: true, who, updatedRange: range });
     }
 
-    return json({ error: "no existe" }, 404);
+    return json({ error: "not-found" }, 404);
   }
 };

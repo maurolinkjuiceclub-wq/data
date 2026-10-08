@@ -77,26 +77,48 @@ caso("match: served from cache, no new Google call", calls.length === before, ca
 /* --- accept --- */
 r = await pedir("/api/accept", "POST", { row: { Type: "Publisher", Domain: "delta.org", "Webmaster Contact": "d@delta.org", "Buying General": "200", "Link Type": "Do follow", "User Comments": "Accepted by you; from list x" } }, "mauro@linkjuiceclub.com");
 caso("accept appends one row", r.status === 200 && r.json.ok && appended.length === 1 && r.json.updatedRange === "'Import Database'!A4:AS4", r.json);
-caso("accept writes in the sheet's column order", appended[0][2] === "delta.org" && appended[0][26] === "200" && appended[0][35] === "Do follow" && appended[0].length === HEADERS.length, appended[0]);
+caso("accept writes in the sheet's column order", appended[0][2] === "delta.org" && appended[0][26] === 200 && appended[0][35] === "Do follow" && appended[0].length === HEADERS.length, appended[0]);
 caso("accept: the Worker names who accepted", appended[0][39] === "Accepted by mauro@linkjuiceclub.com; from list x", appended[0][39]);
+caso("accept writes in the sheet's column order (count)", appended[0].length === HEADERS.length);
 r = await pedir("/api/match", "POST", { domains: ["delta.org"] }, "mauro@linkjuiceclub.com");
 caso("accepted row is known at once", r.json.rows["delta.org"] && r.json.rows["delta.org"][0]["Buying General"] === "200", r.json.rows);
+r = await pedir("/api/accept", "POST", { row: { Type: "Publisher", Domain: "gamma.net", "Webmaster Contact": "g@gamma.net", "Buying General": "50" } }, "mauro@linkjuiceclub.com");
+caso("accept of a removed site is refused", r.status === 409 && r.json.error === "removed" && appended.length === 1, r);
+r = await pedir("/api/accept", "POST", { row: { Type: "Publisher", Domain: "delta.org", "Webmaster Contact": "d@delta.org", "Buying General": "200" } }, "mauro@linkjuiceclub.com");
+caso("same domain, sender and prices again: ok without a second row", r.status === 200 && r.json.duplicate === true && appended.length === 1, r.json);
+r = await pedir("/api/accept", "POST", { row: { Type: "Publisher", Domain: "theta.org", "Webmaster Contact": "t@theta.org", "Buying General": "300" }, requestId: "req-1" }, "mauro@linkjuiceclub.com");
+const r2 = await pedir("/api/accept", "POST", { row: { Type: "Publisher", Domain: "theta.org", "Webmaster Contact": "t@theta.org", "Buying General": "300" }, requestId: "req-1" }, "mauro@linkjuiceclub.com");
+caso("same request id twice: one row", r.status === 200 && r2.json.duplicate === true && appended.length === 2, [r.json, r2.json]);
+caso("prices are written as numbers, not text", appended[0][26] === 200 && typeof appended[0][26] === "number", appended[0][26]);
+r = await pedir("/api/match", "POST", { domains: ["theta.org"], sender: "t@theta.org" }, "mauro@linkjuiceclub.com");
+caso("after accept the sender count is up to date", r.json.senderCount === 1 && r.json.rows["theta.org"].length === 1, r.json);
+caso("rows leave without internal fields", !("_q" in r.json.rows["theta.org"][0]) && !("_type" in r.json.rows["theta.org"][0]) && !("_row" in r.json.rows["theta.org"][0]), Object.keys(r.json.rows["theta.org"][0]).filter(k => k[0] === "_"));
+r = await pedir("/api/match", "POST", null, "mauro@linkjuiceclub.com");
+caso("match with an empty body is a 400, not a crash", r.status === 400, r);
+r = await worker.fetch(new Request("http://lists/api/match", { method: "POST", headers: { "content-type": "application/json", "cf-access-authenticated-user-email": "m@x" }, body: "null" }), env);
+caso("match with a null body is a 400", r.status === 400, r.status);
+r = await pedir("/api/rows?niche=foo", "GET", null, "mauro@linkjuiceclub.com");
+caso("unknown niche is no filter", r.json.total === r.json.all, r.json.total);
+r = await pedir("/api/nothing", "GET", null, "mauro@linkjuiceclub.com");
+caso("404 in English", r.status === 404 && r.json.error === "not-found", r.json);
+r = await pedir("/api/status", "GET", null, "x@y.z", { ...env, SIN_ACCESS: undefined, ACCESS_AUD: "" });
+caso("no audience configured says so", r.status === 403 && r.json.reason === "no-aud", r.json);
 r = await pedir("/api/accept", "POST", { row: { Domain: "epsilon.org" } }, "");
-caso("accept without a person is refused", r.status === 403 && appended.length === 1, r);
+caso("accept without a person is refused", r.status === 403 && appended.length === 2, r);
 r = await pedir("/api/accept", "POST", { row: { Domain: "not a domain" } }, "mauro@linkjuiceclub.com");
-caso("accept with a bad domain is refused", r.status === 400 && appended.length === 1, r);
+caso("accept with a bad domain is refused", r.status === 400 && appended.length === 2, r);
 r = await pedir("/api/accept", "POST", "{bad", "mauro@linkjuiceclub.com");
 caso("accept with bad json", r.status === 400);
 
 /* --- rows, for the database screen --- */
 r = await pedir("/api/rows?limit=2", "GET", null, "mauro@linkjuiceclub.com");
-caso("rows: first page with facets", r.status === 200 && r.json.total === 4 && r.json.rows.length === 2 && Array.isArray(r.json.facets.countries), r.json);
+caso("rows: first page with facets", r.status === 200 && r.json.total === 5 && r.json.rows.length === 2 && Array.isArray(r.json.facets.countries), r.json);
 r = await pedir("/api/rows?type=Broker", "GET", null, "mauro@linkjuiceclub.com");
 caso("rows: filter by type", r.json.total === 1 && r.json.rows[0].Domain === "beta.es", r.json.rows);
 r = await pedir("/api/rows?q=owner%40beta", "GET", null, "mauro@linkjuiceclub.com");
 caso("rows: search by contact", r.json.total === 1 && r.json.rows[0].Domain === "www.Beta.es", r.json.rows);
 r = await pedir("/api/rows?niche=general&offset=1&limit=1", "GET", null, "mauro@linkjuiceclub.com");
-caso("rows: niche filter and paging", r.json.total === 4 && r.json.rows.length === 1 && r.json.offset === 1 && !r.json.facets, r.json);
+caso("rows: niche filter and paging", r.json.total === 5 && r.json.rows.length === 1 && r.json.offset === 1 && !r.json.facets, r.json);
 r = await pedir("/api/rows?removed=1", "GET", null, "mauro@linkjuiceclub.com");
 caso("rows: removed tab", r.json.total === 1 && r.json.rows[0].Domain === "gamma.net", r.json.rows);
 
@@ -110,6 +132,11 @@ caso("static files go to ASSETS", (await r.text()) === "asset");
 forgetCache();
 r = await pedir("/api/status?refresh=1", "GET", null, "mauro@linkjuiceclub.com");
 caso("refresh re-reads the sheet", r.json.connected && calls.filter(c => c.includes("/values/") && !c.includes(":append")).length === 4, calls);
+
+/* concurrent cold reads share one download */
+forgetCache(); const before2 = calls.length;
+await Promise.all([pedir("/api/status", "GET", null, "m@x"), pedir("/api/rows", "GET", null, "m@x"), pedir("/api/match", "POST", { domains: ["alpha.com"] }, "m@x")]);
+caso("three requests on a cold cache read the sheet once", calls.slice(before2).filter(c => c.includes("/values/") && !c.includes(":append")).length === 2, calls.slice(before2));
 
 console.log(`${casos - fallos} of ${casos} checks passed`);
 process.exit(fallos ? 1 : 0);

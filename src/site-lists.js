@@ -344,7 +344,7 @@ export function rowMatchesFilters(r, f){
   if(f.type === "-" ? type !== "" : f.type && type !== f.type) return false;
   if(f.country && String(r["Main Country"] || "") !== f.country) return false;
   if(f.lang && String(r["Domain Language"] || "") !== f.lang) return false;
-  if(f.niche && !String(r[BUYING_COLUMN[f.niche]] ?? "").trim()) return false;
+  if(f.niche && BUYING_COLUMN[f.niche] && !String(r[BUYING_COLUMN[f.niche]] ?? "").trim()) return false;
   const q = String(f.q || "").trim().toLowerCase();
   if(q && !(r._q != null ? r._q : searchText(r)).includes(q)) return false;
   return true;
