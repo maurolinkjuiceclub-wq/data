@@ -382,7 +382,7 @@ function termsCells(item){
   const admin = f.adminComments.map(c => `<span class="fv off">${esc(c)}</span>`).join("");
   const raw = !item.terms ? "" : item.inherited
     ? `<span class="fv off" title="${esc(t().fromList)}: ${esc(item.terms)}">${esc(t().fromListShort)}</span>`
-    : `<span class="raw">${esc(item.terms)}</span>`;
+    : `${item.inheritedPartly ? `<span class="fv off" title="${esc(t().fromList)}">${esc(t().fromListShort)}</span>` : ""}<span class="raw">${esc(item.terms.split(" | ").slice(0, 2).join(" | "))}</span>`;
   return (chips || admin) ? chips + admin + raw : (item.terms ? raw : `<span class="sender">${t().saidNothing}</span>`);
 }
 function dbCells(rows){

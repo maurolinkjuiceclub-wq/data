@@ -352,6 +352,31 @@ Comments today.
   BROKER OUTREACH layout of Senad's sheet (Domain, Contact Email, Additional
   Comments with what the broker offered). Both copy as tab-separated.
 
+## Parser hardened on the desk's real lists (08/10)
+
+Run over the five lists the desk received on 05/10: starmagazines (33, one
+line with middle dots and a German header), stylingguiden (34, "domain -
+300 EUR" per line), promodesk (4 Romanian sites in two groups with numbered
+price options below each group and a signature), spanienforum and rivonhome
+(answers, not lists). What broke and was fixed, each with a check:
+
+- Domains named on a line without prices open a **group**; the price lines
+  below ("1. Articol SEO - 35 EUR + TVA", "Bet / Casino - 100 EUR") feed
+  every domain of the group, the niche read from the words on the line.
+- A price inside a sentence ("35 EUR + TVA") is found even when the cell is
+  not a pure price (`findPrice`).
+- A line with niche words and a price is an offer, not a header.
+- After a sign-off ("Multumesc", "Best regards", "Saludos") the rest is a
+  signature: its domain is not an offer.
+- A list-wide statement after the groups ('Articolele raman pe site "pe
+  viata"') reaches every row, also rows that already have terms of their own.
+- "b.com - 300 EUR" is prose, not a domain with a path.
+- Romanian and German markings ("Marcat ADVERTORIAL", "Marcat cu (P)")
+  become Sponsor Tag Type = Marked by WM with the marking in Admin Comments.
+
+84 checks. Still untested for lack of samples: Excel attachments, PDF rate
+cards, Google Sheet links. Asked Senad for examples on 07/10.
+
 ## Not in scope unless asked
 
 Automatic quality checks of a site (traffic, DR), scraping the publisher's

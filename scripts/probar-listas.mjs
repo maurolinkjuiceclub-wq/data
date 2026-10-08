@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -156,7 +156,47 @@ const lt = listTermsOf(star);
 caso("list terms from the skipped lines", lt.any && lt.linkType === "Do follow" && lt.placement === "permanent", lt);
 const inh = withListTerms(star.items[0], lt);
 caso("item inherits list terms", inh.inherited === true && termsOf(inh).placement === "permanent" && star.items[0].terms === "");
-caso("item with own terms keeps them", withListTerms({ terms: "no follow", prices: {} }, lt).terms === "no follow");
+const own = withListTerms({ terms: "no follow", prices: {} }, lt);
+caso("item with own terms keeps them and fills the gaps from the list", termsOf(own).linkType === "No follow" && termsOf(own).placement === "permanent" && own.inheritedPartly === true, own);
+
+/* --- a price inside a sentence --- */
+caso("findPrice 35 EUR + TVA", findPrice("1. Articol SEO fara brand - 35 EUR + TVA.").amount === 35);
+caso("findPrice € 400 per article", findPrice("it costs € 400 per article").amount === 400);
+caso("findPrice none for bare numbers", findPrice("2 linkuri dofollow, 24h") === null);
+
+/* --- grouped offers, as promodesk sent on 05/10 --- */
+const promo = parseList(`Buna Eszter,
+
+Va rog sa gasiti mai jos oferta noastra:
+
+Familist.ro / BodyGeek.ro / DreamGeek.ro
+1. Articol SEO fara brand - 35 EUR + TVA. Marcat ADVERTORIAL sub titlu. 2 linkuri dofollow.
+2. Articol Brand Mention - 50 EUR + TVA.
+4. Bet / Casino / Videochat / Alcool / Sex Shop / IFN / Banci - 100 EUR + TVA. 2 linkuri dofollow.
+
+Destepti.ro
+1. Brand Mention - 140 EUR + TVA. Marcat cu (P) in titlu. 1 link dofollow
+3. Bet / Casino / Videochat / Sex Shop / IFN / Banci - 300 EUR + TVA.
+
+Articolele raman pe site "pe viata".
+
+Multumesc,
+Gabriel Ion
+PROMOdesk.ro — Link Building & SEO (since 2006)
++40 726 488 874`);
+caso("promodesk: four domains, not the signature", eq(promo.items.map(i => i.domain), ["familist.ro", "bodygeek.ro", "dreamgeek.ro", "destepti.ro"]), promo.items.map(i => i.domain));
+caso("promodesk: group prices general and casino", promo.items[0].prices.general.amount === 35 && promo.items[0].prices.casino.amount === 100 && promo.items[2].prices.casino.amount === 100, promo.items[0].prices);
+caso("promodesk: second group", promo.items[3].prices.general.amount === 140 && promo.items[3].prices.casino.amount === 300, promo.items[3].prices);
+caso("promodesk: no header false positive", promo.columns === null, promo.columns);
+const pt = termsOf(promo.items[0]);
+caso("promodesk: dofollow, marked ADVERTORIAL", pt.linkType === "Do follow" && pt.sponsorTag === "Marked by WM" && pt.adminComments[0] === 'Marked as "ADVERTORIAL"', pt);
+const promoLT = listTermsOf(promo);
+caso("promodesk: 'pe viata' after the groups becomes permanent for every site", termsOf(withListTerms(promo.items[0], promoLT)).placement === "permanent" && termsOf(withListTerms(promo.items[3], promoLT)).placement === "permanent", promoLT);
+caso("domain with a space is prose", normaliseDomain("b.com - 300 EUR") === null);
+const styling = parseList("Here are some of the websites we have available:\nstylingguiden.se - 300 EUR\ncasinosisters.com - 450 EUR\nsushilidingö.se - 200 EUR");
+caso("stylingguiden: three sites, general prices", styling.items.length === 3 && styling.items[1].prices.general.amount === 450 && styling.items[2].domain === "sushilidingö.se", styling.items);
+const multi = parseList("a.com, b.com - 300 EUR");
+caso("two domains with one price share it", multi.items.length === 2 && multi.items[1].prices.general.amount === 300, multi.items);
 
 /* --- optional: a real copy --- */
 const ruta = process.argv[2];
