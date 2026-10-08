@@ -1133,16 +1133,26 @@ function setMode(m){
   $("screen-db").hidden = m !== "db";
   if(m === "db") dbRefresh();
 }
-function dbSourceRows(){ return dbState.removed ? rmRows : dbRows; }
+/* The rows of the chosen tab, normalised once per source and with a
+   lowercase search string each, so a filter touches 103k rows in one pass
+   instead of rebuilding them. Measured 08/10 with the full-size CSV:
+   filters went from 1 to 2 s to well under a second. */
+const prepared = new WeakMap();
+function dbSourceRows(){
+  const src = dbState.removed ? rmRows : dbRows;
+  let p = prepared.get(src);
+  if(!p){
+    p = src.map(raw => { const r = normaliseRow(raw); r._q = (String(r.Domain || "") + " " + senderOf(r) + " " + String(r["Contact Name"] || "") + " " + String(r["Webmaster Extra Contact"] || "")).toLowerCase(); r._type = String(r.Type || "").trim(); return r; });
+    prepared.set(src, p);
+  }
+  return p;
+}
 function rowMatches(r, q){
-  if(dbState.type === "-" ? String(r.Type || "").trim() !== "" : dbState.type && String(r.Type || "").trim() !== dbState.type) return false;
+  if(dbState.type === "-" ? r._type !== "" : dbState.type && r._type !== dbState.type) return false;
   if(dbState.country && String(r["Main Country"] || "") !== dbState.country) return false;
   if(dbState.lang && String(r["Domain Language"] || "") !== dbState.lang) return false;
   if(dbState.niche && !String(r[BUYING_COLUMN[dbState.niche]] || "").trim()) return false;
-  if(q){
-    const hay = (String(r.Domain || "") + " " + senderOf(r) + " " + String(r["Contact Name"] || "") + " " + String(r["Webmaster Extra Contact"] || "")).toLowerCase();
-    if(!hay.includes(q)) return false;
-  }
+  if(q && !r._q.includes(q)) return false;
   return true;
 }
 function dbFacets(rows){
@@ -1158,7 +1168,7 @@ function fillSelect(id, values, keep){
   sel.value = values.includes(keep) ? keep : "";
 }
 function dbRefresh(){
-  const rows = remote ? null : dbSourceRows().map(normaliseRow);
+  const rows = remote ? null : dbSourceRows();
   if(rows){
     if(!dbState.facets || dbState.facets.source !== rows){ dbState.facets = { ...dbFacets(rows), source: rows }; fillSelect("db-country", dbState.facets.countries, dbState.country); fillSelect("db-lang", dbState.facets.languages, dbState.lang); }
     const q = dbState.q.trim().toLowerCase();

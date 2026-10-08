@@ -401,8 +401,12 @@ invented. This replaces the "own Cloudflare deploy" line of the build order.
 A second screen, switched from the bar: the whole database, read only.
 Search by domain, contact or name; filters by Type, country, language and
 "priced for" niche; the removed sites tab; 14 columns by default or all 45.
-Only the rows on screen are drawn, so 103k rows cost nothing (tested with a
-20,000-row CSV: filters answer in about 200 ms). A row opens a detail panel
+Only the rows on screen are drawn. Measured 08/10 in Chromium with an
+invented CSV of the sheet's size (103,393 rows, 45 columns, 30 MB): load
+and index 2.7 s, open the screen 1.2 s, search 40 ms, country filter 65 ms,
+jump to row 90,000 in 113 ms, 45 columns 143 ms, matching a 33-site list
+150 ms, 228 MB of browser memory. Gary asked on 08/10 whether it handles
+the 100k database: yes, with those numbers. A row opens a detail panel
 with its 45 fields. Rows come from the CSV or sample rows in the browser,
 or from the Worker's `/api/rows` (filters, paging, facets) when served
 next to it. Writing stays on Accept, as agreed.
