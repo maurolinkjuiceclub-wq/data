@@ -382,10 +382,15 @@ price options below each group and a signature), spanienforum and rivonhome
 **Files (08/10).** The rail takes the file they sent: .xlsx/.xls through
 SheetJS 0.18.5 loaded from cdnjs only when needed (every sheet becomes rows,
 a header row with a Domain column maps the niches by column and a second
-sheet's header resets it), .csv/.txt read as text. Tested in Chromium with a
-two-sheet fixture and a CSV. Still open: PDF rate cards (businessamlive sent
-one on 05/10) and Google Sheet links, which need the service account. 87
-checks. Asked Senad for real examples on 07/10.
+sheet's header resets it), .csv/.txt read as text, and since the afternoon
+of 08/10 .pdf through pdf.js 4.10.38 from cdnjs, also only when needed: the
+text of each page is rebuilt line by line from the glyph positions (a PDF has
+no lines of its own) and dropped into the box, so a rate card like the one
+businessamlive sent on 05/10 is read like a pasted email. Tested in Chromium
+with a two-sheet fixture, a CSV and a one-page rate card (3 domains, 3
+niches, "valid until 31.12.2026." read without the final dot). Still open:
+Google Sheet links, which need the service account. 96 checks. Asked Senad
+for real examples on 07/10.
 
 ## Where it lives (Gary, 08/10)
 

@@ -69,5 +69,6 @@ the Worker needs `SHEET_ID`, `GOOGLE_SA` (secret) and `ACCESS_AUD`.
 
 ## Not yet
 
-PDF rate cards and Google Sheet links as list input. A real write to the
-copy: the Worker is tested against a stand-in only, until the key arrives.
+Google Sheet links as list input (they need the service account). A real
+write to the copy: the Worker is tested against a stand-in only, until the
+key arrives. The move into the desk: planned in INTEGRATION.md, not started.

@@ -146,6 +146,12 @@ caso("star: services line skipped", star.skipped.length >= 1);
 /* --- terms and deltas --- */
 const tf = termsOf({ terms: "do follow, 2 Years, prices valid until 31.12.2026, no index", prices: {} });
 caso("termsOf fixed values", eq([tf.linkType, tf.placement, tf.priceValidity, tf.sponsorTag], ["Do follow", "2 Years", "31.12.2026", ""]), tf);
+/* A rate card read from a PDF (08/10): the sentence ends after the date, and
+   the dot must not travel into Price Validity. */
+const tp = parseList("Rate card 2026 - Example Media\n\nDomain / General / Casino / Crypto\nalpha-rates.example 250 EUR / 450 EUR / 400 EUR\nbeta-rates.example 180 EUR / 300 EUR / 280 EUR\n\nAll links dofollow, permanent. Prices valid until 31.12.2026.");
+const tpl = listTermsOf(tp);
+caso("PDF rate card: domains and columns", eq(tp.items.map(i => [i.domain, i.prices.general.amount, i.prices.casino.amount, i.prices.crypto.amount]), [["alpha-rates.example", 250, 450, 400], ["beta-rates.example", 180, 300, 280]]), tp.items);
+caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));
 const pd = priceDelta([{ niche: "casino", offered: { amount: 269 }, inDatabase: { amount: 199 } }, { niche: "cbd", offered: { amount: 100 }, inDatabase: null }]);

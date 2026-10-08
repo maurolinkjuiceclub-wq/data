@@ -416,7 +416,7 @@ export function termsOf(item){
   const linkType = /no-?\s?follow/.test(t) ? "No follow" : /do-?\s?follow|dofollow/.test(t) ? "Do follow" : "";
   const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
   const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
-  const priceValidity = until ? until[1] : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
+  const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
   const adminComments = [];
   if(marked) adminComments.push(`Marked as "${marked[1]}"`);
   if(item.prices && item.prices.unlicensedCasino) adminComments.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);

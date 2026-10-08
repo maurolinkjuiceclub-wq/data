@@ -223,7 +223,7 @@ td.dec .seg button:nth-child(n+3){border-bottom:0}
       <div><label data-i18n="stype">The sender is</label><span class="seg stype" role="group"><button type="button" id="stype-publisher" data-stype="Publisher" class="on-type" data-i18n="typePublisher">Publisher</button><button type="button" id="stype-broker" data-stype="Broker" data-i18n="typeBroker">Broker</button></span></div>
       <div><label for="label" data-i18n="list">List</label><input type="text" id="label" value="example list 05/10" autocomplete="off"></div>
       <div><label for="list" data-i18n="paste">Paste the list</label><textarea id="list" spellcheck="false"></textarea></div>
-      <div><label for="listfile" data-i18n="orfile">or load the file they sent</label><input type="file" id="listfile" accept=".xlsx,.xls,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"><p class="said" id="filenote"></p></div>
+      <div><label for="listfile" data-i18n="orfile">or load the file they sent</label><input type="file" id="listfile" accept=".xlsx,.xls,.csv,.txt,.tsv,.pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain,application/pdf"><p class="said" id="filenote"></p></div>
       <div class="actions"><button type="button" class="btn primary" id="match" data-i18n="match">Match</button></div>
       <p class="said" id="parsenote"></p>
     </form>
@@ -694,7 +694,7 @@ function termsOf(item){
   const linkType = /no-?\s?follow/.test(t) ? "No follow" : /do-?\s?follow|dofollow/.test(t) ? "Do follow" : "";
   const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
   const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
-  const priceValidity = until ? until[1] : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
+  const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
   const adminComments = [];
   if(marked) adminComments.push(`Marked as "${marked[1]}"`);
   if(item.prices && item.prices.unlicensedCasino) adminComments.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
@@ -858,7 +858,7 @@ const T = {
     modeList:"List", modeDb:"Database", fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
     dbSearch:"Search domain, contact or name", dbCount:(n, total)=>`${n.toLocaleString("en")} of ${total.toLocaleString("en")} rows`, dbEmpty:"No row matches.", dbLoading:"Loading…", dbRemovedTab:"removed sites", dbCols:{Domain:"Domain", Type:"Type", Contact:"Contact", Country:"Country", Language:"Language", Updated:"Updated", Terms:"Terms"},
     openInDb:"Open its record in the database", backToList:"Back to the list",
-    orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
+    orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, filePdf:(n, p)=>`${n}: ${p} page${p === 1 ? "" : "s"} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
     stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
     brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
     terms:{linkType:"link", placement:"placement", priceValidity:"validity", sponsorTag:"tag"}, saidNothing:"terms not stated", fromList:"Stated once for the whole list, not for this site", fromListShort:"whole list", dAbove:"above", dBelow:"below", recorded:"recorded",
@@ -879,7 +879,7 @@ const T = {
     modeList:"Lista", modeDb:"Base de datos", fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
     dbSearch:"Buscar dominio, contacto o nombre", dbCount:(n, total)=>`${n.toLocaleString("es")} de ${total.toLocaleString("es")} filas`, dbEmpty:"Ninguna fila coincide.", dbLoading:"Cargando…", dbRemovedTab:"removed sites", dbCols:{Domain:"Dominio", Type:"Tipo", Contact:"Contacto", Country:"País", Language:"Idioma", Updated:"Actualizado", Terms:"Condiciones"},
     openInDb:"Abrir su ficha en la base", backToList:"Volver a la lista",
-    orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
+    orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, filePdf:(n, p)=>`${n}: ${p} página${p === 1 ? "" : "s"} volcada${p === 1 ? "" : "s"} al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
     stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
     brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
     terms:{linkType:"enlace", placement:"duración", priceValidity:"validez", sponsorTag:"etiqueta"}, saidNothing:"sin condiciones", fromList:"Dicho una vez para toda la lista, no para este sitio", fromListShort:"toda la lista", dAbove:"más", dBelow:"menos", recorded:"registrado",
@@ -959,6 +959,14 @@ $("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow);
 function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
 
 /* ---------- matching ---------- */
+/* A list with nothing changed used to open on an empty "Changed" tab while
+   the rows sat under "Unknown" (seen with a PDF rate card, 08/10). The view
+   moves to the first group that has rows; a view chosen by hand stays. */
+function pickView(){
+  if(view === "all" || !groups || !groups[view] || groups[view].length) return;
+  const k = ["changed", "unknown", "unchanged", "removed"].find(g => groups[g] && groups[g].length);
+  if(k) view = k;
+}
 function run(){
   const parsed = parseList($("list").value);
   const listTerms = listTermsOf(parsed);
@@ -967,6 +975,7 @@ function run(){
   for(const k in decisions) delete decisions[k];
   loadDecisions();
   groups = matchList(items, index, { sender: $("sender").value });
+  pickView();
   render();
   if(remote) matchRemote();
 }
@@ -979,6 +988,7 @@ async function matchRemote(){
     lastMatch = j;
     const idx = indexDatabase(Object.values(j.rows || {}).flat().map(prepareRow), Object.values(j.removed || {}).flat().map(prepareRow));
     groups = matchList(items, idx, { sender, senderCount: j.senderCount });
+    pickView();
     remote = { ...remote, rows: j.total, readAt: j.readAt };
     describeDb(); render();
   }catch(e){
@@ -1145,11 +1155,60 @@ function loadSheetJS(){
   });
   return sheetjs;
 }
+/* pdf.js the same way, for rate cards sent as PDF (businessamlive sent one
+   on 05/10). A PDF has no lines: the text of each page is rebuilt from the
+   glyph positions, one line per baseline, left to right. The pinned version
+   is 4.10.38; the worker is loaded from the same place. */
+const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
+const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
+let pdfjs = null;
+function loadPdfJS(){
+  if(pdfjs) return pdfjs;
+  pdfjs = import(PDFJS).then(m => { m.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return m; }, e => { pdfjs = null; throw e; });
+  return pdfjs;
+}
+/* Text items of one page → lines. Items on the same baseline (within 2.5pt)
+   form a line, sorted by x; a gap wider than 1.5pt becomes a space. */
+function pdfLines(items){
+  const rows = [];
+  for(const it of items){
+    if(!it.str || !it.transform) continue;
+    const y = it.transform[5], x = it.transform[4];
+    let row = null;
+    for(const r of rows){ if(Math.abs(r.y - y) < 2.5){ row = r; break; } }
+    if(!row){ row = { y, parts: [] }; rows.push(row); }
+    row.parts.push({ x, s: it.str, w: it.width || 0 });
+  }
+  rows.sort((a, b) => b.y - a.y);
+  return rows.map(r => {
+    r.parts.sort((a, b) => a.x - b.x);
+    let s = "", end = null;
+    for(const p of r.parts){
+      if(end !== null && p.x - end > 1.5 && !/\s$/.test(s) && !/^\s/.test(p.s)) s += " ";
+      s += p.s; end = p.x + p.w;
+    }
+    return s.replace(/\s+/g, " ").trim();
+  }).filter(Boolean).join("\n");
+}
+async function pdfText(buf){
+  const lib = await loadPdfJS();
+  const doc = await lib.getDocument({ data: buf }).promise;
+  const pages = [];
+  for(let n = 1; n <= doc.numPages; n++){
+    const page = await doc.getPage(n);
+    pages.push(pdfLines((await page.getTextContent()).items));
+  }
+  return { text: pages.join("\n\n"), pages: doc.numPages };
+}
 $("listfile").addEventListener("change", async () => {
   const f = $("listfile").files && $("listfile").files[0]; if(!f) return;
   $("filenote").textContent = t().fileLoading;
   try{
-    if(/\.(xlsx|xls|xlsm|ods)$/i.test(f.name)){
+    if(/\.pdf$/i.test(f.name) || f.type === "application/pdf"){
+      const r = await pdfText(await f.arrayBuffer());
+      $("list").value = r.text;
+      $("filenote").textContent = t().filePdf(f.name, r.pages);
+    }else if(/\.(xlsx|xls|xlsm|ods)$/i.test(f.name)){
       const XLSX = await loadSheetJS();
       const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
       const parts = wb.SheetNames.map(n => tableToList(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }))).filter(Boolean);
