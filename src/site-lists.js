@@ -318,6 +318,46 @@ export function indexDatabase(rows, removed){
   return { byDomain, bySender, removed: removedSet, size: byDomain.size };
 }
 
+/* ---------- the database screen's filter, shared by page and Worker ----------
+   One predicate, one search string, one facet count: the page filters the
+   rows it holds and the Worker filters the sheet, and the two must agree
+   (review of 08/10: they had drifted). */
+
+/* The text a search looks in: domain, contacts and name, lowercase. */
+export function searchText(row){
+  return (String(row.Domain || "") + " " + senderOf(row) + " " + String(row["Contact Name"] || "") + " " + String(row["Webmaster Extra Contact"] || "")).toLowerCase();
+}
+
+/* A row ready for the screen: normalised headers plus `_q` (search text) and
+   `_type` (Type, trimmed). Done once where rows enter, never per keystroke. */
+export function prepareRow(raw){
+  const r = normaliseRow(raw);
+  r._q = searchText(r);
+  r._type = String(r.Type || "").trim();
+  return r;
+}
+
+/* Filters: {q, type, country, lang, niche}. type "-" means blank Type. The
+   row may be prepared or not; unprepared rows are read field by field. */
+export function rowMatchesFilters(r, f){
+  const type = r._type != null ? r._type : String(r.Type || "").trim();
+  if(f.type === "-" ? type !== "" : f.type && type !== f.type) return false;
+  if(f.country && String(r["Main Country"] || "") !== f.country) return false;
+  if(f.lang && String(r["Domain Language"] || "") !== f.lang) return false;
+  if(f.niche && !String(r[BUYING_COLUMN[f.niche]] ?? "").trim()) return false;
+  const q = String(f.q || "").trim().toLowerCase();
+  if(q && !(r._q != null ? r._q : searchText(r)).includes(q)) return false;
+  return true;
+}
+
+/* Countries and languages present, most frequent first. */
+export function facetsOf(rows){
+  const c = new Map(), l = new Map();
+  for(const r of rows){ const a = String(r["Main Country"] || "").trim(), b = String(r["Domain Language"] || "").trim(); if(a) c.set(a, (c.get(a) || 0) + 1); if(b) l.set(b, (l.get(b) || 0) + 1); }
+  const top = m => [...m.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
+  return { countries: top(c), languages: top(l) };
+}
+
 /* Compares an item's prices with the row's Buying columns. Returns the list
    of niches with a difference, each {niche, offered, inDatabase}. A price the
    list does not mention is not a difference. */

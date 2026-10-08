@@ -18,7 +18,7 @@
 
    Tested by scripts/probar-worker.mjs with Google replaced by a stand-in.
    No email is sent from here. */
-import { normaliseDomain, normaliseRow, headerKey, DB_COLUMNS, senderOf } from "./site-lists.js";
+import { normaliseDomain, normaliseRow, prepareRow, rowMatchesFilters, facetsOf, headerKey, DB_COLUMNS, senderOf } from "./site-lists.js";
 
 const TAB_DB = "Import Database";
 const TAB_REMOVED = "removed sites";
@@ -109,15 +109,8 @@ async function readTab(env, tab){
   const j = await r.json();
   const values = j.values || [];
   const headers = (values[0] || []).map(String);
-  const rows = values.slice(1).map((v, i) => { const o = {}; headers.forEach((h, k) => { o[h] = v[k] == null ? "" : v[k]; }); o._row = i + 2; return normaliseRow(o); });
+  const rows = values.slice(1).map((v, i) => { const o = {}; headers.forEach((h, k) => { o[h] = v[k] == null ? "" : v[k]; }); o._row = i + 2; return prepareRow(o); });
   return { headers, rows };
-}
-const NICHE_COLUMN = { casino: "Buying Casino", unlicensedCasino: "Buying Unlicensed Casino", crypto: "Buying Crypto", forex: "Buying Forex", cbd: "Buying CBD", dating: "Buying Dating", general: "Buying General" };
-function facetsOf(rows){
-  const c = new Map(), l = new Map();
-  for(const r of rows){ const a = String(r["Main Country"] || "").trim(), b = String(r["Domain Language"] || "").trim(); if(a) c.set(a, (c.get(a) || 0) + 1); if(b) l.set(b, (l.get(b) || 0) + 1); }
-  const top = m => [...m.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
-  return { countries: top(c), languages: top(l) };
 }
 function indexRows(rows){
   const byDomain = new Map(), bySender = new Map();
@@ -193,15 +186,8 @@ export default {
       let db; try { db = await database(env); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       const q = url.searchParams;
       const source = q.get("removed") === "1" ? db.removedList : db.list;
-      const text = String(q.get("q") || "").trim().toLowerCase();
-      const type = q.get("type") || "", country = q.get("country") || "", lang = q.get("lang") || "", niche = q.get("niche") || "";
-      const nicheCol = NICHE_COLUMN[niche];
-      const hit = source.filter(r =>
-        (type === "-" ? String(r.Type || "").trim() === "" : !type || String(r.Type || "").trim() === type) &&
-        (!country || String(r["Main Country"] || "") === country) &&
-        (!lang || String(r["Domain Language"] || "") === lang) &&
-        (!nicheCol || String(r[nicheCol] ?? "").trim() !== "") &&
-        (!text || (String(r.Domain || "") + " " + senderOf(r) + " " + String(r["Contact Name"] || "")).toLowerCase().includes(text)));
+      const filters = { q: q.get("q") || "", type: q.get("type") || "", country: q.get("country") || "", lang: q.get("lang") || "", niche: q.get("niche") || "" };
+      const hit = source.filter(r => rowMatchesFilters(r, filters));
       const offset = Math.max(0, parseInt(q.get("offset") || "0", 10) || 0);
       const limit = Math.min(500, Math.max(1, parseInt(q.get("limit") || "300", 10) || 300));
       const out = { total: hit.length, all: source.length, offset, rows: hit.slice(offset, offset + limit) };
@@ -221,7 +207,7 @@ export default {
       let db; try { db = await database(env); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       let res; try { res = await appendRow(env, row, db.headers); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       const d = normaliseDomain(row.Domain).domain;
-      const added = normaliseRow(row);
+      const added = prepareRow(row);
       (db.byDomain.get(d) || db.byDomain.set(d, []).get(d)).push(added);
       db.list.push(added);
       db.rows += 1;

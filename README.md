@@ -22,7 +22,9 @@ It shares the desk's look (tokens, type) but none of its code or deploy.
   domain and price normalisation, index of the database with the
   "removed sites" exclusion, grouping into changed / unknown / unchanged /
   removed, Broker hint, and the row Accept writes. Plain ES module, no DOM.
-- `scripts/probar-listas.mjs`: 56 checks. `node scripts/probar-listas.mjs
+- `scripts/inventar-csv.mjs`: writes an invented, sheet-sized CSV (103,393
+  rows) to measure the page with. Nothing in it is real.
+- `scripts/probar-listas.mjs`: 94 checks. `node scripts/probar-listas.mjs
   path/to/copy.csv` also indexes a real CSV copy and prints a summary.
 - `BRIEF.md`: the plan, the decisions (Mauro, 06/10), Gary's answers, the
   glossary of the database's columns, and what is still open.

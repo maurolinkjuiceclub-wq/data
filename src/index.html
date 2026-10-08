@@ -594,6 +594,46 @@ function indexDatabase(rows, removed){
   return { byDomain, bySender, removed: removedSet, size: byDomain.size };
 }
 
+/* ---------- the database screen's filter, shared by page and Worker ----------
+   One predicate, one search string, one facet count: the page filters the
+   rows it holds and the Worker filters the sheet, and the two must agree
+   (review of 08/10: they had drifted). */
+
+/* The text a search looks in: domain, contacts and name, lowercase. */
+function searchText(row){
+  return (String(row.Domain || "") + " " + senderOf(row) + " " + String(row["Contact Name"] || "") + " " + String(row["Webmaster Extra Contact"] || "")).toLowerCase();
+}
+
+/* A row ready for the screen: normalised headers plus `_q` (search text) and
+   `_type` (Type, trimmed). Done once where rows enter, never per keystroke. */
+function prepareRow(raw){
+  const r = normaliseRow(raw);
+  r._q = searchText(r);
+  r._type = String(r.Type || "").trim();
+  return r;
+}
+
+/* Filters: {q, type, country, lang, niche}. type "-" means blank Type. The
+   row may be prepared or not; unprepared rows are read field by field. */
+function rowMatchesFilters(r, f){
+  const type = r._type != null ? r._type : String(r.Type || "").trim();
+  if(f.type === "-" ? type !== "" : f.type && type !== f.type) return false;
+  if(f.country && String(r["Main Country"] || "") !== f.country) return false;
+  if(f.lang && String(r["Domain Language"] || "") !== f.lang) return false;
+  if(f.niche && !String(r[BUYING_COLUMN[f.niche]] ?? "").trim()) return false;
+  const q = String(f.q || "").trim().toLowerCase();
+  if(q && !(r._q != null ? r._q : searchText(r)).includes(q)) return false;
+  return true;
+}
+
+/* Countries and languages present, most frequent first. */
+function facetsOf(rows){
+  const c = new Map(), l = new Map();
+  for(const r of rows){ const a = String(r["Main Country"] || "").trim(), b = String(r["Domain Language"] || "").trim(); if(a) c.set(a, (c.get(a) || 0) + 1); if(b) l.set(b, (l.get(b) || 0) + 1); }
+  const top = m => [...m.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
+  return { countries: top(c), languages: top(l) };
+}
+
 /* Compares an item's prices with the row's Buying columns. Returns the list
    of niches with a difference, each {niche, offered, inDatabase}. A price the
    list does not mention is not a difference. */
@@ -767,7 +807,11 @@ nordlicht-magazin.example 99 € / 269 € / 180 € · alpenblick-news.example 
 Unsere Leistungen: Dauerhafte Veröffentlichung von Gastbeiträgen · Do-Follow-Links · Verschiedene Nischen, darunter Krypto, Gambling, CBD und Vape`;
 
 /* ---------- state ---------- */
-let dbRows = SAMPLE_DB, rmRows = SAMPLE_REMOVED, dbSource = "sample rows";
+/* Rows are prepared (normalised headers, search text) once, where they
+   enter: the sample rows here, a CSV in the file handlers, the Worker's
+   pages when they arrive. One copy per row, shared by the matcher and the
+   Database screen (review of 08/10). */
+let dbRows = SAMPLE_DB.map(prepareRow), rmRows = SAMPLE_REMOVED.map(prepareRow), dbSource = "sample rows";
 let index = indexDatabase(dbRows, rmRows);
 let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
 /* The Worker, when the page is served next to it. In the claude.ai copy
@@ -904,10 +948,10 @@ function readFile(input, cb){
 $("state").addEventListener("click", () => { const open = $("dbpanel").hidden; $("dbpanel").hidden = !open; $("state").setAttribute("aria-expanded", String(open)); });
 $("export-h").addEventListener("click", () => { const open = $("export-body").hidden; $("export-body").hidden = !open; $("export-h").setAttribute("aria-expanded", String(open)); });
 $("wm-h").addEventListener("click", () => { const open = $("wm-body").hidden; $("wm-body").hidden = !open; $("wm-h").setAttribute("aria-expanded", String(open)); });
-$("dbfile").addEventListener("change", () => readFile($("dbfile"), (t, name) => { dbRows = csvToObjects(t); dbSource = name; rebuild(); }));
-$("rmfile").addEventListener("change", () => readFile($("rmfile"), (t) => { rmRows = csvToObjects(t); rebuild(); }));
-$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB; rmRows = SAMPLE_REMOVED; dbSource = "sample rows"; $("dbfile").value = ""; $("rmfile").value = ""; rebuild(); });
-function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); dbState.facets = null; $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
+$("dbfile").addEventListener("change", () => readFile($("dbfile"), (t, name) => { dbRows = csvToObjects(t).map(prepareRow); dbSource = name; rebuild(); }));
+$("rmfile").addEventListener("change", () => readFile($("rmfile"), (t) => { rmRows = csvToObjects(t).map(prepareRow); rebuild(); }));
+$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = SAMPLE_REMOVED.map(prepareRow); dbSource = "sample rows"; $("dbfile").value = ""; $("rmfile").value = ""; rebuild(); });
+function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
 
 /* ---------- matching ---------- */
 function run(){
@@ -928,7 +972,7 @@ async function matchRemote(){
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     lastMatch = j;
-    const idx = indexDatabase(Object.values(j.rows || {}).flat(), Object.values(j.removed || {}).flat());
+    const idx = indexDatabase(Object.values(j.rows || {}).flat().map(prepareRow), Object.values(j.removed || {}).flat().map(prepareRow));
     groups = matchList(items, idx, { sender, senderCount: j.senderCount });
     remote = { ...remote, rows: j.total, readAt: j.readAt };
     describeDb(); render();
@@ -1118,7 +1162,7 @@ $("listfile").addEventListener("change", async () => {
    screen are drawn, so 103k rows cost nothing. */
 let mode = "list";
 const ROW_H = 34;
-const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, facets: null, remotePages: new Map(), remoteTotal: 0, pending: null };
+const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, remotePages: new Map(), remoteTotal: 0 };
 const NARROW = [
   ["Domain", 220], ["Type", 110], ["Contact", 230], ["Country", 120], ["Language", 100],
   ["Buying Casino", 84], ["Buying Unlicensed Casino", 84], ["Buying Crypto", 84], ["Buying Forex", 84], ["Buying CBD", 84], ["Buying Dating", 84], ["Buying General", 84],
@@ -1133,53 +1177,34 @@ function setMode(m){
   $("screen-db").hidden = m !== "db";
   if(m === "db") dbRefresh();
 }
-/* The rows of the chosen tab, normalised once per source and with a
-   lowercase search string each, so a filter touches 103k rows in one pass
-   instead of rebuilding them. Measured 08/10 with the full-size CSV:
-   filters went from 1 to 2 s to well under a second. */
-const prepared = new WeakMap();
-function dbSourceRows(){
-  const src = dbState.removed ? rmRows : dbRows;
-  let p = prepared.get(src);
-  if(!p){
-    p = src.map(raw => { const r = normaliseRow(raw); r._q = (String(r.Domain || "") + " " + senderOf(r) + " " + String(r["Contact Name"] || "") + " " + String(r["Webmaster Extra Contact"] || "")).toLowerCase(); r._type = String(r.Type || "").trim(); return r; });
-    prepared.set(src, p);
-  }
-  return p;
+function dbSourceRows(){ return dbState.removed ? rmRows : dbRows; }
+/* Facets once per source; the rows themselves are already prepared. */
+let facetCache = new WeakMap();
+function dbFacetsFor(rows){
+  let f = facetCache.get(rows);
+  if(!f){ f = facetsOf(rows); facetCache.set(rows, f); }
+  return f;
 }
-function rowMatches(r, q){
-  if(dbState.type === "-" ? r._type !== "" : dbState.type && r._type !== dbState.type) return false;
-  if(dbState.country && String(r["Main Country"] || "") !== dbState.country) return false;
-  if(dbState.lang && String(r["Domain Language"] || "") !== dbState.lang) return false;
-  if(dbState.niche && !String(r[BUYING_COLUMN[dbState.niche]] || "").trim()) return false;
-  if(q && !r._q.includes(q)) return false;
-  return true;
-}
-function dbFacets(rows){
-  const c = new Map(), l = new Map();
-  for(const r of rows){ const a = String(r["Main Country"] || "").trim(), b = String(r["Domain Language"] || "").trim(); if(a) c.set(a, (c.get(a) || 0) + 1); if(b) l.set(b, (l.get(b) || 0) + 1); }
-  const top = m => [...m.entries()].sort((x, y) => y[1] - x[1]).map(x => x[0]);
-  return { countries: top(c), languages: top(l) };
-}
+/* Rebuilds a <select> and returns the value it shows, so the state can be
+   written back: a country kept from the other tab that this tab does not
+   have must not keep filtering invisibly (review of 08/10). */
 function fillSelect(id, values, keep){
   const sel = $(id); const first = sel.options[0];
   sel.innerHTML = ""; sel.appendChild(first);
   values.forEach(v => { const o = document.createElement("option"); o.value = v; o.textContent = v; sel.appendChild(o); });
   sel.value = values.includes(keep) ? keep : "";
+  return sel.value;
 }
 function dbRefresh(){
-  const rows = remote ? null : dbSourceRows();
-  if(rows){
-    if(!dbState.facets || dbState.facets.source !== rows){ dbState.facets = { ...dbFacets(rows), source: rows }; fillSelect("db-country", dbState.facets.countries, dbState.country); fillSelect("db-lang", dbState.facets.languages, dbState.lang); }
-    const q = dbState.q.trim().toLowerCase();
-    dbState.list = rows.filter(r => rowMatches(r, q));
-    dbState.total = rows.length;
-    $("mode-db-n").textContent = rows.length.toLocaleString(lang === "es" ? "es" : "en");
-    dbDraw();
-  }else{
-    dbState.remotePages.clear();
-    dbRemoteFetch(0, true);
-  }
+  if(remote){ dbState.remotePages.clear(); dbRemoteFetch(0, true); return; }
+  const rows = dbSourceRows();
+  const f = dbFacetsFor(rows);
+  dbState.country = fillSelect("db-country", f.countries, dbState.country);
+  dbState.lang = fillSelect("db-lang", f.languages, dbState.lang);
+  dbState.list = rows.filter(r => rowMatchesFilters(r, dbState));
+  dbState.total = rows.length;
+  $("mode-db-n").textContent = rows.length.toLocaleString(lang === "es" ? "es" : "en");
+  dbDraw();
 }
 function dbColumns(){
   if(dbState.wide) return DB_COLUMNS.map(c => [c, c === "Domain" ? 220 : /Comments/.test(c) ? 260 : /Contact/.test(c) ? 220 : 110]);
@@ -1247,9 +1272,9 @@ async function dbRemoteFetch(offset, first){
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     if(dbRemoteQuery(offset) !== key) return;   /* filters changed meanwhile */
-    dbState.remotePages.set(Math.floor(offset / PAGE), (j.rows || []).map(normaliseRow));
+    dbState.remotePages.set(Math.floor(offset / PAGE), (j.rows || []).map(prepareRow));
     dbState.remoteTotal = j.total || 0;
-    if(first && j.facets){ fillSelect("db-country", j.facets.countries || [], dbState.country); fillSelect("db-lang", j.facets.languages || [], dbState.lang); $("mode-db-n").textContent = (j.all || 0).toLocaleString(lang === "es" ? "es" : "en"); }
+    if(first && j.facets){ dbState.country = fillSelect("db-country", j.facets.countries || [], dbState.country); dbState.lang = fillSelect("db-lang", j.facets.languages || [], dbState.lang); $("mode-db-n").textContent = (j.all || 0).toLocaleString(lang === "es" ? "es" : "en"); }
     dbDraw();
   }catch(e){
     dbState.remoteTotal = 0; dbDraw();

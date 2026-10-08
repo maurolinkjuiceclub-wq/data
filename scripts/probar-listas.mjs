@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -204,6 +204,18 @@ const fromSheet = parseList(sheet);
 caso("tableToList: header by column, DR ignored, blank row dropped", fromSheet.items.length === 3 && fromSheet.items[0].prices.general.amount === 300 && fromSheet.items[0].prices.casino.amount === 450 && !fromSheet.items[0].prices.crypto, fromSheet.items);
 caso("tableToList: euro text cell", fromSheet.items[1].prices.general.amount === 150 && !fromSheet.items[1].prices.casino, fromSheet.items[1]);
 caso("tableToList: second sheet header resets the columns", fromSheet.items[2].domain === "delta.fr" && fromSheet.items[2].prices.general.amount === 120, fromSheet.items[2]);
+
+/* --- the database screen's filter, shared by page and Worker --- */
+const prep = prepareRow({ "Type": " Broker ", "Domain": "x.com", "Webmaster Contact": "A@X.com", "Webmaster Extra Contact": "b@y.com", "Contact Name": "Ana", "Main Country": "Spain", "Domain Language": "Spanish", "Buying  Casino": "500" });
+caso("prepareRow: type trimmed, search text has all four fields", prep._type === "Broker" && prep._q.includes("a@x.com") && prep._q.includes("b@y.com") && prep._q.includes("ana") && prep._q.includes("x.com"), prep);
+const blank = prepareRow({ Domain: "y.com", Type: "" });
+caso("filter: blank type", rowMatchesFilters(blank, { type: "-" }) && !rowMatchesFilters(prep, { type: "-" }) && rowMatchesFilters(prep, { type: "Broker" }));
+caso("filter: country, language, niche", rowMatchesFilters(prep, { country: "Spain", lang: "Spanish", niche: "casino" }) && !rowMatchesFilters(prep, { niche: "cbd" }) && !rowMatchesFilters(prep, { country: "Italy" }));
+caso("filter: search by extra contact, case-insensitive", rowMatchesFilters(prep, { q: "B@Y.COM" }) && !rowMatchesFilters(prep, { q: "nobody" }));
+caso("filter: works on an unprepared row too", rowMatchesFilters({ Domain: "z.com", Type: "Publisher", "Webmaster Contact": "c@z.com" }, { type: "Publisher", q: "c@z" }));
+const fac = facetsOf([prep, blank, prepareRow({ Domain: "w.com", "Main Country": "Spain", "Domain Language": "English" })]);
+caso("facets: most frequent first", eq(fac.countries, ["Spain"]) && eq(fac.languages, ["Spanish", "English"]), fac);
+caso("searchText equals prepared _q", searchText(prep) === prep._q);
 
 /* --- optional: a real copy --- */
 const ruta = process.argv[2];

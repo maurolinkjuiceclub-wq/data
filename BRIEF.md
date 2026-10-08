@@ -406,7 +406,10 @@ invented CSV of the sheet's size (103,393 rows, 45 columns, 30 MB): load
 and index 2.7 s, open the screen 1.2 s, search 40 ms, country filter 65 ms,
 jump to row 90,000 in 113 ms, 45 columns 143 ms, matching a 33-site list
 150 ms, 228 MB of browser memory. Gary asked on 08/10 whether it handles
-the 100k database: yes, with those numbers. A row opens a detail panel
+the 100k database: yes, with those numbers. After the review of 08/10 (rows
+prepared once where they enter, filter shared with the Worker): load 3.7 s,
+open the screen 123 ms, search 49 ms, country filter 123 ms, 215 MB. The
+CSV comes from `node scripts/inventar-csv.mjs`, deterministic and invented. A row opens a detail panel
 with its 45 fields. Rows come from the CSV or sample rows in the browser,
 or from the Worker's `/api/rows` (filters, paging, facets) when served
 next to it. Writing stays on Accept, as agreed.
