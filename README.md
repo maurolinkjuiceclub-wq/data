@@ -9,9 +9,12 @@ It shares the desk's look (tokens, type) but none of its code or deploy.
 
 ## What is here
 
-- `src/index.html`: the screen. EN/ES. Until the sheet is connected it
-  matches against sample rows marked as examples, or a CSV loaded in the
-  browser.
+- `src/index.html`: the screen, EN/ES, **generated** by
+  `scripts/build-page.mjs` from `src/page/` (head, body, app) and the module,
+  as one file with everything inside. It opens from disk, from GitHub, as the
+  claude.ai copy and behind the Worker alike. Edit `src/page/`, then run
+  `node scripts/build-page.mjs`. Until the sheet is connected it matches
+  against sample rows marked as examples, or a CSV loaded in the browser.
 - `src/site-lists.js`: parser (text, tab or CSV table, header optional),
   domain and price normalisation, index of the database with the
   "removed sites" exclusion, grouping into changed / unknown / unchanged /
@@ -42,14 +45,13 @@ not opened as a file.
     node scripts/probar-worker.mjs
     python3 -m http.server 8000 --directory src   # then open http://localhost:8000/
 
-`src/index.html` loads `site-lists.js` as a module, so it needs to be served,
-not opened as a file. Served without the Worker the page stays on sample rows
-or a CSV loaded in the browser.
+`src/index.html` also works opened straight from disk. Without the Worker
+the page stays on sample rows or a CSV loaded in the browser.
 
 ## Deploy
 
-A push to `main` runs `.github/workflows/deploy.yml`: both checks, then
-`dist/` (index.html and site-lists.js) and `wrangler deploy`. The repository
+A push to `main` runs `.github/workflows/deploy.yml`: the build check and
+both test scripts, then `dist/index.html` and `wrangler deploy`. The repository
 needs the two secrets the desk's repository has, `CLOUDFLARE_API_TOKEN` and
 `CLOUDFLARE_ACCOUNT_ID`. The Worker needs:
 

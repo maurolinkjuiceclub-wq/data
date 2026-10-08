@@ -16,6 +16,8 @@ jobs:
           node-version: "20"
 
       # The gate: nothing goes out that does not pass its own checks.
+      - name: index.html is built from its parts
+        run: node scripts/build-page.mjs --check
       - name: Parser, matcher, Accept row
         run: node scripts/probar-listas.mjs
       - name: Worker against a stand-in for Google
@@ -25,7 +27,6 @@ jobs:
         run: |
           mkdir -p dist
           cp src/index.html dist/index.html
-          cp src/site-lists.js dist/site-lists.js
 
       # Secrets CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID: the same two
       # the desk's repository uses, copied into this repository's settings.

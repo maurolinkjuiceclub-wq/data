@@ -4,7 +4,8 @@
   "type": "module",
   "description": "Offers page for Link Juice Club: match publisher site lists against the database and decide row by row. No build step; src/ is served as it is.",
   "scripts": {
-    "test": "node scripts/probar-listas.mjs && node scripts/probar-worker.mjs",
+    "build": "node scripts/build-page.mjs",
+    "test": "node scripts/build-page.mjs --check && node scripts/probar-listas.mjs && node scripts/probar-worker.mjs",
     "probar-listas": "node scripts/probar-listas.mjs",
     "probar-worker": "node scripts/probar-worker.mjs"
   }

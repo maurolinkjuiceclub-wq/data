@@ -1,0 +1,54 @@
+<header class="bar">
+  <h1 class="marca" data-i18n="title">Site lists</h1>
+  <div class="estado">
+    <button type="button" class="sello" id="state" aria-expanded="false" aria-controls="dbpanel"></button>
+    <span class="lang" role="group" aria-label="Language"><button type="button" id="lang-en" aria-pressed="true">EN</button><button type="button" id="lang-es" aria-pressed="false">ES</button></span>
+  </div>
+</header>
+
+<div class="dbpanel" id="dbpanel" hidden>
+  <div class="dbpanel-in">
+    <div><span class="lbl" data-i18n="db">Database</span><p class="hint" data-i18n="dbhint"></p></div>
+    <div class="par">
+      <div><label for="dbfile">Import Database · CSV</label><input type="file" id="dbfile" accept=".csv,text/csv"></div>
+      <div><label for="rmfile">removed sites · CSV</label><input type="file" id="rmfile" accept=".csv,text/csv"></div>
+    </div>
+    <div class="actions"><span class="dbmeta" id="dbmeta"></span><button type="button" class="btn sutil" id="reset" data-i18n="reset"></button></div>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="rail">
+    <form class="rev-form" onsubmit="return false">
+      <div><label for="sender" data-i18n="sender">Sender</label><input type="text" id="sender" value="starmagazines.de@gmail.com" autocomplete="off"></div>
+      <div><label data-i18n="stype">The sender is</label><span class="seg stype" role="group"><button type="button" id="stype-publisher" data-stype="Publisher" class="on-type" data-i18n="typePublisher">Publisher</button><button type="button" id="stype-broker" data-stype="Broker" data-i18n="typeBroker">Broker</button></span></div>
+      <div><label for="label" data-i18n="list">List</label><input type="text" id="label" value="starmagazines 05/10" autocomplete="off"></div>
+      <div><label for="list" data-i18n="paste">Paste the list</label><textarea id="list" spellcheck="false"></textarea></div>
+      <div><label for="listfile" data-i18n="orfile">or load the file they sent</label><input type="file" id="listfile" accept=".xlsx,.xls,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"><p class="said" id="filenote"></p></div>
+      <div class="actions"><button type="button" class="btn primary" id="match" data-i18n="match">Match</button></div>
+      <p class="said" id="parsenote"></p>
+    </form>
+  </aside>
+
+  <main class="work">
+    <div id="results"></div>
+    <section class="export" id="export" hidden>
+      <button type="button" class="panel-h" id="export-h" aria-expanded="true" aria-controls="export-body"><span class="caret" aria-hidden="true">▾</span><span id="export-t"></span></button>
+      <div id="export-body">
+        <p class="hint" data-i18n="rowshint"></p>
+        <div class="tabla-wrap" id="export-prev"></div>
+        <div class="actions"><button type="button" class="btn" id="copy" data-i18n="copy">Copy</button><span class="said" id="copynote"></span></div>
+        <textarea id="tsv" class="inp" readonly spellcheck="false" hidden></textarea>
+      </div>
+    </section>
+    <section class="export" id="wm" hidden>
+      <button type="button" class="panel-h" id="wm-h" aria-expanded="true" aria-controls="wm-body"><span class="caret" aria-hidden="true">▾</span><span id="wm-t"></span></button>
+      <div id="wm-body">
+        <p class="hint" data-i18n="wmhint"></p>
+        <div class="tabla-wrap" id="wm-prev"></div>
+        <div class="actions"><button type="button" class="btn" id="wm-copy" data-i18n="copy">Copy</button><span class="said" id="wm-note"></span></div>
+        <textarea id="wm-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
+      </div>
+    </section>
+  </main>
+</div>
