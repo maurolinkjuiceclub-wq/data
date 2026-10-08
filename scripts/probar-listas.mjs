@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -197,6 +197,13 @@ const styling = parseList("Here are some of the websites we have available:\nsty
 caso("stylingguiden: three sites, general prices", styling.items.length === 3 && styling.items[1].prices.general.amount === 450 && styling.items[2].domain === "sushilidingö.se", styling.items);
 const multi = parseList("a.com, b.com - 300 EUR");
 caso("two domains with one price share it", multi.items.length === 2 && multi.items[1].prices.general.amount === 300, multi.items);
+
+/* --- a sheet as rows --- */
+const sheet = tableToList([["Domain", "DR", "General", "Casino"], ["alpha.com", 45, 300, 450], [], ["beta.es", 32, "€ 150", ""]]) + "\n\n" + tableToList([["Site", "Price"], ["delta.fr", 120]]);
+const fromSheet = parseList(sheet);
+caso("tableToList: header by column, DR ignored, blank row dropped", fromSheet.items.length === 3 && fromSheet.items[0].prices.general.amount === 300 && fromSheet.items[0].prices.casino.amount === 450 && !fromSheet.items[0].prices.crypto, fromSheet.items);
+caso("tableToList: euro text cell", fromSheet.items[1].prices.general.amount === 150 && !fromSheet.items[1].prices.casino, fromSheet.items[1]);
+caso("tableToList: second sheet header resets the columns", fromSheet.items[2].domain === "delta.fr" && fromSheet.items[2].prices.general.amount === 120, fromSheet.items[2]);
 
 /* --- optional: a real copy --- */
 const ruta = process.argv[2];

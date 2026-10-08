@@ -374,8 +374,13 @@ price options below each group and a signature), spanienforum and rivonhome
 - Romanian and German markings ("Marcat ADVERTORIAL", "Marcat cu (P)")
   become Sponsor Tag Type = Marked by WM with the marking in Admin Comments.
 
-84 checks. Still untested for lack of samples: Excel attachments, PDF rate
-cards, Google Sheet links. Asked Senad for examples on 07/10.
+**Files (08/10).** The rail takes the file they sent: .xlsx/.xls through
+SheetJS 0.18.5 loaded from cdnjs only when needed (every sheet becomes rows,
+a header row with a Domain column maps the niches by column and a second
+sheet's header resets it), .csv/.txt read as text. Tested in Chromium with a
+two-sheet fixture and a CSV. Still open: PDF rate cards (businessamlive sent
+one on 05/10) and Google Sheet links, which need the service account. 87
+checks. Asked Senad for real examples on 07/10.
 
 ## Not in scope unless asked
 

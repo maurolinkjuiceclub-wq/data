@@ -181,6 +181,7 @@ td.dec .seg button:nth-child(n+3){border-bottom:0}
       <div><label data-i18n="stype">The sender is</label><span class="seg stype" role="group"><button type="button" id="stype-publisher" data-stype="Publisher" class="on-type" data-i18n="typePublisher">Publisher</button><button type="button" id="stype-broker" data-stype="Broker" data-i18n="typeBroker">Broker</button></span></div>
       <div><label for="label" data-i18n="list">List</label><input type="text" id="label" value="starmagazines 05/10" autocomplete="off"></div>
       <div><label for="list" data-i18n="paste">Paste the list</label><textarea id="list" spellcheck="false"></textarea></div>
+      <div><label for="listfile" data-i18n="orfile">or load the file they sent</label><input type="file" id="listfile" accept=".xlsx,.xls,.csv,.txt,.tsv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv,text/plain"><p class="said" id="filenote"></p></div>
       <div class="actions"><button type="button" class="btn primary" id="match" data-i18n="match">Match</button></div>
       <p class="said" id="parsenote"></p>
     </form>
@@ -210,7 +211,7 @@ td.dec .seg button:nth-child(n+3){border-bottom:0}
 </div>
 
 <script type="module">
-import { parseList, indexDatabase, matchList, rowForAccept, formatPrice, senderOf, termsOf, priceDelta, listTermsOf, withListTerms, NICHES, DB_COLUMNS, BUYING_COLUMN } from "./site-lists.js";
+import { parseList, indexDatabase, matchList, rowForAccept, formatPrice, senderOf, termsOf, priceDelta, listTermsOf, withListTerms, tableToList, NICHES, DB_COLUMNS, BUYING_COLUMN } from "./site-lists.js";
 /* ---------- sample database (2026 layout, marked rows are examples) ---------- */
 const SAMPLE_DB = [
   r("Publisher","starmagazines.de","starmagazines.de@gmail.com","",{general:"99",casino:"249",cbd:"170",crypto:"170"},"dofollow","Guest post","permanent","Example row: same prices as the 05/10 list"),
@@ -252,7 +253,7 @@ function setStype(v){
 
 function noteParse(){
   if(!lastParsed) return;
-  const cols = lastParsed.columns ? lastParsed.columns.join(", ") : t().noheader;
+  const cols = lastParsed.columns ? lastParsed.columns.filter(Boolean).join(", ") : t().noheader;
   $("parsenote").textContent = t().parsed(items.length, lastParsed.skipped.length, cols);
 }
 const decisions = {};   /* domain -> accept | reject | ask */
@@ -263,6 +264,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until the sheet is connected. A CSV copy can be loaded here; it stays in your browser.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
+    orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
     stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
     brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
     terms:{linkType:"link", placement:"placement", priceValidity:"validity", sponsorTag:"tag"}, saidNothing:"terms not stated", fromList:"Stated once for the whole list, not for this site", fromListShort:"whole list", dAbove:"above", dBelow:"below", recorded:"recorded",
@@ -279,6 +281,7 @@ const T = {
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta conectar la hoja. Puedes cargar una copia CSV; se queda en tu navegador.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
+    orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
     stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
     brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
     terms:{linkType:"enlace", placement:"duración", priceValidity:"validez", sponsorTag:"etiqueta"}, saidNothing:"sin condiciones", fromList:"Dicho una vez para toda la lista, no para este sitio", fromListShort:"toda la lista", dAbove:"más", dBelow:"menos", recorded:"registrado",
@@ -475,6 +478,43 @@ function copyFrom(id, note){
 }
 $("wm-copy").addEventListener("click", () => copyFrom("wm-tsv", "wm-note"));
 $("copy").addEventListener("click", () => copyFrom("tsv", "copynote"));
+
+/* ---------- the file they sent ---------- */
+/* SheetJS is loaded only when an Excel file arrives, from cdnjs (the only
+   script host the page may use), pinned. CSV and text need nothing. */
+const SHEETJS = "https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js";
+let sheetjs = null;
+function loadSheetJS(){
+  if(window.XLSX) return Promise.resolve(window.XLSX);
+  if(sheetjs) return sheetjs;
+  sheetjs = new Promise((ok, no) => {
+    const s = document.createElement("script"); s.src = SHEETJS; s.async = true;
+    s.onload = () => window.XLSX ? ok(window.XLSX) : no(new Error("no XLSX"));
+    s.onerror = () => { sheetjs = null; no(new Error("load failed")); };
+    document.head.appendChild(s);
+  });
+  return sheetjs;
+}
+$("listfile").addEventListener("change", async () => {
+  const f = $("listfile").files && $("listfile").files[0]; if(!f) return;
+  $("filenote").textContent = t().fileLoading;
+  try{
+    if(/\.(xlsx|xls|xlsm|ods)$/i.test(f.name)){
+      const XLSX = await loadSheetJS();
+      const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+      const parts = wb.SheetNames.map(n => tableToList(XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }))).filter(Boolean);
+      $("list").value = parts.join("\n\n");
+      $("filenote").textContent = t().fileRead(f.name, wb.SheetNames.length);
+    }else{
+      $("list").value = await f.text();
+      $("filenote").textContent = t().fileText(f.name);
+    }
+    if(!$("label").value.trim()) $("label").value = f.name.replace(/\.[^.]+$/, "");
+    run();
+  }catch(e){
+    $("filenote").textContent = t().fileFail;
+  }
+});
 
 /* ---------- boot ---------- */
 $("stype-publisher").addEventListener("click", () => setStype("Publisher"));

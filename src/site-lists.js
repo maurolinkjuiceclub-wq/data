@@ -164,9 +164,12 @@ export function parseList(text){
     const inlinePrices = priceIdxs.length ? priceIdxs : (!columns && !order ? [] : priceIdxs);
     if(!domIdxs.length){
       const niches = cells.map(nicheOf);
-      /* A header names niches and carries no price. */
-      if(niches.some(Boolean) && !priceIdxs.length && !columns && !order && !group.length){
-        if(cells.some(c => /domain|dominio|site|web|url/i.test(c) && !nicheOf(c))) columns = niches;
+      /* A header names niches and carries no price. One that also names the
+         domain column maps by index and may appear again (a second sheet);
+         one that does not maps by position and is taken once. */
+      const namesDomain = cells.some(c => /domain|dominio|site|web|url/i.test(c) && !nicheOf(c));
+      if(niches.some(Boolean) && !priceIdxs.length && (namesDomain || (!columns && !order && !group.length))){
+        if(namesDomain){ columns = niches; order = null; }
         else order = cells.map(nichesOf).filter(a => a.length);
         return;
       }
@@ -233,6 +236,16 @@ export function parseList(text){
   return { items, skipped, columns: columns || (order ? order.map(a => a.join("+")) : null) };
 }
 const SIGN_OFF = /^(thanks|thank you|many thanks|best|best regards|kind regards|regards|cheers|saludos|gracias|un saludo|atentamente|multumesc|mulțumesc|cu stima|mit freundlichen|viele grüße|beste grüße|lg|cordialement|met vriendelijke|vänliga hälsningar|mvh)\b/i;
+
+/* A sheet read as rows of cells (SheetJS sheet_to_json with header: 1, or
+   any 2D array) becomes the tab-separated text parseList reads. Empty rows
+   are dropped; numbers keep their value. Several sheets are joined, each
+   with a blank line between them; each sheet's own header row resets the
+   column mapping. No title line: "Sheet: Prices" would read as a header. */
+export function tableToList(rows){
+  const lines = (rows || []).map(r => (r || []).map(c => c == null ? "" : String(c).replace(/\t|\n/g, " ").trim()).join("\t")).filter(l => l.replace(/\t/g, "").trim());
+  return lines.join("\n");
+}
 
 /* ---------- the database side ---------- */
 
