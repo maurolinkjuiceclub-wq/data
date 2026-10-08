@@ -1,0 +1,50 @@
+name: Publish on GitHub Pages
+
+# Gary, 08/10: "please just deploy it fully on GitHub so I can view it.
+# Then we will include it with the LJC Outreach (Mesa). Make sure you don't
+# host on Cloudflare as it will be separate." So the page is published as a
+# static site here. The Worker (sheet access) does not run on Pages; it
+# waits for the move into the desk.
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - name: index.html is built from its parts
+        run: node scripts/build-page.mjs --check
+      - name: Parser, matcher, Accept row
+        run: node scripts/probar-listas.mjs
+      - name: Worker against a stand-in for Google
+        run: node scripts/probar-worker.mjs
+      - name: Build dist/
+        run: |
+          mkdir -p dist
+          cp src/index.html dist/index.html
+      - uses: actions/configure-pages@v5
+        with:
+          enablement: true
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+      - id: deploy
+        uses: actions/deploy-pages@v4

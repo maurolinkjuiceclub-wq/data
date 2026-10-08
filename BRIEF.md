@@ -387,6 +387,15 @@ two-sheet fixture and a CSV. Still open: PDF rate cards (businessamlive sent
 one on 05/10) and Google Sheet links, which need the service account. 87
 checks. Asked Senad for real examples on 07/10.
 
+## Where it lives (Gary, 08/10)
+
+"Yes please just deploy it fully on GitHub so I can view it. Then we will
+include it with the LJC Outreach (Mesa). Make sure you don't host on
+Cloudflare as it will be separate." So: GitHub Pages for review, then the
+page goes into the desk and the sheet access (the Worker written on 08/10)
+moves into the desk's Worker. The example data on the public page is
+invented. This replaces the "own Cloudflare deploy" line of the build order.
+
 ## Not in scope unless asked
 
 Automatic quality checks of a site (traffic, DR), scraping the publisher's

@@ -1,9 +1,9 @@
-name: Deploy Site lists
+name: Deploy Site lists to Cloudflare (manual only)
 
+# Gary, 08/10: do not host this on Cloudflare; it will be included in the
+# desk later. Kept for that day, runs only by hand. The live site is GitHub
+# Pages (pages.yml).
 on:
-  push:
-    branches: [main]
-    paths: ["src/**", "scripts/**", "wrangler.jsonc", ".github/workflows/deploy.yml"]
   workflow_dispatch: {}
 
 jobs:

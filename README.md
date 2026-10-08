@@ -48,22 +48,19 @@ not opened as a file.
 `src/index.html` also works opened straight from disk. Without the Worker
 the page stays on sample rows or a CSV loaded in the browser.
 
-## Deploy
+## Where it is published
 
-A push to `main` runs `.github/workflows/deploy.yml`: the build check and
-both test scripts, then `dist/index.html` and `wrangler deploy`. The repository
-needs the two secrets the desk's repository has, `CLOUDFLARE_API_TOKEN` and
-`CLOUDFLARE_ACCOUNT_ID`. The Worker needs:
+**GitHub Pages**, by `.github/workflows/pages.yml` on every push to `main`
+(Gary, 08/10: publish on GitHub, not on Cloudflare; the page will be included
+in the desk later). Pages serves `src/index.html` as a static site, so the
+Worker does not run there: the page works on sample rows or on a CSV loaded
+in the browser, and shows the row Accept would write. The example list and
+the sample rows are invented, because the site is public.
 
-- `SHEET_ID` (var in `wrangler.jsonc`): the copy while we test;
-- `GOOGLE_SA` (secret, `wrangler secret put GOOGLE_SA`): the service
-  account's JSON key. Gary creates the account and shares the sheet with its
-  email as Editor;
-- `ACCESS_AUD` (var): the Application Audience tag of the Access application
-  that protects the hostname, once it exists.
-
-Until `GOOGLE_SA` is set, `/api/status` answers `connected: false` and the
-page says so in its seal.
+The Cloudflare deploy (`deploy.yml`, `wrangler.jsonc`, `src/worker.js`) is
+kept for the move into the desk and runs only by hand. It needs
+`CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as repository secrets, and
+the Worker needs `SHEET_ID`, `GOOGLE_SA` (secret) and `ACCESS_AUD`.
 
 ## Not yet
 
