@@ -39,6 +39,7 @@
   --bad:#c0392b; --bad-ink:#b3261e; --bad-bg:#fbe5e2; --bad-line:#eeb3ab;
   --shadow:0 1px 2px rgba(16,24,40,.04); color-scheme:light }
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
 button{font-family:inherit;font-size:inherit;color:inherit}
 :focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:3px}
@@ -1119,7 +1120,7 @@ let mode = "list";
 const ROW_H = 34;
 const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, facets: null, remotePages: new Map(), remoteTotal: 0, pending: null };
 const NARROW = [
-  ["Domain", 220], ["Type", 90], ["Contact", 230], ["Country", 120], ["Language", 100],
+  ["Domain", 220], ["Type", 110], ["Contact", 230], ["Country", 120], ["Language", 100],
   ["Buying Casino", 84], ["Buying Unlicensed Casino", 84], ["Buying Crypto", 84], ["Buying Forex", 84], ["Buying CBD", 84], ["Buying Dating", 84], ["Buying General", 84],
   ["Terms", 230], ["Updated", 100]
 ];

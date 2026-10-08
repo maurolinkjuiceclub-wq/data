@@ -382,7 +382,7 @@ let mode = "list";
 const ROW_H = 34;
 const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, facets: null, remotePages: new Map(), remoteTotal: 0, pending: null };
 const NARROW = [
-  ["Domain", 220], ["Type", 90], ["Contact", 230], ["Country", 120], ["Language", 100],
+  ["Domain", 220], ["Type", 110], ["Contact", 230], ["Country", 120], ["Language", 100],
   ["Buying Casino", 84], ["Buying Unlicensed Casino", 84], ["Buying Crypto", 84], ["Buying Forex", 84], ["Buying CBD", 84], ["Buying Dating", 84], ["Buying General", 84],
   ["Terms", 230], ["Updated", 100]
 ];
