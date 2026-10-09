@@ -392,6 +392,33 @@ niches, "valid until 31.12.2026." read without the final dot). Still open:
 Google Sheet links, which need the service account. 96 checks. Asked Senad
 for real examples on 07/10.
 
+**Senad's examples (09/10).** Four lists, one per shape: an Excel from
+bogdan@librawebcorp.com and a PDF from paul@drivar.de (both as Slack file
+links, which this session cannot open), a Google Sheet from
+orders@mmgroupmedia.com, and an email body from contact@mattbarltd.co.uk
+(sent to a mailbox this session does not see; the outreach@ mailbox has
+nothing from them). The Google Sheet could be read through the Drive
+connector: "MM Group Media - Websites", 427 sites on the main tab plus
+"Added this Week", "Added this Month", a "Tier 2.0" tab of 362 sites and a
+"How to Order" tab of prose. It is a broker list. Its header is on two rows
+with merged cells ("Guest Post" over "Normal | Gambling & Grey Niches", the
+same for Link Insert and Brand Mentions, "Ahrefs" over DR, RD, Avg Traffic,
+Main Country), prices are "190 €", and a "Sample Post" column carries a URL
+on the same site. Against that shape the parser of 08/10 failed three ways:
+it read RD and traffic as the prices, missed the real ones, and made the
+Sample Post URL a second item. Fixed the same day, with the shape (domains
+invented) in the tests: a two-row header is merged, the upper row carried
+across its blanks; a sheet row is one site, the header's domain column or
+the first cell per host; a cell under a column that is not a niche is kept
+as a labelled term ("Ahrefs DR: 44", "Link Insert Normal: 110 €") instead
+of a bare number; tab rows keep their empty cells and leading tabs so the
+columns line up. Two mappings to confirm with Gary: **"Gambling & Grey
+Niches" fills Casino and the four grey columns (Crypto, Forex, CBD,
+Dating)** with the same price, and **Link Insert, Brand Mentions and
+Homepage Banner are not Buying prices** (the database records the article
+price); both are visible on the row before anyone accepts. The other three
+examples are still to be tested when the files arrive. 105 checks.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will

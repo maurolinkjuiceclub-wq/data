@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -151,6 +151,32 @@ caso("termsOf fixed values", eq([tf.linkType, tf.placement, tf.priceValidity, tf
 const tp = parseList("Rate card 2026 - Example Media\n\nDomain / General / Casino / Crypto\nalpha-rates.example 250 EUR / 450 EUR / 400 EUR\nbeta-rates.example 180 EUR / 300 EUR / 280 EUR\n\nAll links dofollow, permanent. Prices valid until 31.12.2026.");
 const tpl = listTermsOf(tp);
 caso("PDF rate card: domains and columns", eq(tp.items.map(i => [i.domain, i.prices.general.amount, i.prices.casino.amount, i.prices.crypto.amount]), [["alpha-rates.example", 250, 450, 400], ["beta-rates.example", 180, 300, 280]]), tp.items);
+/* A broker sheet with a two-row header (shape of the Google Sheet Senad
+   sent on 09/10, domains invented): merged group cells blank after the
+   first, "Normal" and "Gambling & Grey Niches" under Guest Post, Link
+   Insert and Brand Mentions, a Sample Post URL on the same site, Ahrefs
+   metrics as bare numbers, prices as "190 €". One item per row, general
+   and the grey columns from Guest Post only, the rest as labelled terms. */
+const mmRows = [
+  ["Category", "Websites", "orders@broker.example", "Ahrefs", "", "", "", "Guest Post", "", "Link Insert", "", "Brand Mentions", "", "Homepage Banner"],
+  ["", "427", "Sample Post", "DR", "RD", "Avg Traffic", "Main Country", "Normal", "Gambling & Grey Niches", "Normal", "Gambling & Grey Niches", "Normal", "Gambling & Grey Niches", "Per Month"],
+  ["Gambling", "dice-one.example", "", 44, 1102, 18176, "India", "190 €", "290 €", "110 €", "170 €", "110 €", "170 €", "200 €"],
+  ["Sports", "gear-two.example", "https://gear-two.example/top-slots-for-multiplayer-fun/", 47, 1334, 11189, "Mexico", "150 €", "230 €", "90 €", "140 €", "90 €", "140 €", "150 €"]
+];
+const mm = parseList(tableToList(mmRows));
+caso("two-row header: one item per sheet row", mm.items.length === 2 && mm.skipped.length === 0, mm.items.map(i => i.domain).concat(mm.skipped.map(x => x.text)));
+caso("two-row header: Guest Post Normal is general, grey niches fill the grey columns", eq(mm.items.map(i => [i.prices.general.amount, i.prices.casino.amount, i.prices.crypto.amount, i.prices.forex.amount, i.prices.cbd.amount, i.prices.dating.amount]), [[190, 290, 290, 290, 290, 290], [150, 230, 230, 230, 230, 230]]), mm.items.map(i => i.prices));
+caso("two-row header: metrics are not prices", !mm.items.some(i => Object.values(i.prices).some(p => p.amount > 1000)), mm.items[0].prices);
+caso("two-row header: metrics and other products as labelled terms", /Ahrefs DR: 44 \| Ahrefs RD: 1102/.test(mm.items[0].terms) && /Link Insert Normal: 110 €/.test(mm.items[0].terms) && /Homepage Banner Per Month: 200 €/.test(mm.items[0].terms), mm.items[0].terms);
+caso("two-row header: the Sample Post URL is a term, not a second site", /Sample Post: https:\/\/gear-two\.example/.test(mm.items[1].terms) && mm.items[1].domain === "gear-two.example", mm.items[1]);
+caso("two-row header: pasted from the sheet with tabs reads the same", eq(parseList(mmRows.map(r => r.join("\t")).join("\n")).items.map(i => [i.domain, i.prices.general.amount]), [["dice-one.example", 190], ["gear-two.example", 150]]));
+caso("grey niches alone name the four grey columns", eq(nichesOf("Grey niches"), ["crypto", "forex", "cbd", "dating"]), nichesOf("Grey niches"));
+caso("a link insertion column is not a Buying price", eq(nichesOf("Link Insert Gambling & Grey Niches"), []));
+/* The broker's "How to Order" sheet follows the list: its prose carries the
+   list-wide terms and its bulk prices are nobody's offer. */
+const mmAll = parseList(tableToList(mmRows.concat([[], ["By email"], ["Each post includes one permanent dofollow link to your preferred target URL."], ["We do not label posts as sponsored or guest posts, unless you specifically request it."], ["5 orders in bulk", "100€"], ["Above pricing is final and no negotiation is accepted."]])));
+const mmTerms = listTermsOf(mmAll);
+caso("broker's How to Order sheet: still two items, terms permanent and Do follow", mmAll.items.length === 2 && mmTerms.placement === "permanent" && mmTerms.linkType === "Do follow", [mmAll.items.length, mmTerms]);
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

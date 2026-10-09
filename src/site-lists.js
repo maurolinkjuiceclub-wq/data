@@ -88,6 +88,7 @@ export function findPrice(line){
 
 /* The seven Buying columns of the database, and the words lists use for them. */
 export const NICHES = ["casino", "unlicensedCasino", "crypto", "forex", "cbd", "dating", "general"];
+const GREY = /gr[ae]y[ -]?(niches?|markets?|hat)/i;
 const NICHE_WORDS = [
   ["unlicensedCasino", /unlicen[cs]ed|sin licencia|offshore|curacao/i],
   ["casino", /casino|gambling|gl[üu]cksspiel|betting|wetten|apuestas|igaming|poker|slots?|juego/i],
@@ -95,8 +96,15 @@ const NICHE_WORDS = [
   ["forex", /forex|trading|finance|finanzen|finanzas/i],
   ["cbd", /\bcbd\b|cannabis|hemp|vape|hanf/i],
   ["dating", /dating|adult|citas/i],
-  ["general", /general|allgemein|mainstream|normal|standard|regular|price|precio|preis|cost/i]
+  ["general", /general|allgemein|mainstream|normal|standard|regular|price|precio|preis|cost/i],
+  /* "Gambling & Grey Niches" (MM Group Media, 09/10): grey is everything
+     that is not mainstream, so the price fills the four grey columns too. */
+  ["crypto", GREY], ["forex", GREY], ["cbd", GREY], ["dating", GREY]
 ];
+/* A column for a product that is not an article carries no Buying price:
+   link insertions, brand mentions, banners, niche edits. Its cells stay as
+   labelled terms so the person still sees them. */
+const NOT_ARTICLE = /link\s*insert|insertion|brand\s*mention|banner|niche\s*edit|homepage|sidebar|press\s*release|social/i;
 export function nicheOf(header){
   return nichesOf(header)[0] || null;
 }
@@ -104,8 +112,10 @@ export function nicheOf(header){
    is [cbd, crypto] and a price under it fills both Buying columns. */
 export function nichesOf(header){
   const h = String(header || "");
-  return NICHE_WORDS.map(([niche, re]) => { const m = re.exec(h); return m ? [m.index, niche] : null; })
+  if(NOT_ARTICLE.test(h)) return [];
+  const found = NICHE_WORDS.map(([niche, re]) => { const m = re.exec(h); return m ? [m.index, niche] : null; })
     .filter(Boolean).sort((a, b) => a[0] - b[0]).map(x => x[1]);
+  return found.filter((n, i) => found.indexOf(n) === i);
 }
 
 /* ---------- parsing a list ---------- */
@@ -116,7 +126,9 @@ function splitRows(text){
   /* Lists pasted from an email often put every site on one line, separated
      by " · " or " ; ". Those become rows first. */
   const flat = String(text || "").replace(/\r/g, "").replace(/\s[·•|]\s|\s;\s/g, "\n");
-  const lines = flat.split("\n").map(l => l.trim()).filter(Boolean);
+  /* Leading tabs stay: a sheet row whose first cell is empty must keep its
+     column positions. Trailing whitespace goes. */
+  const lines = flat.split("\n").map(l => l.replace(/^ +/, "").replace(/\s+$/, "")).filter(Boolean);
   const sep = lines.some(l => l.includes("\t")) ? "\t" : lines.filter(l => l.includes(";")).length > lines.length / 2 ? ";" : lines.filter(l => l.includes(",")).length > lines.length / 2 ? "," : null;
   const prose = l => l.split(/\s{2,}|\s[-–\/:]\s|\s+(?=[€$£]?\s?\d)/);
   return lines.map(l => {
@@ -124,6 +136,10 @@ function splitRows(text){
     /* A comma-separated line is usually a CSV row, but "a.com, b.com - 300
        EUR" is prose with a comma: a cell that is neither a domain nor a
        price is split again like prose. */
+    /* Tab rows keep their empty cells: a sheet with merged header cells
+       ("Ahrefs" over DR, RD, Traffic) has blanks, and the column index must
+       still match the row below. */
+    if(sep === "\t") return splitCsvLine(l, sep).map(c => c.trim());
     return splitCsvLine(l, sep).map(c => c.trim()).filter(Boolean)
       .flatMap(c => (sep !== "\t" && !normaliseDomain(c) && !isPriceCell(c) && /\s/.test(c)) ? prose(c).map(x => x.trim()).filter(Boolean) : [c]);
   });
@@ -149,17 +165,52 @@ export function parseList(text){
   const rows = splitRows(text);
   const items = [];
   const skipped = [];
-  let columns = null;   /* niche per cell index, when the header names the domain column */
+  let columns = null;   /* niches per cell index, when the header names the domain column */
+  let headers = null;   /* the header's words per cell index, to label the other cells */
+  let domainCol = -1;   /* the header's domain column: a sheet row is one site */
   let order = null;     /* niches in order of the prices, when it does not ("General / Casino / CBD") */
   let group = [];       /* domains named on a line without prices; the price lines below belong to them */
   let signedOff = false;
+  let skipNext = false;
+  /* A header row has no domain and no price with a currency; a bare number
+     ("427" sites) is allowed. */
+  const noOffer = cells => !cells.some(c => normaliseDomain(c)) && !cells.some(c => findPrice(c));
+  const isHeader = cells => cells.some(c => /domain|dominio|site|web|url/i.test(c) && !nicheOf(c)) && cells.some(c => nichesOf(c).length);
+  const setHeader = cells => {
+    columns = cells.map(nichesOf); headers = cells.map(c => c.replace(/\s+/g, " ").trim()); order = null;
+    domainCol = cells.findIndex(c => /domain|dominio|site|web|url/i.test(c) && !nicheOf(c));
+  };
   rows.forEach((cells, i) => {
-    const line = cells.join(" ");
+    if(skipNext){ skipNext = false; return; }
+    const line = cells.filter(Boolean).join(" ");
+    /* A sheet header on two rows (MM Group Media, 09/10): "Guest Post" over
+       "Normal | Gambling & Grey Niches", merged cells blank after the first.
+       The upper row is carried across its blanks and joined to the lower
+       one, so the column reads "Guest Post Gambling & Grey Niches". */
+    const next = rows[i + 1];
+    if(next && !group.length && noOffer(cells) && noOffer(next) && !isHeader(cells)){
+      let carry = "";
+      const n = Math.max(cells.length, next.length);
+      const joined = [];
+      for(let j = 0; j < n; j++){
+        let c = cells[j] || ""; const d = next[j] || "";
+        if(c) carry = c; else if(d) c = carry;
+        joined.push([c, d].filter(Boolean).join(" "));
+      }
+      if(isHeader(joined)){ setHeader(joined); skipNext = true; return; }
+    }
     /* After "Thanks," / "Best regards" / "Multumesc" what follows is a
        signature: its domain and phone are not an offer. */
     if(signedOff){ skipped.push({ line: i + 1, text: line }); return; }
     if(SIGN_OFF.test(line) && !cells.some(c => normaliseDomain(c))){ signedOff = true; skipped.push({ line: i + 1, text: line }); return; }
-    const domIdxs = cells.map((c, j) => normaliseDomain(c) ? j : -1).filter(j => j >= 0);
+    /* One site per sheet row: the header's domain column when there is one;
+       otherwise the first cell of each host, so a "Sample Post" URL on the
+       same site is not a second item. */
+    let domIdxs = cells.map((c, j) => normaliseDomain(c) ? j : -1).filter(j => j >= 0);
+    if(domIdxs.length > 1){
+      if(domainCol >= 0 && domIdxs.includes(domainCol)) domIdxs = [domainCol];
+      else { const seen = new Set(); domIdxs = domIdxs.filter(j => { const h = normaliseDomain(cells[j]).domain; if(seen.has(h)) return false; seen.add(h); return true; }); }
+    }
     const priceIdxs = cells.map((c, j) => isPriceCell(c) && !/^\d{1,2}$/.test(c.trim()) ? j : -1).filter(j => j >= 0);
     const inlinePrices = priceIdxs.length ? priceIdxs : (!columns && !order ? [] : priceIdxs);
     if(!domIdxs.length){
@@ -169,7 +220,7 @@ export function parseList(text){
          one that does not maps by position and is taken once. */
       const namesDomain = cells.some(c => /domain|dominio|site|web|url/i.test(c) && !nicheOf(c));
       if(niches.some(Boolean) && !priceIdxs.length && (namesDomain || (!columns && !order && !group.length))){
-        if(namesDomain){ columns = niches; order = null; }
+        if(namesDomain) setHeader(cells);
         else order = cells.map(nichesOf).filter(a => a.length);
         return;
       }
@@ -208,6 +259,9 @@ export function parseList(text){
     const guessing = !columns && !order;
     const made = domIdxs.map(j => { const d = normaliseDomain(cells[j]); return { domain: d.domain, path: d.path, raw: cells[j], prices: {}, terms: "", line: i + 1 }; });
     const terms = [];
+    /* Under a header, a cell that is not a price for a niche is shown with
+       its column name: "Ahrefs DR: 44", "Link Insert Normal: 110 €". */
+    const labelled = (j, c) => headers && headers[j] && !(columns[j] && columns[j].length) && !/^\d{1,2}$/.test(headers[j]) && !/terms|notes?|comments?|conditions|remarks|info|observa/i.test(headers[j]) ? headers[j] + ": " + c : c;
     let nth = 0;
     cells.forEach((c, j) => {
       if(domIdxs.includes(j)) return;
@@ -224,16 +278,16 @@ export function parseList(text){
           const free = niches.filter(n => !it.prices[n]);
           if(free.length){ free.forEach(n => { it.prices[n] = p; }); used = true; }
         }
-        if(!used) terms.push(c);
+        if(!used) terms.push(labelled(j, c));
       }else if(c){
-        terms.push(c);
+        terms.push(labelled(j, c));
       }
     });
     made.forEach(it => { it.terms = terms.join(" | "); items.push(it); });
   });
   /* A domain named without any price, and nothing below it, stays as an
      item with no price: the person sees it and decides. */
-  return { items, skipped, columns: columns || (order ? order.map(a => a.join("+")) : null) };
+  return { items, skipped, columns: columns ? columns.map(a => a.length ? a.join("+") : null) : (order ? order.map(a => a.join("+")) : null) };
 }
 const SIGN_OFF = /^(thanks|thank you|many thanks|best|best regards|kind regards|regards|cheers|saludos|gracias|un saludo|atentamente|multumesc|mulțumesc|cu stima|mit freundlichen|viele grüße|beste grüße|lg|cordialement|met vriendelijke|vänliga hälsningar|mvh)\b/i;
 
