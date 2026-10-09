@@ -33,7 +33,7 @@ Unsere Leistungen: Dauerhafte Veröffentlichung von Gastbeiträgen · Do-Follow-
    enter: the sample rows here, a CSV in the file handlers, the Worker's
    pages when they arrive. One copy per row, shared by the matcher and the
    Database screen (review of 08/10). */
-let dbRows = SAMPLE_DB.map(prepareRow), rmRows = SAMPLE_REMOVED.map(prepareRow), dbSource = "sample rows", dbLoadedAt = null;
+let dbRows = SAMPLE_DB.map(prepareRow), rmRows = SAMPLE_REMOVED.map(prepareRow), dbSource = "sample rows", dbLoadedAt = null, rmFromWorkbook = false;
 let index = indexDatabase(dbRows, rmRows);
 let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
 /* The Worker, when the page is served next to it. In the claude.ai copy
@@ -206,10 +206,14 @@ async function loadDbFile(f, opts){
       const rmName = names.find(n => n !== dbName && /remov|elimin/i.test(n)) || (names.length > 1 ? names.find(n => n !== dbName) : null);
       const objs = n => XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: "", raw: false }).map(prepareRow);
       dbRows = objs(dbName);
-      if(rmName) rmRows = objs(rmName);
+      rmRows = rmName ? objs(rmName) : SAMPLE_REMOVED.map(prepareRow);
     }else{
       dbRows = csvToObjects(await f.text()).map(prepareRow);
+      /* A CSV is the main tab only: removed sites from an earlier workbook
+         do not belong to it. */
+      if(rmFromWorkbook) rmRows = SAMPLE_REMOVED.map(prepareRow);
     }
+    rmFromWorkbook = /\.(xlsx|xls|xlsm|ods)$/i.test(f.name) && rmRows !== SAMPLE_REMOVED;
     dbSource = f.name; dbLoadedAt = new Date();
     rebuild();
     if(opts.remember) rememberDb();

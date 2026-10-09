@@ -271,6 +271,22 @@ caso("pdf table parsed: Article is general, Homepage Link a labelled term, metri
 caso("pdf notes: No follow and 2 Years are what is included; permanent on request and do-follow at a surcharge are not", pdfTerms.linkType === "No follow" && pdfTerms.placement === "2 Years", pdfTerms);
 caso("pdf prose page: words joined into lines", eq(pdfTextOf([it("Rate", 50, 700, 20), it("card", 73, 700, 20), it("alpha.example 250 EUR", 50, 684, 100)]), "Rate card\nalpha.example 250 EUR"));
 caso("a Google Sheets link is not a site", parseList("https://docs.google.com/spreadsheets/d/abc/edit?gid=0#gid=0").items.length === 0);
+/* Review of 09/10 (six findings). */
+const rv1 = termsOf({ terms: "do follow, permanent, prices +19% VAT", prices: {} });
+caso("review: an option clause ends at a comma, real terms stay", rv1.linkType === "Do follow" && rv1.placement === "permanent", rv1);
+const rv1b = termsOf({ terms: "do follow permanent, sponsored tag optional", prices: {} });
+caso("review: 'sponsored tag optional' keeps dofollow and permanent", rv1b.linkType === "Do follow" && rv1b.placement === "permanent", rv1b);
+const rv2 = parseList("All links dofollow and permanent\nDomain\tCasino\tGeneral\na.example\t300\t200");
+const rv2t = listTermsOf(rv2);
+caso("review: a terms line above a sheet header is kept for the list", rv2.items.length === 1 && rv2t.linkType === "Do follow" && rv2t.placement === "permanent", [rv2.items.length, rv2t, rv2.skipped]);
+const rv2b = parseList("Domain\tCasino\tGeneral\n\tdofollow\tpermanent\na.example\t300\t200");
+caso("review: a terms row under the header is not joined into it", rv2b.items.length === 1 && rv2b.items[0].prices.casino.amount === 300 && listTermsOf(rv2b).placement === "permanent", [rv2b.items, rv2b.skipped]);
+const rv3 = parseList("Our prices start at 100 EUR.\na.example - 200 EUR\nb.example - 300 EUR\nc.example");
+caso("review: a priced row closes the price line above; an unpriced domain after it has no price", !rv3.items.find(i => i.domain === "c.example").prices.general && rv3.items[0].prices.general.amount === 200, rv3.items);
+caso("review: Festpreis is Fixed", termsOf({ terms: "Festpreis, dofollow, dauerhaft", prices: {} }).priceValidity === "Fixed");
+const rv5 = pdfTextOf([it("Domain", 50, 700, 40), it("DA", 200, 700, 15), it("Price", 300, 700, 30), it("Terms", 380, 700, 30), it("a.example", 50, 680, 50), it("45", 200, 680, 12), it("99 €", 345, 680, 25), it("permanent", 380, 680, 50), it("b.example", 50, 660, 50), it("12", 200, 660, 12), it("149 €", 340, 660, 30), it("permanent", 380, 660, 50), it("c.example", 50, 640, 50), it("7", 200, 640, 6), it("199 €", 340, 640, 30), it("permanent", 380, 640, 50)]);
+caso("review: a right-aligned number stays under its header", rv5.split("\n")[1] === "a.example\t45\t99 €\tpermanent", rv5);
+caso("review: a lone E before a single glyph is left alone", pdfTextOf([it("E", 50, 700, 6), it("m", 56, 700, 6), it("ail", 62, 700, 15), it("x", 100, 700, 5), it("y", 105, 700, 5), it("z", 110, 700, 5), it("1", 200, 700, 5), it("2", 300, 700, 5), it("a", 50, 680, 5), it("b", 100, 680, 5), it("c", 200, 680, 5), it("d", 300, 680, 5), it("e", 50, 660, 5), it("f", 100, 660, 5), it("g", 200, 660, 5), it("h", 300, 660, 5)]).startsWith("Email"));
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

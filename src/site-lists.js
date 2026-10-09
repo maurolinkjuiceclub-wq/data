@@ -220,16 +220,23 @@ export function parseList(text){
     if(tabbed && !group.length && noOffer(cells)){
       const block = [cells];
       while(i + block.length < rows.length && block.length < 6 && noOffer(rows[i + block.length])) block.push(rows[i + block.length]);
+      /* A line of conditions above or under the header ("All links dofollow
+         and permanent") is not part of it: it is kept for listTermsOf. */
+      const isTermsRow = r => !r.some(c => nichesOf(c).length) && /dofollow|do-?\s?follow|no-?\s?follow|permanent|dauerhaft|sponsored|valid|fixed|festpreis/i.test(r.join(" "));
       let best = null;
       for(let n = 1; n <= block.length; n++){
-        const part = block.slice(0, n).filter(r => r.filter(Boolean).length > 1);
+        const part = block.slice(0, n).filter(r => r.filter(Boolean).length > 1 && !isTermsRow(r));
         if(!part.length) continue;
         const joined = joinHeader(part);
         if(!isHeader(joined)) continue;
         const score = joined.filter(c => nichesOf(c).length).length;
         if(!best || score >= best.score) best = { n, joined, score };
       }
-      if(best){ setHeader(best.joined); skip = best.n - 1; return; }
+      if(best){
+        setHeader(best.joined); skip = best.n - 1;
+        block.slice(0, best.n).forEach((r, k) => { if((r.filter(Boolean).length <= 1 && /\p{L}/u.test(r.join(""))) || isTermsRow(r)) skipped.push({ line: i + k + 1, text: r.filter(Boolean).join(" ") }); });
+        return;
+      }
     }
     /* After "Thanks," / "Best regards" / "Multumesc" what follows is a
        signature: its domain and phone are not an offer. */
@@ -321,7 +328,7 @@ export function parseList(text){
       });
       return;
     }
-    group = [];
+    group = []; pending = null;   /* a priced row closes the price line above */
     const guessing = !columns && !order;
     const made = domIdxs.map(j => { const d = normaliseDomain(cells[j]); return { domain: d.domain, path: d.path, raw: cells[j], prices: {}, terms: "", line: i + 1 }; });
     const terms = [];
@@ -416,7 +423,7 @@ export function pdfTextOf(items){
     r.parts.forEach((p, k) => {
       const a = r.parts[k - 1], b = r.parts[k + 1];
       const before = !a || (/[a-z\/.-]$/.test(a.s) && p.x - (a.x + a.w) < 1.5);   /* or the line starts with it ("Einden.com" under "https://mentor-") */
-      if(p.s === "E" && b && before && /^[a-z]/.test(b.s) && b.x - (p.x + p.w) < 1.5) p.s = "f";
+      if(p.s === "E" && b && before && b.s.length > 1 && /^[a-z]/.test(b.s) && b.x - (p.x + p.w) < 1.5) p.s = "f";
     });
     /* Touching items are one word; a gap is a space. */
     const merged = [];
@@ -434,7 +441,9 @@ export function pdfTextOf(items){
   if(wide.length < 3) return rows.map(r => r.parts.map(p => p.s).join(" ")).join("\n");
   const template = wide.reduce((a, b) => b.parts.length > a.parts.length ? b : a, wide[0]);
   const cols = template.parts.map(p => p.x);
-  const colOf = x => { let best = 0; cols.forEach((c, k) => { if(Math.abs(c - x) < Math.abs(cols[best] - x)) best = k; }); return best; };
+  /* A cell belongs to the column whose start is the last one at or before
+     it, so a right-aligned number stays under its header. */
+  const colOf = x => { let k = 0; while(k + 1 < cols.length && x >= cols[k + 1] - 1.5) k++; return k; };
   const table = rows.map(r => {
     const cells = cols.map(() => "");
     r.parts.forEach(p => { const k = colOf(p.x); cells[k] = cells[k] ? cells[k] + " " + p.s : p.s; });
@@ -634,11 +643,11 @@ export function termsOf(item){
   /* "permanent placement on request", "do-follow instead of no-follow:
      +99€" (drivar.de, 09/10) are options, not the included terms: a clause
      that says so is left out when reading link type and placement. */
-  const t2 = t.replace(/[^.|\n]*(on request|auf anfrage|a petición|la cerere|optional|surcharge|aufpreis|extra charge|\+\s?\d)[^.|\n]*/g, " ");
+  const t2 = t.replace(/[^.|\n,;]*(on request|auf anfrage|a petición|la cerere|optional|surcharge|aufpreis|extra charge|\+\s?\d)[^.|\n,;]*/g, " ");
   const linkType = /no-?\s?follow/.test(t2) ? "No follow" : /do-?\s?follow|dofollow/.test(t2) ? "Do follow" : "";
   const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t2) ? "permanent" : /2\s*(years?|jahre|años)|24\s*(months?|monate)/.test(t2) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t2) ? "1 Year" : "";
   const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
-  const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /\bfixed\b|\bfijo\b|\bfest(e|er|es|en)?\b/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
+  const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /\bfixed\b|\bfijo\b|\bfest(e|er|es|en|preis)?\b/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
   const adminComments = [];
   if(marked) adminComments.push(`Marked as "${marked[1]}"`);
   if(item.prices && item.prices.unlicensedCasino) adminComments.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
