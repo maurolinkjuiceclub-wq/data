@@ -557,6 +557,51 @@ conditions line above a header lost, a price line leaking into later
 domains, Festpreis, right-aligned PDF numbers, the lone-E rule on
 per-glyph PDFs); all fixed with checks, 131 in total.
 
+## Senad's document "For Simon 07/10" (shared 09/10, evening)
+
+Senad answered the questions of 07/10 in a Google Doc. What it says, and
+what changed in the page the same evening:
+
+- **Four sender types.** Publisher (the site's owner, listed on the site),
+  Exclusive (we wrote to the site's contact and someone else answered for
+  it), Broker (reseller), Unsure (could be either). The rail now has the
+  four; Type takes the four in the row. Broker and Unsure behave the same
+  (`isReseller`).
+- **Webmaster lists** are mostly updates of that webmaster's sites plus new
+  ones; a new site already in the database from a broker or unsure sender
+  is cheaper from the webmaster, so the broker's row is removed and the
+  webmaster's entered: **"Broker conversion"**. The page flags such a row
+  and the exported row says "Broker conversion: replaces the row from
+  <contact>"; removing the old row is done by hand in the sheet, the page
+  never deletes.
+- **Broker lists:** only the sites we already have from that broker are
+  updated; **new sites from a broker are never added** ("we don't want
+  them, our aim is to eliminate the brokers"). The rest are leads checked
+  for sellable metrics and contacted directly. The page gives an unknown
+  site from a reseller no Accept, only Webmaster, Ask, Reject.
+- **A webmaster's row is never removed** for a broker's offer of the same
+  site. The page flags the row ("Already from the webmaster: that row
+  stays") and offers only Ask and Reject.
+- **Removed sites** hold sites missing from a new list ("REMOVED FROM THE
+  LIST" in Admin Comments) or unresponsive after three emails
+  ("UNRESPONSIVE"). A site **comes back** when a later list carries it or
+  a reply confirms it. The page shows the reason on the removed row and
+  offers Restore; the exported row says "Restored from removed sites
+  (<reason>)"; the Worker writes it when the page says restore. House rule
+  4 rewritten accordingly.
+- **The row.** By hand: Type, TLD, Domain, the contacts, Contact Name, the
+  seven Buying columns, Sponsor Tag, Link Type, Placement, Date Confirmed,
+  Main Country. Ahrefs fills IP, DR, RD, traffic, UR, keywords, country;
+  Majestic TF and CF; the seven Selling columns are Gary's formulas. The
+  price is a bare number. Price Validity is Fixed only when the contact
+  answered that the prices will not change; a date is written 31/12/2026,
+  so the parser now writes dates that way.
+- **Admin Comments** come from Senad's sheet "Admin and User Comments"
+  (21 phrases, kept in `ADMIN_COMMENTS`); "Indexing is not guaranteed",
+  "No Affiliates" and "No Competitor Links" are now read from the text.
+  "Date Confirmed" is Senad's name for what the sheet header calls Last
+  Updated; the page keeps the header's name.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will

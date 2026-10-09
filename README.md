@@ -86,6 +86,16 @@ Accept builds the rows; a person pastes them into the sheet. The live
 sheet with refresh is the Worker's job (`src/worker.js`, read-only
 routes) and waits for the service account and the move into the desk.
 
+## Senad's process (09/10)
+
+Four sender types in the rail: Publisher, Exclusive, Broker, Unsure. From a
+Broker or Unsure list only sites already in the database are updated; new
+ones get Webmaster, Ask or Reject, never Accept. A webmaster's list over a
+broker's row is a "Broker conversion": the row is flagged and the exported
+row says which row it replaces. A webmaster's row is never replaced by a
+broker's offer. A site on removed sites shows its reason and can be
+Restored; the row says so. Details and sources in BRIEF.md.
+
 ## Exporting the rows (Gary, 09/10)
 
 Gary's second point of the afternoon: "an export option like in the desk",

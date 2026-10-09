@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -112,7 +112,7 @@ caso("row date dd/mm/yyyy", fila["Last Updated"] === "06/10/2026");
 caso("row user comment traces the accept", fila["User Comments"] === "Accepted by mauro@linkjuiceclub.com; from list gamma 06/10; Prices in USD, not converted", fila["User Comments"]);
 caso("row admin comments only fixed phrases", fila["Admin Comments"] === "", fila["Admin Comments"]);
 const filaBeta = rowForAccept(beta, {});
-caso("row validity date", filaBeta["Price Validity"] === "31.12.2026", filaBeta["Price Validity"]);
+caso("row validity date", filaBeta["Price Validity"] === "31/12/2026", filaBeta["Price Validity"]);
 const filaAlpha = rowForAccept(alpha, {});
 caso("row Do follow and permanent placement", filaAlpha["Link Type"] === "Do follow" && filaAlpha["Placement"] === "permanent" && filaAlpha["Sponsor Tag Type"] === "", [filaAlpha["Link Type"], filaAlpha["Placement"]]);
 caso("row integer price", filaAlpha["Buying General"] === "300" && filaAlpha["Buying Casino"] === "400");
@@ -145,7 +145,7 @@ caso("star: services line skipped", star.skipped.length >= 1);
 
 /* --- terms and deltas --- */
 const tf = termsOf({ terms: "do follow, 2 Years, prices valid until 31.12.2026, no index", prices: {} });
-caso("termsOf fixed values", eq([tf.linkType, tf.placement, tf.priceValidity, tf.sponsorTag], ["Do follow", "2 Years", "31.12.2026", ""]), tf);
+caso("termsOf fixed values", eq([tf.linkType, tf.placement, tf.priceValidity, tf.sponsorTag], ["Do follow", "2 Years", "31/12/2026", ""]), tf);
 /* A rate card read from a PDF (08/10): the sentence ends after the date, and
    the dot must not travel into Price Validity. */
 const tp = parseList("Rate card 2026 - Example Media\n\nDomain / General / Casino / Crypto\nalpha-rates.example 250 EUR / 450 EUR / 400 EUR\nbeta-rates.example 180 EUR / 300 EUR / 280 EUR\n\nAll links dofollow, permanent. Prices valid until 31.12.2026.");
@@ -287,7 +287,27 @@ caso("review: Festpreis is Fixed", termsOf({ terms: "Festpreis, dofollow, dauerh
 const rv5 = pdfTextOf([it("Domain", 50, 700, 40), it("DA", 200, 700, 15), it("Price", 300, 700, 30), it("Terms", 380, 700, 30), it("a.example", 50, 680, 50), it("45", 200, 680, 12), it("99 €", 345, 680, 25), it("permanent", 380, 680, 50), it("b.example", 50, 660, 50), it("12", 200, 660, 12), it("149 €", 340, 660, 30), it("permanent", 380, 660, 50), it("c.example", 50, 640, 50), it("7", 200, 640, 6), it("199 €", 340, 640, 30), it("permanent", 380, 640, 50)]);
 caso("review: a right-aligned number stays under its header", rv5.split("\n")[1] === "a.example\t45\t99 €\tpermanent", rv5);
 caso("review: a lone E before a single glyph is left alone", pdfTextOf([it("E", 50, 700, 6), it("m", 56, 700, 6), it("ail", 62, 700, 15), it("x", 100, 700, 5), it("y", 105, 700, 5), it("z", 110, 700, 5), it("1", 200, 700, 5), it("2", 300, 700, 5), it("a", 50, 680, 5), it("b", 100, 680, 5), it("c", 200, 680, 5), it("d", 300, 680, 5), it("e", 50, 660, 5), it("f", 100, 660, 5), it("g", 200, 660, 5), it("h", 300, 660, 5)]).startsWith("Email"));
-caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
+/* Senad's document of 09/10: four sender types, broker conversion, no new
+   sites from a reseller, removed sites restored on purpose, dates as the
+   sheet writes them, the Admin Comments phrases. */
+caso("types: Broker and Unsure are resellers, Publisher and Exclusive are not", isReseller("Broker") && isReseller(" unsure ") && !isReseller("Publisher") && !isReseller("Exclusive") && !isReseller(""));
+caso("FIXED types are the four", eq(FIXED.type, ["Publisher", "Exclusive", "Broker", "Unsure"]));
+const idxTypes = indexDatabase([
+  Object.assign(Object.fromEntries(DB_COLUMNS.map(c => [c, ""])), { Type: "Broker", Domain: "viabroker.example", "Webmaster Contact": "deals@broker.example", "Buying General": "300" }),
+  Object.assign(Object.fromEntries(DB_COLUMNS.map(c => [c, ""])), { Type: "Publisher", Domain: "direct.example", "Webmaster Contact": "owner@direct.example", "Buying General": "100" })
+].map(prepareRow), [Object.assign(Object.fromEntries(DB_COLUMNS.map(c => [c, ""])), { Type: "Publisher", Domain: "gone.example", "Admin Comments": "REMOVED FROM THE LIST" })].map(prepareRow));
+const fromWm = matchList(parseList("viabroker.example\t250\ndirect.example\t120\nnew.example\t90\ngone.example\t80").items, idxTypes, { sender: "owner@direct.example", senderType: "Publisher" });
+caso("a webmaster's list over a broker's row is a broker conversion", fromWm.changed.find(e => e.item.domain === "viabroker.example").conversion === true && fromWm.changed.find(e => e.item.domain === "direct.example").conversion === false, fromWm.changed.map(e => [e.item.domain, e.conversion]));
+const fromBroker = matchList(parseList("viabroker.example\t250\ndirect.example\t120\nnew.example\t90").items, idxTypes, { sender: "deals@broker.example", senderType: "Unsure" });
+caso("a reseller's list over a webmaster's row keeps the webmaster's", fromBroker.changed.find(e => e.item.domain === "direct.example").keepWebmaster === true && fromBroker.changed.find(e => e.item.domain === "viabroker.example").keepWebmaster === false, fromBroker.changed.map(e => [e.item.domain, e.keepWebmaster]));
+const convRow = rowForAccept(fromWm.changed.find(e => e.item.domain === "viabroker.example").item, { type: "Exclusive", sender: "owner@direct.example", conversion: "deals@broker.example" });
+caso("the converted row says which row it replaces, and Exclusive is a valid type", convRow.Type === "Exclusive" && /Broker conversion: replaces the row from deals@broker\.example/.test(convRow["User Comments"]), convRow);
+const restRow = rowForAccept(fromWm.removed[0].item, { restored: "REMOVED FROM THE LIST" });
+caso("a restored row says so, with the reason", /Restored from removed sites \(REMOVED FROM THE LIST\)/.test(restRow["User Comments"]), restRow["User Comments"]);
+caso("dates as the sheet writes them", eq([sheetDate("31.12.2026"), sheetDate("1-7-26"), sheetDate("2026-12-31"), sheetDate("end of year")], ["31/12/2026", "01/07/2026", "31/12/2026", "end of year"]));
+const acNotes = termsOf({ terms: "Indexing cannot be guaranteed. No promotional or affiliate content. No competitor links.", prices: {} }).adminComments;
+caso("admin comments from Senad's sheet: indexing, affiliates, competitors", eq(acNotes, ["Indexing is not guaranteed", "No Affiliates", "No Competitor Links"]) && acNotes.every(c => ADMIN_COMMENTS.includes(c)), acNotes);
+caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31/12/2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));
 const pd = priceDelta([{ niche: "casino", offered: { amount: 269 }, inDatabase: { amount: 199 } }, { niche: "cbd", offered: { amount: 100 }, inDatabase: null }]);

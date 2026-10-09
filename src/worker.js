@@ -227,8 +227,9 @@ export default {
       if(!row || typeof row !== "object" || !normaliseDomain(row.Domain)) return json({ error: "row" }, 400);
       const d = normaliseDomain(row.Domain).domain;
       let db; try { db = await database(env, false, ctx); } catch(e){ return json({ error: String(e.message || e) }, 502); }
-      /* CLAUDE.md rule 4: a domain on "removed sites" is never written as new. */
-      if(db.removedByDomain.has(d)) return json({ error: "removed", domain: d }, 409);
+      /* CLAUDE.md rule 4: a domain on "removed sites" comes back only on
+         purpose: the page says so (restore) and the row says so. */
+      if(db.removedByDomain.has(d) && !(body && body.restore === true)) return json({ error: "removed", domain: d }, 409);
       /* The trace of who accepted is the Worker's, not the browser's. */
       const trace = "Accepted by " + who;
       const rest = String(row["User Comments"] || "").replace(/^Accepted by [^;]*;?\s*/, "").trim();

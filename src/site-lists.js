@@ -507,12 +507,21 @@ export function normaliseRow(row){
 /* Fixed values the database accepts (CLAUDE.md of the desk, Gary 07/10, and
    the sample rows of 07/10). Anything else goes to a comment, not a column. */
 export const FIXED = {
-  type: ["Publisher", "Broker"],
+  type: ["Publisher", "Exclusive", "Broker", "Unsure"],   /* Senad, 09/10 */
   linkType: ["Do follow", "No follow"],
   placement: ["1 Year", "2 Years", "permanent"],
   priceValidity: ["Fixed", "Not fixed"],   /* or a date */
   sponsorTag: ["", "Marked by WM", "rel=sponsored"]
 };
+/* Senad, 09/10: Publisher (the site's owner) and Exclusive (an agent who
+   answers for one site) are the site's own side; Broker (reseller) and
+   Unsure (might be one) are not. A site from a reseller is never added
+   when the webmaster's row exists; a webmaster's row replaces a reseller's
+   ("Broker conversion"). */
+export function isReseller(type){ return /^(broker|unsure)$/i.test(String(type || "").trim()); }
+/* The phrases Admin Comments takes, from Senad's sheet "Admin and User
+   Comments" (09/10); "(SQUARE)" and "COUNTRY" are filled in by hand. */
+export const ADMIN_COMMENTS = ["Unlicensed Casinos Accepted", "Casino - Only Betting Sites", "Only Licensed Betting Sites", "Casino - Only Affiliate Sites", "Affiliate Casinos Accepted", "No Affiliates", "No Competitor Links", "Placed in (Square) Category", "Placed in (Square) Section", "Only Licensed Casinos", "Only “COUNTRY” Licensed Casinos", "Only Licensed Casinos in “COUNTRY”", "Only Licensed Companies", "Only “COUNTRY” Licensed Betting Sites", "Written by WM", "Marked as “(SQUARE)”", "Marked with “(SQUARE)”", "Indexing is not guaranteed", "Article must be related to \"(SQUARE)\"", "Article relevant to \"(SQUARE)\"", "NO INDEX", "REMOVED FROM THE LIST", "UNRESPONSIVE"];
 export const BUYING_COLUMN = { casino: "Buying Casino", unlicensedCasino: "Buying Unlicensed Casino", crypto: "Buying Crypto", forex: "Buying Forex", cbd: "Buying CBD", dating: "Buying Dating", general: "Buying General" };
 
 /* The contact column: "Webmaster Contact" in 2026, "Contact email" in the
@@ -607,7 +616,7 @@ export function priceDiff(item, row){
    - removed: in "removed sites" (shown apart, never written as new).
    `sender` is the email the list came from; when the database already has it
    on `brokerHintAt` or more domains, `brokerHint` is set on every item. */
-export function matchList(items, index, { sender, brokerHintAt = 10, senderCount } = {}){
+export function matchList(items, index, { sender, brokerHintAt = 10, senderCount, senderType = "Publisher" } = {}){
   const groups = { unchanged: [], changed: [], unknown: [], removed: [] };
   const mail = String(sender || "").trim().toLowerCase();
   /* senderCount comes from the Worker, which sees the whole sheet; the
@@ -617,7 +626,12 @@ export function matchList(items, index, { sender, brokerHintAt = 10, senderCount
   for(const item of items){
     const hit = index.byDomain.get(item.domain) || [];
     const gone = index.removed.get(item.domain) || [];
-    const base = { item, rows: hit.map(h => h.row), rowIndexes: hit.map(h => h.index), brokerHint };
+    const types = hit.map(h => String(h.row.Type || "").trim());
+    /* A webmaster's list over a reseller's rows replaces them; a reseller's
+       list over a webmaster's row changes nothing (Senad, 09/10). */
+    const conversion = !isReseller(senderType) && types.length > 0 && types.every(isReseller);
+    const keepWebmaster = isReseller(senderType) && types.some(tp => tp && !isReseller(tp));
+    const base = { item, rows: hit.map(h => h.row), rowIndexes: hit.map(h => h.index), brokerHint, conversion, keepWebmaster };
     if(gone.length){ groups.removed.push({ ...base, removedRows: gone.map(g => g.row) }); continue; }
     if(!hit.length){ groups.unknown.push(base); continue; }
     const diffs = hit.map(h => priceDiff(item, h.row));
@@ -634,6 +648,15 @@ export function matchList(items, index, { sender, brokerHintAt = 10, senderCount
    31.12.2026, marked as Werbung") into the fixed values of the sheet. Empty
    string means the list did not say. `adminComments` holds only the phrases
    the team uses. */
+/* "31.12.2026", "31-12-2026" or "2026-12-31" as the sheet writes dates:
+   31/12/2026 (Senad, 09/10). Anything else is kept as written. */
+export function sheetDate(s){
+  let m = String(s).match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2}|\d{4})$/);
+  if(m) return `${m[1].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[3].length === 2 ? "20" + m[3] : m[3]}`;
+  m = String(s).match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m) return `${m[3].padStart(2, "0")}/${m[2].padStart(2, "0")}/${m[1]}`;
+  return String(s);
+}
 export function termsOf(item){
   const text = item.terms || "";
   const t = text.toLowerCase();
@@ -647,14 +670,17 @@ export function termsOf(item){
   const linkType = /no-?\s?follow/.test(t2) ? "No follow" : /do-?\s?follow|dofollow/.test(t2) ? "Do follow" : "";
   const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t2) ? "permanent" : /2\s*(years?|jahre|años)|24\s*(months?|monate)/.test(t2) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t2) ? "1 Year" : "";
   const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
-  const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /\bfixed\b|\bfijo\b|\bfest(e|er|es|en|preis)?\b/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
+  const priceValidity = until ? sheetDate(until[1].replace(/[.\/-]+$/, "")) : /\bfixed\b|\bfijo\b|\bfest(e|er|es|en|preis)?\b/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
   const adminComments = [];
   if(marked) adminComments.push(`Marked as "${marked[1]}"`);
   if(item.prices && item.prices.unlicensedCasino) adminComments.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
   else if(/unlicen[cs]ed casinos? accepted/.test(t)) adminComments.push("Unlicensed Casinos Accepted");
   else if(/only (properly |duly )?licen[cs]ed|no (any )?illegal gambling|non[- ]?gamstop|gambling \(legal\)|licen[cs]ed (casinos?|gambling|operators?) only/.test(t)) adminComments.push("Only Licensed Casinos");
   if(/written by (the )?(wm|webmaster)/.test(t)) adminComments.push("Written by WM");
-  if(/no ?index/.test(t)) adminComments.push("NO INDEX");
+  if(/no ?index\b/.test(t)) adminComments.push("NO INDEX");
+  if(/index(ing|ación|ierung)? (is |cannot be |can't be |can not be |not )?(not )?guarante|indexing cannot be guaranteed|no (se )?garantiza (la )?indexaci|indexierung (wird )?nicht garantiert/.test(t)) adminComments.push("Indexing is not guaranteed");
+  if(/\bno (promotional or )?affiliates?\b/.test(t)) adminComments.push("No Affiliates");
+  if(/no competitor/.test(t)) adminComments.push("No Competitor Links");
   return { sponsorTag, linkType, placement, priceValidity, adminComments };
 }
 
@@ -699,7 +725,7 @@ export function priceDelta(diffs){
    terms, contact and bookkeeping are filled; metrics stay empty for the team.
    `who` is the desk user's email, `listLabel` names the list ("starmagazines
    05/10"). Nothing here touches the sheet: the Worker does, on Accept. */
-export function rowForAccept(item, { type = "Publisher", sender = "", contactName = "", who = "", listLabel = "", today = new Date() } = {}){
+export function rowForAccept(item, { type = "Publisher", sender = "", contactName = "", who = "", listLabel = "", today = new Date(), conversion = false, restored = false } = {}){
   const d = String(today.getDate()).padStart(2, "0"), m = String(today.getMonth() + 1).padStart(2, "0"), y = today.getFullYear();
   const row = Object.fromEntries(DB_COLUMNS.map(c => [c, ""]));
   row.Type = FIXED.type.includes(type) ? type : "Publisher";
@@ -723,7 +749,13 @@ export function rowForAccept(item, { type = "Publisher", sender = "", contactNam
   /* The database is in EUR (Gary, 06/10). A price given in another currency
      is written as given and said so, never converted here. */
   const foreign = NICHES.map(n => item.prices[n]).filter(p => p && p.currency && p.currency !== "EUR").map(p => p.currency).filter((c, i, a) => a.indexOf(c) === i);
-  row["User Comments"] = [who && `Accepted by ${who}`, listLabel && `from list ${listLabel}`, foreign.length && `Prices in ${foreign.join("/")}, not converted`].filter(Boolean).join("; ");
+  /* Senad, 09/10: a webmaster's row replaces a reseller's ("Broker
+     conversion"); a site on removed sites comes back when a new list or a
+     reply confirms it. Both are said in the row, so the person who pastes
+     it knows what to remove or restore by hand. */
+  row["User Comments"] = [who && `Accepted by ${who}`, listLabel && `from list ${listLabel}`, foreign.length && `Prices in ${foreign.join("/")}, not converted`,
+    conversion && `Broker conversion: replaces the row from ${typeof conversion === "string" ? conversion : "the broker"}`,
+    restored && `Restored from removed sites${typeof restored === "string" && restored ? " (" + restored + ")" : ""}`].filter(Boolean).join("; ");
   row["Last Updated"] = `${d}/${m}/${y}`;
   return row;
 }

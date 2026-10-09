@@ -53,12 +53,11 @@ async function checkRemote(){
   describeDb();
 }
 let remoteWhy = "";
-try{ stype = localStorage.getItem("ljc-lists-stype") === "Broker" ? "Broker" : "Publisher"; }catch(e){}
+try{ const sv = localStorage.getItem("ljc-lists-stype"); if(FIXED.type.includes(sv)) stype = sv; }catch(e){}
 function setStype(v){
   stype = v; try{ localStorage.setItem("ljc-lists-stype", v); }catch(e){}
-  $("stype-publisher").className = v === "Publisher" ? "on-type" : "";
-  $("stype-broker").className = v === "Broker" ? "on-type" : "";
-  if(groups) render();
+  document.querySelectorAll("[data-stype]").forEach(b => { b.className = b.dataset.stype === v ? "on-type" : ""; });
+  if(groups) run();
 }
 
 function noteParse(){
@@ -82,8 +81,8 @@ const T = {
     dbSearch:"Search domain, contact or name", dbCount:(n, total)=>`${n.toLocaleString("en")} of ${total.toLocaleString("en")} rows`, dbEmpty:"No row matches.", dbLoading:"Loading…", dbRemovedTab:"removed sites", dbCols:{Domain:"Domain", Type:"Type", Contact:"Contact", Country:"Country", Language:"Language", Updated:"Updated", Terms:"Terms"},
     openInDb:"Open its record in the database", backToList:"Back to the list",
     orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, filePdf:(n, p)=>`${n}: ${p} page${p === 1 ? "" : "s"} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
-    stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
-    brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
+    stype:"The sender is", typePublisher:"Publisher", typeExclusive:"Exclusive", typeBroker:"Broker", typeUnsure:"Unsure", restore:"Restore", convChip:"Broker conversion: this row replaces the broker's", keepChip:"Already from the webmaster: that row stays", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
+    brokerHint:"Broker or unsure list. Only the sites we already have from this sender are updated; new sites are never added from a broker. They are leads: write to the real webmaster, with the broker's price as the ceiling.",
     terms:{linkType:"link", placement:"placement", priceValidity:"validity", sponsorTag:"tag"}, saidNothing:"terms not stated", fromList:"Stated once for the whole list, not for this site", fromListShort:"whole list", dAbove:"above", dBelow:"below", recorded:"recorded",
     reset:"Forget the file, back to sample rows", rows:"Rows Accept will write", rowshint:"Copy the rows, or download them as CSV or .xlsx and import them into the sheet. A copy of the database is optional here: it only tells you which sites are already in it.", copy:"Copy", copied:"Copied", dlCsv:"Download CSV", dlXlsx:"Download .xlsx",
     state:(src)=>`database: ${src} · sheet not connected`, meta:(n,d,c,r)=>`${n} rows · ${d} domains · ${c} contacts · ${r} removed`,
@@ -92,7 +91,7 @@ const T = {
     broker:(n)=>`This sender already has ${n} domains in the database: likely a broker.`,
     removedNote:(n)=>`${n} in removed sites: never written as new.`,
     gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed",
-    hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab. Never written as new.", hAll:"",
+    hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab, with the reason. Restore writes it back to the database and the row says so.", hAll:"",
     thDomain:"Domain", thOffered:"Offered", thDb:"In the database", thRemoved:"Removed sites", thTerms:"Terms", thDecision:"Decision",
     accept:"Accept", reject:"Reject", ask:"Ask", none:"none", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
@@ -103,8 +102,8 @@ const T = {
     dbSearch:"Buscar dominio, contacto o nombre", dbCount:(n, total)=>`${n.toLocaleString("es")} de ${total.toLocaleString("es")} filas`, dbEmpty:"Ninguna fila coincide.", dbLoading:"Cargando…", dbRemovedTab:"removed sites", dbCols:{Domain:"Dominio", Type:"Tipo", Contact:"Contacto", Country:"País", Language:"Idioma", Updated:"Actualizado", Terms:"Condiciones"},
     openInDb:"Abrir su ficha en la base", backToList:"Volver a la lista",
     orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, filePdf:(n, p)=>`${n}: ${p} página${p === 1 ? "" : "s"} volcada${p === 1 ? "" : "s"} al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
-    stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
-    brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
+    stype:"El remitente es", typePublisher:"Publisher", typeExclusive:"Exclusive", typeBroker:"Broker", typeUnsure:"Unsure", restore:"Restaurar", convChip:"Conversión de broker: esta fila sustituye a la del broker", keepChip:"Ya está del webmaster: esa fila se queda", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
+    brokerHint:"Lista de broker o dudosa. Solo se actualizan los sitios que ya tenemos de este remitente; de un broker nunca se añaden sitios nuevos. Son leads: escribir al webmaster real, con el precio del broker como techo.",
     terms:{linkType:"enlace", placement:"duración", priceValidity:"validez", sponsorTag:"etiqueta"}, saidNothing:"sin condiciones", fromList:"Dicho una vez para toda la lista, no para este sitio", fromListShort:"toda la lista", dAbove:"más", dBelow:"menos", recorded:"registrado",
     reset:"Olvidar el archivo, volver a la muestra", rows:"Filas que escribirá Aceptar", rowshint:"Copia las filas, o descárgalas en CSV o .xlsx e impórtalas en la hoja. La copia de la base es opcional aquí: solo dice qué sitios ya están.", copy:"Copiar", copied:"Copiado", dlCsv:"Descargar CSV", dlXlsx:"Descargar .xlsx",
     state:(src)=>`base: ${src} · hoja sin conectar`, meta:(n,d,c,r)=>`${n} filas · ${d} dominios · ${c} contactos · ${r} removidos`,
@@ -113,7 +112,7 @@ const T = {
     broker:(n)=>`Este remitente ya tiene ${n} dominios en la base: probable broker.`,
     removedNote:(n)=>`${n} en removed sites: nunca se escriben como nuevos.`,
     gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos",
-    hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites. Nunca se escriben como nuevos.", hAll:"",
+    hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites, con el motivo. Restaurar la devuelve a la base y la fila lo dice.", hAll:"",
     thDomain:"Dominio", thOffered:"Ofrece", thDb:"En la base", thRemoved:"Removed sites", thTerms:"Condiciones", thDecision:"Decisión",
     accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
     niche:{casino:"Casino",unlicensedCasino:"Casino s/lic.",crypto:"Cripto",forex:"Forex",cbd:"CBD",dating:"Citas",general:"General"} }
@@ -250,7 +249,7 @@ function run(){
   noteParse();
   for(const k in decisions) delete decisions[k];
   loadDecisions();
-  groups = matchList(items, index, { sender: $("sender").value });
+  groups = matchList(items, index, { sender: $("sender").value, senderType: stype });
   pickView();
   render();
   if(remote) matchRemote();
@@ -263,7 +262,7 @@ async function matchRemote(){
     const j = await r.json();
     lastMatch = j;
     const idx = indexDatabase(Object.values(j.rows || {}).flat().map(prepareRow), Object.values(j.removed || {}).flat().map(prepareRow));
-    groups = matchList(items, idx, { sender, senderCount: j.senderCount });
+    groups = matchList(items, idx, { sender, senderCount: j.senderCount, senderType: stype });
     pickView();
     remote = { ...remote, rows: j.total, readAt: j.readAt };
     describeDb(); render();
@@ -296,26 +295,39 @@ function termsCells(item){
     : `${item.inheritedPartly ? `<span class="fv off" title="${esc(t().fromList)}">${esc(t().fromListShort)}</span>` : ""}<span class="raw">${esc(item.terms.split(" | ").slice(0, 2).join(" | "))}</span>`;
   return (chips || admin) ? chips + admin + raw : (item.terms ? raw : `<span class="sender">${t().saidNothing}</span>`);
 }
-function dbCells(rows){
+function dbCells(rows, removed){
   if(!rows.length) return `<span class="sender">${t().notInDb}</span>`;
   return rows.map(row => {
     const ps = NICHES.filter(n => row[BUYING_COLUMN[n]]).map(n => `<span class="pr"><span class="k">${esc(t().niche[n])}</span>${esc(row[BUYING_COLUMN[n]])}</span>`).join("") || `<span class="sender">${t().noPrice}</span>`;
     const type = String(row.Type || "").trim();
-    return `<div class="dbrow"><span class="sender">${type ? `<span class="tipo ${type.toLowerCase() === "broker" ? "broker" : ""}">${esc(type)}</span>` : ""}${esc(senderOf(row) || t().noContact)} · ${esc(row["Last Updated"] || "")}</span>${ps}</div>`;
+    /* On the removed tab the reason sits in Admin Comments ("REMOVED FROM THE LIST", "UNRESPONSIVE"). */
+    const why = removed && row["Admin Comments"] ? `<span class="fv off">${esc(String(row["Admin Comments"]).split("\n")[0])}</span>` : "";
+    return `<div class="dbrow"><span class="sender">${type ? `<span class="tipo ${isReseller(type) ? "broker" : ""}">${esc(type)}</span>` : ""}${esc(senderOf(row) || t().noContact)} · ${esc(row["Last Updated"] || "")}</span>${ps}${why}</div>`;
   }).join("");
 }
+let entryOf = new Map();   /* domain -> its entry in the current groups */
 function decisionCell(domain){
   const d = decisions[domain];
   if(written[domain]) return `<span class="fv" style="border-color:var(--ok-line);color:var(--ok-ink)" title="${esc(written[domain])}">${esc(t().written(""))}</span>`;
-  /* A removed site is never written as new (CLAUDE.md rule 4): no Accept. */
-  const keys = removedDomains.has(domain) ? ["webmaster","ask","reject"] : stype === "Broker" ? ["webmaster","accept","ask","reject"] : ["accept","webmaster","ask","reject"];
-  return `<span class="seg">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${t()[k]}</button>`).join("") + `</span>`;
+  const e = entryOf.get(domain);
+  const unknown = !e || !e.rows || !e.rows.length;
+  /* Senad, 09/10: from a reseller nothing new is added (leads: write to
+     the webmaster) and a webmaster's row is never replaced; a removed site
+     comes back with Restore, and the row says so. */
+  let keys;
+  if(removedDomains.has(domain)) keys = ["accept","webmaster","ask","reject"];
+  else if(e && e.keepWebmaster) keys = ["ask","reject"];
+  else if(isReseller(stype)) keys = unknown ? ["webmaster","ask","reject"] : ["webmaster","accept","ask","reject"];
+  else keys = ["accept","webmaster","ask","reject"];
+  const label = k => (k === "accept" && removedDomains.has(domain)) ? t().restore : t()[k];
+  return `<span class="seg">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${label(k)}</button>`).join("") + `</span>`;
 }
 function table(entries, kind){
   if(!entries.length) return `<div class="tabla-wrap"><div class="empty">${t().empty}</div></div>`;
   const rows = entries.map(e => {
     const d = e.item.domain; const done = decisions[d] ? " done" : "";
-    const dbCol = e.removedRows ? dbCells(e.removedRows) : dbCells(e.rows);
+    const flag = e.conversion ? `<span class="fv off">${t().convChip}</span>` : e.keepWebmaster ? `<span class="fv">${t().keepChip}</span>` : "";
+    const dbCol = flag + (e.removedRows ? dbCells(e.removedRows, true) : dbCells(e.rows));
     return `<tr class="${done.trim()}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offeredCells(e.item, e.diffs)}</td><td>${dbCol}</td><td class="ancha">${termsCells(e.item)}</td><td class="dec">${decisionCell(d)}</td></tr>`;
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -325,9 +337,10 @@ function render(){
   if(!groups) return;
   removedDomains = new Set(groups.removed.map(e => e.item.domain));
   const first = groups.unknown.concat(groups.changed, groups.unchanged, groups.removed)[0];
-  const broker = stype === "Broker" ? `<div class="aviso acc">${t().brokerHint}</div>` : (first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "");
+  const broker = isReseller(stype) ? `<div class="aviso acc">${t().brokerHint}</div>` : (first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "");
   const sameSender = groups.changed.filter(c => c.sameSender).length;
   const all = groups.changed.concat(groups.unknown, groups.unchanged, groups.removed);
+  entryOf = new Map(all.map(e => [e.item.domain, e]));
   const tabs = [
     ["changed", "wait", t().gChanged, groups.changed, t().hChanged],
     ["unknown", "", t().gUnknown, groups.unknown, t().hUnknown],
@@ -377,11 +390,12 @@ async function acceptRemote(dom, btn){
   const item = items.find(i => i.domain === dom); if(!item) return;
   /* The Worker writes who accepted from the Access token; the page does
      not. The request id lets a retry after a lost answer not write twice. */
-  const row = rowForAccept(item, { type: stype, sender: $("sender").value.trim(), who: "", listLabel: $("label").value.trim() });
+  const flags = acceptFlags(dom);
+  const row = rowForAccept(item, Object.assign({ type: stype, sender: $("sender").value.trim(), who: "", listLabel: $("label").value.trim() }, flags));
   const requestId = (acceptIds[dom] = acceptIds[dom] || (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
   btn.disabled = true; btn.textContent = t().writing;
   try{
-    const r = await fetch("/api/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row, requestId }) });
+    const r = await fetch("/api/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row, requestId, restore: !!flags.restored }) });
     const j = await r.json().catch(() => ({}));
     if(!r.ok || !j.ok) throw new Error(j.error || String(r.status));
     written[dom] = j.updatedRange || "ok";
@@ -393,6 +407,16 @@ async function acceptRemote(dom, btn){
     $("results").prepend(note); setTimeout(() => note.remove(), 6000);
   }
 }
+/* What the row has to say about itself (Senad, 09/10): it replaces a
+   reseller's row, or it comes back from removed sites. */
+function acceptFlags(domain){
+  const e = entryOf.get(domain); if(!e) return {};
+  const first = r => (r && r.length) ? r[0] : null;
+  return {
+    conversion: e.conversion ? (senderOf(first(e.rows)) || true) : false,
+    restored: e.removedRows ? (String((first(e.removedRows) || {})["Admin Comments"] || "").split("\n")[0] || true) : false
+  };
+}
 function renderExport(){
   const accepted = items.filter(i => decisions[i.domain] === "accept");
   const label = $("label").value.trim();
@@ -403,7 +427,7 @@ function renderExport(){
     $("export-t").textContent = remote && done ? t().writtenT(done) : t().exportT(accepted.length);
     document.querySelector("[data-i18n=rowshint]").textContent = remote && done ? t().writtenHint : t().rowshint;
     /* No identity on this page: the trace names the list, not a person. */
-    const rows = accepted.map(i => rowForAccept(i, { type: stype, sender, who: "", listLabel: label }));
+    const rows = accepted.map(i => rowForAccept(i, Object.assign({ type: stype, sender, who: "", listLabel: label }, acceptFlags(i.domain))));
     const show = ["Type", "Domain", "Webmaster Contact", ...NICHES.map(n => BUYING_COLUMN[n]), "Sponsor Tag Type", "Link Type", "Placement", "Price Validity", "Admin Comments", "Last Updated"];
     const used = show.filter(c => c === "Type" || c === "Domain" || rows.some(r => r[c]));
     $("export-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c.replace("Buying ", "B. "))}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]).replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -725,8 +749,7 @@ function bootStep(name, fn){
   }
 }
 bootStep("buttons", () => {
-  $("stype-publisher").addEventListener("click", () => setStype("Publisher"));
-  $("stype-broker").addEventListener("click", () => setStype("Broker"));
+  document.querySelectorAll("[data-stype]").forEach(b => b.addEventListener("click", () => setStype(b.dataset.stype)));
 });
 bootStep("list", () => { $("list").value = STAR; });
 bootStep("database screen", () => {

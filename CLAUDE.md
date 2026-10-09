@@ -10,8 +10,10 @@ of evidence; none of the desk's code is shared, only its look.
    carried forward from a document.
 3. **The page never writes without a click.** Nothing is written to the
    sheet on import, on match, or by default. Only Accept writes, one row.
-4. **Removed sites stay removed.** A domain in the "removed sites" tab is
-   shown as removed and never written as new.
+4. **Removed sites come back only on purpose.** A domain in the "removed
+   sites" tab is shown as removed, with its reason. The only way to write it
+   is Restore, and the row then says "Restored from removed sites" (Senad,
+   09/10: a site on a new list, or confirmed again, is restored).
 5. **Testing means running it.** `node scripts/probar-listas.mjs` before
    every push, and the page opened in a browser, both languages.
 6. **English is written in English.** Interface, documentation and commit

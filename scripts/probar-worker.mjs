@@ -128,6 +128,13 @@ caso("without Access token the API answers 403", r.status === 403, r);
 r = await worker.fetch(new Request("http://lists/index.html"), env);
 caso("static files go to ASSETS", (await r.text()) === "asset");
 
+/* Senad, 09/10: a removed site comes back on purpose. The page says
+   restore; the Worker writes the row, which says so itself. Last of the
+   writes, so the counts above stay as they were. */
+const before3 = appended.length;
+r = await pedir("/api/accept", "POST", { row: { Type: "Publisher", Domain: "gamma.net", "Webmaster Contact": "g@gamma.net", "Buying General": "50", "User Comments": "Restored from removed sites (REMOVED FROM THE LIST)" }, restore: true }, "mauro@linkjuiceclub.com");
+caso("a removed site is written when the page says restore, and the row says so", r.status === 200 && r.json.ok === true && appended.length === before3 + 1 && /Restored from removed sites/.test(appended[appended.length - 1][39]), [r.status, r.json]);
+
 /* --- cache expiry --- */
 forgetCache();
 r = await pedir("/api/status?refresh=1", "GET", null, "mauro@linkjuiceclub.com");
