@@ -11,9 +11,10 @@
   <div class="dbpanel-in">
     <div><span class="lbl" data-i18n="db">Database</span><p class="hint" data-i18n="dbhint"></p></div>
     <div class="par">
-      <div><label for="dbfile">Import Database · CSV</label><input type="file" id="dbfile" accept=".csv,text/csv"></div>
-      <div><label for="rmfile">removed sites · CSV</label><input type="file" id="rmfile" accept=".csv,text/csv"></div>
+      <div><label for="dbfile" data-i18n="dbfileL">Copy of the sheet · .xlsx (both tabs) or .csv</label><input type="file" id="dbfile" accept=".xlsx,.xls,.xlsm,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"></div>
+      <div><label for="rmfile" data-i18n="rmfileL">removed sites · .csv, when the copy is a CSV</label><input type="file" id="rmfile" accept=".csv,text/csv"></div>
     </div>
+    <p class="hint" data-i18n="dbnever">This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.</p>
     <div class="actions"><span class="dbmeta" id="dbmeta"></span><button type="button" class="btn sutil" id="reset" data-i18n="reset"></button></div>
   </div>
 </div>

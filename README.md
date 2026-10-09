@@ -67,6 +67,24 @@ kept for the move into the desk and runs only by hand. It needs
 `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` as repository secrets, and
 the Worker needs `SHEET_ID`, `GOOGLE_SA` (secret) and `ACCESS_AUD`.
 
+## The copy of the database (Gary, 09/10)
+
+Gary's two points from the call of 09/10: the team loads a CSV or Excel
+export of the sheet so the list is always matched against the latest data,
+with a live sheet and a refresh button as a later step; and the full
+database stays visible for reference. And: "no live override function
+should be accessible here", so this page never writes.
+
+In the bar, the seal opens the database panel. Export the sheet as .xlsx
+(both tabs come along: "Import Database" and "removed sites", found by
+name) or as .csv (main tab; removed sites as a second .csv) and load it.
+The file stays in the browser (IndexedDB) and is read again on the next
+visit, so it is loaded once per export, not once per visit, until it is
+replaced or forgotten with the button. The Database screen then shows it.
+Accept builds the rows; a person pastes them into the sheet. The live
+sheet with refresh is the Worker's job (`src/worker.js`, read-only
+routes) and waits for the service account and the move into the desk.
+
 ## Not yet
 
 Google Sheet links as list input (they need the service account). A real

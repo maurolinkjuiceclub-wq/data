@@ -514,6 +514,25 @@ database wants is Article + 99 and the page does not add that up; and
 "Casino, crypto etc. +25%" is likewise shown, not computed. Shape in the
 tests with invented domains.
 
+## Gary's call of 09/10 (Mauro, afternoon)
+
+Two points, in Gary's words: "Either the team can upload CSV excel file to
+the database, to always have updated database when doing site lists. Or
+have live Google sheet (with refresh button) to show the latest data from
+the sheet, so when we do site lists it uploads. No live override function
+should be accessible here." And: "Add full database copy for reference...
+Maybe we can start with CSV upload and then upload Live google sheet."
+
+Done the same afternoon: the database panel takes the sheet exported as
+.xlsx, both tabs in one file (found by name, else first and second sheet),
+or as .csv plus a second .csv for removed sites; the file is kept in the
+browser's IndexedDB and read again on the next visit (tested over http in
+Chromium: upload, reload, forget); the panel says in both languages that
+the page never writes. The Pages site has no Worker, so Accept there only
+builds the rows. The live sheet with a refresh button is the Worker's
+read-only routes and waits for the service account; it is the next step
+once the move into the desk starts (INTEGRATION.md).
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will
