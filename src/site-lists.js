@@ -20,6 +20,7 @@ export function normaliseDomain(raw){
   if(raw == null) return null;
   let s = String(raw).trim().toLowerCase();
   if(!s) return null;
+  s = s.replace(/\s*\([^()]*\)\s*$/, "");   /* "rfi.ro (rfi.fr/ro)" */
   s = s.replace(/^[\s"'<(\[]+|[\s"'>)\]:;,.]+$/g, "");
   s = s.replace(/^(?:https?:)?\/\//, "");
   s = s.replace(/^www\d?\./, "");
@@ -115,7 +116,11 @@ export function nichesOf(header){
   if(NOT_ARTICLE.test(h)) return [];
   const found = NICHE_WORDS.map(([niche, re]) => { const m = re.exec(h); return m ? [m.index, niche] : null; })
     .filter(Boolean).sort((a, b) => a[0] - b[0]).map(x => x[1]);
-  return found.filter((n, i) => found.indexOf(n) === i);
+  const once = found.filter((n, i) => found.indexOf(n) === i);
+  /* "PRICE / ARTICLE Advertorial (GAMBLING)" is casino, not casino and
+     general: the general words only count when no niche is named. */
+  const specific = once.filter(n => n !== "general");
+  return specific.length ? specific : once;
 }
 
 /* ---------- parsing a list ---------- */
@@ -171,7 +176,8 @@ export function parseList(text){
   let order = null;     /* niches in order of the prices, when it does not ("General / Casino / CBD") */
   let group = [];       /* domains named on a line without prices; the price lines below belong to them */
   let signedOff = false;
-  let skipNext = false;
+  let skip = 0;
+  const tabbed = /\t/.test(String(text || ""));
   /* A header row has no domain and no price with a currency; a bare number
      ("427" sites) is allowed. */
   const noOffer = cells => !cells.some(c => normaliseDomain(c)) && !cells.some(c => findPrice(c));
@@ -180,24 +186,45 @@ export function parseList(text){
     columns = cells.map(nichesOf); headers = cells.map(c => c.replace(/\s+/g, " ").trim()); order = null;
     domainCol = cells.findIndex(c => /domain|dominio|site|web|url/i.test(c) && !nicheOf(c));
   };
+  /* Header rows of a sheet joined into one: a merged cell is carried across
+     its blanks wherever a row below has something, and the rows are read
+     top-down per column, so "PRICE / ARTICLE (EUR)" over "Special Content"
+     over "Advertorial (GAMBLING)" is one column name. */
+  const joinHeader = part => {
+    const n = Math.max(...part.map(r => r.length));
+    const carry = part.map(() => "");   /* per row, across the columns */
+    const out = [];
+    for(let j = 0; j < n; j++){
+      const words = [];
+      part.forEach((r, k) => {
+        let c = (r[j] || "").replace(/\s+/g, " ").trim();
+        if(c) carry[k] = c; else if(part.slice(k + 1).some(x => (x[j] || "").trim())) c = carry[k];
+        if(c) words.push(c);
+      });
+      out.push(words.join(" "));
+    }
+    return out;
+  };
   rows.forEach((cells, i) => {
-    if(skipNext){ skipNext = false; return; }
+    if(skip){ skip--; return; }
     const line = cells.filter(Boolean).join(" ");
-    /* A sheet header on two rows (MM Group Media, 09/10): "Guest Post" over
-       "Normal | Gambling & Grey Niches", merged cells blank after the first.
-       The upper row is carried across its blanks and joined to the lower
-       one, so the column reads "Guest Post Gambling & Grey Niches". */
-    const next = rows[i + 1];
-    if(next && !group.length && noOffer(cells) && noOffer(next) && !isHeader(cells)){
-      let carry = "";
-      const n = Math.max(cells.length, next.length);
-      const joined = [];
-      for(let j = 0; j < n; j++){
-        let c = cells[j] || ""; const d = next[j] || "";
-        if(c) carry = c; else if(d) c = carry;
-        joined.push([c, d].filter(Boolean).join(" "));
+    /* A sheet header on several rows (MM Group Media: two; librawebcorp:
+       three under a title row, 09/10). Rows without an offer at the top of a
+       sheet are joined; the join that names the most niche columns wins; a
+       row with one cell (a title, a year) is skipped but not joined. */
+    if(tabbed && !group.length && noOffer(cells)){
+      const block = [cells];
+      while(i + block.length < rows.length && block.length < 6 && noOffer(rows[i + block.length])) block.push(rows[i + block.length]);
+      let best = null;
+      for(let n = 1; n <= block.length; n++){
+        const part = block.slice(0, n).filter(r => r.filter(Boolean).length > 1);
+        if(!part.length) continue;
+        const joined = joinHeader(part);
+        if(!isHeader(joined)) continue;
+        const score = joined.filter(c => nichesOf(c).length).length;
+        if(!best || score >= best.score) best = { n, joined, score };
       }
-      if(isHeader(joined)){ setHeader(joined); skipNext = true; return; }
+      if(best){ setHeader(best.joined); skip = best.n - 1; return; }
     }
     /* After "Thanks," / "Best regards" / "Multumesc" what follows is a
        signature: its domain and phone are not an offer. */
@@ -211,7 +238,9 @@ export function parseList(text){
       if(domainCol >= 0 && domIdxs.includes(domainCol)) domIdxs = [domainCol];
       else { const seen = new Set(); domIdxs = domIdxs.filter(j => { const h = normaliseDomain(cells[j]).domain; if(seen.has(h)) return false; seen.add(h); return true; }); }
     }
-    const priceIdxs = cells.map((c, j) => isPriceCell(c) && !/^\d{1,2}$/.test(c.trim()) ? j : -1).filter(j => j >= 0);
+    /* A bare one- or two-digit number is a metric (DR, DA), unless the header
+       puts that column under a niche: "40" under Advertorial (GAMBLING). */
+    const priceIdxs = cells.map((c, j) => isPriceCell(c) && (!/^\d{1,2}$/.test(c.trim()) || (columns && columns[j] && columns[j].length)) ? j : -1).filter(j => j >= 0);
     const inlinePrices = priceIdxs.length ? priceIdxs : (!columns && !order ? [] : priceIdxs);
     if(!domIdxs.length){
       const niches = cells.map(nicheOf);
@@ -261,7 +290,14 @@ export function parseList(text){
     const terms = [];
     /* Under a header, a cell that is not a price for a niche is shown with
        its column name: "Ahrefs DR: 44", "Link Insert Normal: 110 €". */
-    const labelled = (j, c) => headers && headers[j] && !(columns[j] && columns[j].length) && !/^\d{1,2}$/.test(headers[j]) && !/terms|notes?|comments?|conditions|remarks|info|observa/i.test(headers[j]) ? headers[j] + ": " + c : c;
+    const labelled = (j, c, isPrice) => {
+      if(!headers || !headers[j]) return c;
+      /* "casino: no" for a refusal under a niche column; a second price for
+         the same niche keeps its column name ("... Advertorial (branding): 145"). */
+      if(columns[j] && columns[j].length) return (isPrice ? headers[j] : columns[j].join("+")) + ": " + c;
+      if(/^\d{1,2}$/.test(headers[j]) || /terms|notes?|comments?|conditions|remarks|info|observa/i.test(headers[j])) return c;
+      return headers[j] + ": " + c;
+    };
     let nth = 0;
     cells.forEach((c, j) => {
       if(domIdxs.includes(j)) return;
@@ -278,7 +314,7 @@ export function parseList(text){
           const free = niches.filter(n => !it.prices[n]);
           if(free.length){ free.forEach(n => { it.prices[n] = p; }); used = true; }
         }
-        if(!used) terms.push(labelled(j, c));
+        if(!used) terms.push(labelled(j, c, true));
       }else if(c){
         terms.push(labelled(j, c));
       }
@@ -466,7 +502,7 @@ export function termsOf(item){
   const text = item.terms || "";
   const t = text.toLowerCase();
   const marked = text.match(/(?:marked\s+as|marcat(?:\s+cu)?|gekennzeichnet\s+als|marcado\s+como)\s+["“'(]?([\p{L}\d-]+)[)"”']?/iu);
-  const sponsorTag = /rel=sponsored|sponsored tag|sponsored link/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
+  const sponsorTag = /rel=sponsored|sponsored (tag|link)s? (is |are )?(mandatory|required|added|used|included|obligator)|with (a |the )?sponsored (tag|link)|marked as sponsored|as sponsored/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
   const linkType = /no-?\s?follow/.test(t) ? "No follow" : /do-?\s?follow|dofollow/.test(t) ? "Do follow" : "";
   const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
   const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
@@ -475,7 +511,7 @@ export function termsOf(item){
   if(marked) adminComments.push(`Marked as "${marked[1]}"`);
   if(item.prices && item.prices.unlicensedCasino) adminComments.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
   else if(/unlicen[cs]ed casinos? accepted/.test(t)) adminComments.push("Unlicensed Casinos Accepted");
-  else if(/only licen[cs]ed/.test(t)) adminComments.push("Only Licensed Casinos");
+  else if(/only (properly |duly )?licen[cs]ed/.test(t)) adminComments.push("Only Licensed Casinos");
   if(/written by (the )?(wm|webmaster)/.test(t)) adminComments.push("Written by WM");
   if(/no ?index/.test(t)) adminComments.push("NO INDEX");
   return { sponsorTag, linkType, placement, priceValidity, adminComments };

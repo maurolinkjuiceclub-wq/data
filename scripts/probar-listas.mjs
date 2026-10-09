@@ -177,6 +177,34 @@ caso("a link insertion column is not a Buying price", eq(nichesOf("Link Insert G
 const mmAll = parseList(tableToList(mmRows.concat([[], ["By email"], ["Each post includes one permanent dofollow link to your preferred target URL."], ["We do not label posts as sponsored or guest posts, unless you specifically request it."], ["5 orders in bulk", "100€"], ["Above pricing is final and no negotiation is accepted."]])));
 const mmTerms = listTermsOf(mmAll);
 caso("broker's How to Order sheet: still two items, terms permanent and Do follow", mmAll.items.length === 2 && mmTerms.placement === "permanent" && mmTerms.linkType === "Do follow", [mmAll.items.length, mmTerms]);
+/* A publisher's price sheet with a title row and a three-row header (shape
+   of the Excel bogdan@librawebcorp.com sent, 09/10, domains invented):
+   "PRICE / ARTICLE (EUR)" merged over six columns, "Standard Content" and
+   "Special Content" under it, then the product per column; prices as bare
+   two-digit numbers; "no" where a niche is refused; a domain cell with a
+   second name in brackets. */
+const libraRows = [
+  ["", "", "", 2026],
+  ["Category/Region", "Website", "PRICE / ARTICLE (EUR)", "", "", "", "", "", "MARKINGS & TAGS  *", "Additional info", "PRICE / LINK INSERTION (EUR)", "", "DA", "PA"],
+  ["", "", "Standard Content", "Special Content", "", "", "", "", "", "", "Standard Content", "Special Content", "", ""],
+  ["", "", "SEO            (no brand, native)", "Advertorial (branding)", "Advertorial (GAMBLING)", "Advertorial (FINANCE: banks, loans, trading, crypto, insurances)", "Advertorial (MEDICAL: cbd, supplements, health)", "Advertorial (Adult Content)", "", "", "", "", "", ""],
+  ["NEWS / REGION A", "ziarul-unu.example", 40, 40, 45, 40, 40, "no", "category/advertoriale", "", 40, 40, 35, 39],
+  ["", "radio-doi.example (radio-doi.example/ro)", 105, 105, "no", "no", "no", "no", "Editorial Team decision", "1 link/article", "no", "no", 59, 50],
+  [],
+  ["For gambling-related content (betting or casino), only properly licensed websites are eligible for promotion in guest posts"],
+  ["* ) Details regarding the marking or tagging of articles — including sponsored tags and other content-labeling methods — are provided for guidance only and are non-binding."],
+  ["For websites with only one dofollow link/article included, articles with 2/3 links will be taxed double/triple"]
+];
+const li = parseList(tableToList(libraRows));
+const liTerms = listTermsOf(li);
+caso("three-row header under a title: two items, nothing but the notes skipped", li.items.length === 2 && li.skipped.length === 3, [li.items.map(i => i.domain), li.skipped]);
+caso("three-row header: SEO is general, the products map casino, forex+crypto, cbd, dating", eq(li.columns.slice(2, 8), ["general", "general", "casino", "forex+crypto", "cbd", "dating"]), li.columns);
+caso("three-row header: two-digit prices under niche columns are prices", eq([li.items[0].prices.general.amount, li.items[0].prices.casino.amount, li.items[0].prices.forex.amount, li.items[0].prices.crypto.amount, li.items[0].prices.cbd.amount, li.items[0].prices.dating], [40, 45, 40, 40, 40, undefined]), li.items[0].prices);
+caso("three-row header: a refusal reads as the niche's name", /dating: no/.test(li.items[0].terms) && /casino: no \| forex\+crypto: no \| cbd: no \| dating: no/.test(li.items[1].terms), li.items[1].terms);
+caso("three-row header: the branded advertorial keeps its column name, DA and PA are labelled", /Advertorial \(branding\): 40/.test(li.items[0].terms) && /DA: 35 \| PA: 39/.test(li.items[0].terms), li.items[0].terms);
+caso("a domain with a second name in brackets", li.items[1].domain === "radio-doi.example", li.items[1].domain);
+caso("notes: Do follow and Only Licensed Casinos, no sponsored tag from a disclaimer", liTerms.linkType === "Do follow" && eq(liTerms.adminComments, ["Only Licensed Casinos"]) && liTerms.sponsorTag === "", liTerms);
+caso("a specific niche beats the general words in one header", eq(nichesOf("PRICE / ARTICLE (EUR) Special Content Advertorial (GAMBLING)"), ["casino"]));
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

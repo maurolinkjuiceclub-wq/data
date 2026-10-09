@@ -267,7 +267,6 @@ let removedDomains = new Set();
 function render(){
   if(!groups) return;
   removedDomains = new Set(groups.removed.map(e => e.item.domain));
-  const total = items.length, decided = Object.keys(decisions).filter(k => items.some(i => i.domain === k)).length;
   const first = groups.unknown.concat(groups.changed, groups.unchanged, groups.removed)[0];
   const broker = stype === "Broker" ? `<div class="aviso acc">${t().brokerHint}</div>` : (first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "");
   const sameSender = groups.changed.filter(c => c.sameSender).length;
@@ -284,22 +283,39 @@ function render(){
   $("results").innerHTML = `
     <div class="gtabs" role="tablist">
       ${tabs.map(([k, cls, label, arr]) => `<button type="button" role="tab" class="gtab ${cls}" data-view="${k}" aria-selected="${k === view}">${label} <span class="n">${arr.length}</span></button>`).join("")}
-      <span class="progreso">${t().decided(decided, total)} <i><b style="width:${total ? Math.round(decided / total * 100) : 0}%"></b></i></span>
+      <span class="progreso" id="progreso">${progressHtml()}</span>
     </div>
     ${broker}
     ${cur[4] ? `<p class="ghint">${cur[4]}${view === "changed" && sameSender ? ` ${sameSender} ${t().fromSender}.` : ""}</p>` : ""}
     ${table(cur[3], view === "removed" ? "removed" : view)}`;
-  $("results").querySelectorAll(".gtab").forEach(b => b.addEventListener("click", () => { view = b.dataset.view; render(); }));
-  $("results").querySelectorAll("button[data-open]").forEach(b => b.addEventListener("click", () => openInDb(b.dataset.open)));
-  $("results").querySelectorAll("button[data-dec]").forEach(b => b.addEventListener("click", () => {
-    const dom = b.dataset.dom, dec = b.dataset.dec;
-    if(written[dom]) return;   /* already in the sheet: no undo from here */
-    if(remote && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
-    if(decisions[dom] === dec) delete decisions[dom]; else decisions[dom] = dec;
-    saveDecisions(); render();
-  }));
   renderExport();
 }
+function progressHtml(){
+  const total = items.length, decided = Object.keys(decisions).filter(k => items.some(i => i.domain === k)).length;
+  return `${t().decided(decided, total)} <i><b style="width:${total ? Math.round(decided / total * 100) : 0}%"></b></i>`;
+}
+/* A decision redraws its own row, the counter and the outputs, not the
+   table: with the 877-row librawebcorp list (09/10) a full render took a
+   second per click. */
+function refreshRow(dom){
+  const sel = `button[data-dom="${window.CSS && CSS.escape ? CSS.escape(dom) : dom}"]`;
+  const tds = new Set(); $("results").querySelectorAll(sel).forEach(b => { const td = b.closest("td.dec"); if(td) tds.add(td); });
+  tds.forEach(td => { td.innerHTML = decisionCell(dom); const tr = td.closest("tr"); if(tr) tr.className = decisions[dom] ? "done" : ""; });
+  const p = $("progreso"); if(p) p.innerHTML = progressHtml();
+  renderExport();
+}
+/* One listener for the whole result area: tabs, domain links, decisions. */
+$("results").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  if(b.classList.contains("gtab")){ view = b.dataset.view; render(); return; }
+  if(b.dataset.open){ openInDb(b.dataset.open); return; }
+  if(!b.dataset.dec) return;
+  const dom = b.dataset.dom, dec = b.dataset.dec;
+  if(written[dom]) return;   /* already in the sheet: no undo from here */
+  if(remote && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
+  if(decisions[dom] === dec) delete decisions[dom]; else decisions[dom] = dec;
+  saveDecisions(); refreshRow(dom);
+});
 async function acceptRemote(dom, btn){
   const item = items.find(i => i.domain === dom); if(!item) return;
   /* The Worker writes who accepted from the Access token; the page does
@@ -313,9 +329,9 @@ async function acceptRemote(dom, btn){
     if(!r.ok || !j.ok) throw new Error(j.error || String(r.status));
     written[dom] = j.updatedRange || "ok";
     decisions[dom] = "accept"; saveDecisions();
-    render();
+    refreshRow(dom);
   }catch(e){
-    btn.disabled = false; render();
+    btn.disabled = false; refreshRow(dom);
     const note = document.createElement("div"); note.className = "aviso"; note.textContent = t().writeFail + " " + dom;
     $("results").prepend(note); setTimeout(() => note.remove(), 6000);
   }

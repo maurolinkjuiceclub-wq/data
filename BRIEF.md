@@ -417,7 +417,42 @@ Niches" fills Casino and the four grey columns (Crypto, Forex, CBD,
 Dating)** with the same price, and **Link Insert, Brand Mentions and
 Homepage Banner are not Buying prices** (the database records the article
 price); both are visible on the row before anyone accepts. The other three
-examples are still to be tested when the files arrive. 105 checks.
+examples are still to be tested when the files arrive.
+
+**The librawebcorp Excel (09/10, afternoon).** Mauro downloaded it from
+Slack and attached it. Two sheets, "Sites" (1,027 rows, 66 merged cells)
+and an empty "TIER 2". It is a publisher's own price list: a title row with
+the year, then a header on three rows ("PRICE / ARTICLE (EUR)" merged over
+six columns; "Standard Content" and "Special Content" under it; then the
+product per column: SEO native, Advertorial branding, Advertorial GAMBLING,
+Advertorial FINANCE (banks, loans, trading, crypto), Advertorial MEDICAL
+(cbd), Advertorial Adult), then MARKINGS & TAGS, Additional info, link
+insertion and brand mention prices, DA and PA. Prices are bare two-digit
+numbers (40, 45) with the currency only in the header; "no" where a niche is
+refused; one domain cell reads "rfi.ro (rfi.fr/ro)"; sixteen lines of notes
+at the bottom. Against it the parser of the morning gave 876 items, 645 of
+them without a price, because it merged only two header rows, took a
+two-digit number for a metric, and read "PRICE / ARTICLE ... (GAMBLING)" as
+general and casino at once. Fixed the same afternoon: at the top of a
+sheet, the rows without an offer are joined and the join naming the most
+niche columns wins (a one-cell row such as the year is skipped, not
+joined); a two-digit number under a niche column is a price; a header
+naming a niche drops the general words ("price", "standard"); a refusal
+under a niche column reads "casino: no"; a second price for a niche already
+filled keeps its column name; a domain with a second name in brackets keeps
+the first; the disclaimer about "sponsored tags ... non-binding" no longer
+sets rel=sponsored for the whole list, while "only properly licensed
+websites" gives Only Licensed Casinos and "one dofollow link" gives Do
+follow. Result: 877 items, every one with a price, 13 note lines skipped.
+SEO native is taken as the General price and the branded advertorial is
+shown as a term; worth confirming with Gary. Shape in the tests with
+invented domains. 113 checks.
+
+Loaded into the page in Chromium (SheetJS from the local copy, since cdnjs
+is not reachable from the sandbox): file to 877 rows on screen in 1.2 s, 25
+MB of memory. A decision then redrew the whole table, about a second per
+click; now it redraws its own row, the counter and the outputs through one
+listener on the result area: 2 to 5 ms per click, measured in the page.
 
 ## Where it lives (Gary, 08/10)
 
