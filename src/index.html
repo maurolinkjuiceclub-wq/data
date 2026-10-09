@@ -237,7 +237,7 @@ td.dec .seg button:nth-child(n+3){border-bottom:0}
       <div id="export-body">
         <p class="hint" data-i18n="rowshint"></p>
         <div class="tabla-wrap" id="export-prev"></div>
-        <div class="actions"><button type="button" class="btn" id="copy" data-i18n="copy">Copy</button><span class="said" id="copynote"></span></div>
+        <div class="actions"><button type="button" class="btn" id="copy" data-i18n="copy">Copy</button><button type="button" class="btn" id="dl-csv" data-i18n="dlCsv">Download CSV</button><button type="button" class="btn" id="dl-xlsx" data-i18n="dlXlsx">Download .xlsx</button><span class="said" id="copynote"></span></div>
         <textarea id="tsv" class="inp" readonly spellcheck="false" hidden></textarea>
       </div>
     </section>
@@ -246,7 +246,7 @@ td.dec .seg button:nth-child(n+3){border-bottom:0}
       <div id="wm-body">
         <p class="hint" data-i18n="wmhint"></p>
         <div class="tabla-wrap" id="wm-prev"></div>
-        <div class="actions"><button type="button" class="btn" id="wm-copy" data-i18n="copy">Copy</button><span class="said" id="wm-note"></span></div>
+        <div class="actions"><button type="button" class="btn" id="wm-copy" data-i18n="copy">Copy</button><button type="button" class="btn" id="wm-csv" data-i18n="dlCsv">Download CSV</button><button type="button" class="btn" id="wm-xlsx" data-i18n="dlXlsx">Download .xlsx</button><span class="said" id="wm-note"></span></div>
         <textarea id="wm-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
       </div>
     </section>
@@ -1100,7 +1100,7 @@ const T = {
     stype:"The sender is", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} site${n === 1 ? "" : "s"} to write to the webmaster`, wmhint:"Tracking rows in the BROKER OUTREACH layout: domain, contact to find, what the broker offered. The direct price is what goes into the database.",
     brokerHint:"Broker list. Unknown sites: write to the real webmaster; the broker's price is the ceiling, not the row. Accept only when the broker is the only way in.",
     terms:{linkType:"link", placement:"placement", priceValidity:"validity", sponsorTag:"tag"}, saidNothing:"terms not stated", fromList:"Stated once for the whole list, not for this site", fromListShort:"whole list", dAbove:"above", dBelow:"below", recorded:"recorded",
-    reset:"Forget the file, back to sample rows", rows:"Rows Accept will write", rowshint:"Sheet not connected yet: copy the rows.", copy:"Copy", copied:"Copied",
+    reset:"Forget the file, back to sample rows", rows:"Rows Accept will write", rowshint:"Copy the rows, or download them as CSV or .xlsx and import them into the sheet. A copy of the database is optional here: it only tells you which sites are already in it.", copy:"Copy", copied:"Copied", dlCsv:"Download CSV", dlXlsx:"Download .xlsx",
     state:(src)=>`database: ${src} · sheet not connected`, meta:(n,d,c,r)=>`${n} rows · ${d} domains · ${c} contacts · ${r} removed`,
     parsed:(n,s,cols)=>`${n} domains · ${s} lines skipped${cols ? " · " + cols : ""}`, noheader:"no header: 1st price general, 2nd casino",
     unchanged:"unchanged", changed:"changed", fromSender:"from this sender", unknown:"unknown", removed:"removed", decided:(a,b)=>`${a} of ${b} decided`,
@@ -1121,7 +1121,7 @@ const T = {
     stype:"El remitente es", typePublisher:"Publisher", typeBroker:"Broker", webmaster:"Webmaster", wmT:(n)=>`${n} sitio${n === 1 ? "" : "s"} para escribir al webmaster`, wmhint:"Filas de seguimiento en el formato de BROKER OUTREACH: dominio, contacto por buscar, qué ofreció el broker. A la base entra el precio directo.",
     brokerHint:"Lista de broker. Sitios desconocidos: escribir al webmaster real; el precio del broker es el techo, no la fila. Aceptar solo si el broker es la única vía.",
     terms:{linkType:"enlace", placement:"duración", priceValidity:"validez", sponsorTag:"etiqueta"}, saidNothing:"sin condiciones", fromList:"Dicho una vez para toda la lista, no para este sitio", fromListShort:"toda la lista", dAbove:"más", dBelow:"menos", recorded:"registrado",
-    reset:"Olvidar el archivo, volver a la muestra", rows:"Filas que escribirá Aceptar", rowshint:"La hoja aún no está conectada: copia las filas.", copy:"Copiar", copied:"Copiado",
+    reset:"Olvidar el archivo, volver a la muestra", rows:"Filas que escribirá Aceptar", rowshint:"Copia las filas, o descárgalas en CSV o .xlsx e impórtalas en la hoja. La copia de la base es opcional aquí: solo dice qué sitios ya están.", copy:"Copiar", copied:"Copiado", dlCsv:"Descargar CSV", dlXlsx:"Descargar .xlsx",
     state:(src)=>`base: ${src} · hoja sin conectar`, meta:(n,d,c,r)=>`${n} filas · ${d} dominios · ${c} contactos · ${r} removidos`,
     parsed:(n,s,cols)=>`${n} dominios · ${s} líneas omitidas${cols ? " · " + cols : ""}`, noheader:"sin cabecera: 1.º precio general, 2.º casino",
     unchanged:"iguales", changed:"cambiados", fromSender:"de este remitente", unknown:"desconocidos", removed:"removidos", decided:(a,b)=>`${a} de ${b} decididos`,
@@ -1417,11 +1417,13 @@ function renderExport(){
     const done = accepted.filter(i => written[i.domain]).length;
     $("export-t").textContent = remote && done ? t().writtenT(done) : t().exportT(accepted.length);
     document.querySelector("[data-i18n=rowshint]").textContent = remote && done ? t().writtenHint : t().rowshint;
-    const rows = accepted.map(i => rowForAccept(i, { type: stype, sender, who: "you", listLabel: label }));
+    /* No identity on this page: the trace names the list, not a person. */
+    const rows = accepted.map(i => rowForAccept(i, { type: stype, sender, who: "", listLabel: label }));
     const show = ["Type", "Domain", "Webmaster Contact", ...NICHES.map(n => BUYING_COLUMN[n]), "Sponsor Tag Type", "Link Type", "Placement", "Price Validity", "Admin Comments", "Last Updated"];
     const used = show.filter(c => c === "Type" || c === "Domain" || rows.some(r => r[c]));
     $("export-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c.replace("Buying ", "B. "))}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]).replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     $("tsv").value = [DB_COLUMNS.join("\t")].concat(rows.map(r => DB_COLUMNS.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");
+    outputs.accepted = { cols: DB_COLUMNS, rows, name: "accepted", sheet: "Import Database" };
   }
   const wm = items.filter(i => decisions[i.domain] === "webmaster");
   $("wm").hidden = !wm.length;
@@ -1436,6 +1438,7 @@ function renderExport(){
     const used = ["Domain", "Contact Email", "Additional Comments"];
     $("wm-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]) || "<span class=sender>—</span>"}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     $("wm-tsv").value = [cols.join("\t")].concat(rows.map(r => cols.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");
+    outputs.webmaster = { cols, rows, name: "webmaster", sheet: "BROKER OUTREACH" };
   }
 }
 function copyFrom(id, note){
@@ -1446,6 +1449,37 @@ function copyFrom(id, note){
 }
 $("wm-copy").addEventListener("click", () => copyFrom("wm-tsv", "wm-note"));
 $("copy").addEventListener("click", () => copyFrom("tsv", "copynote"));
+/* Downloads, as the desk's "Download CSV" (Gary, 09/10: "an export option
+   like in the desk"). The CSV carries a BOM for Excel and keeps the line
+   breaks of Admin Comments inside quotes; the .xlsx (SheetJS, loaded only
+   then) writes prices as numbers under the sheet's own tab name. */
+const outputs = { accepted: null, webmaster: null };
+function stamp(){ return new Date().toISOString().slice(0, 10); }
+function saveBlob(blob, name){
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+function csvOf(out){
+  const q = v => { const s = String(v == null ? "" : v); return /[",\n\r]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s; };
+  return "\ufeff" + [out.cols.map(q).join(",")].concat(out.rows.map(r => out.cols.map(c => q(r[c])).join(","))).join("\r\n");
+}
+function downloadCsv(out){ if(out) saveBlob(new Blob([csvOf(out)], { type: "text/csv;charset=utf-8" }), `ljc-lists-${out.name}-${stamp()}.csv`); }
+async function downloadXlsx(out, note){
+  if(!out) return;
+  try{
+    const XLSX = await loadSheetJS();
+    const num = v => (typeof v === "string" && /^\d+(\.\d+)?$/.test(v)) ? Number(v) : v;
+    const aoa = [out.cols].concat(out.rows.map(r => out.cols.map(c => /^Buying /.test(c) ? num(r[c]) : (r[c] == null ? "" : r[c]))));
+    const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aoa), out.sheet);
+    saveBlob(new Blob([XLSX.write(wb, { type: "array", bookType: "xlsx" })], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), `ljc-lists-${out.name}-${stamp()}.xlsx`);
+  }catch(e){ $(note).textContent = t().fileFail; }
+}
+$("dl-csv").addEventListener("click", () => downloadCsv(outputs.accepted));
+$("dl-xlsx").addEventListener("click", () => downloadXlsx(outputs.accepted, "copynote"));
+$("wm-csv").addEventListener("click", () => downloadCsv(outputs.webmaster));
+$("wm-xlsx").addEventListener("click", () => downloadXlsx(outputs.webmaster, "wm-note"));
 
 /* ---------- the file they sent ---------- */
 /* SheetJS is loaded only when an Excel file arrives, from cdnjs (the only

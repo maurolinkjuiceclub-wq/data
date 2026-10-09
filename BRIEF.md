@@ -543,6 +543,20 @@ about 4 s if the .xlsx proves too heavy on a laptop. A Google Sheets link
 pasted as a list gets a note saying to download it as .xlsx and load the
 file, since the browser cannot read the sheet itself.
 
+**Gary, later the same afternoon (through Mauro):** "we need an export
+option like in the desk, and you don't really need the database". Done:
+Download CSV and Download .xlsx next to Copy under both outputs (the desk
+has "Download CSV" on its lists; the .xlsx is for the sheet: 45 columns,
+tab "Import Database", prices as numbers, Admin Comments with their line
+breaks), file names like the desk's. The trace in User Comments names the
+list only, since this page has no identity. The hint under the rows says
+the database copy is optional. Tested in Chromium: the four downloads,
+read back with SheetJS. A review of the day's parser changes by a second
+reader found six real defects (an option clause swallowing real terms, a
+conditions line above a header lost, a price line leaking into later
+domains, Festpreis, right-aligned PDF numbers, the lone-E rule on
+per-glyph PDFs); all fixed with checks, 131 in total.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will

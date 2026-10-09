@@ -86,6 +86,18 @@ Accept builds the rows; a person pastes them into the sheet. The live
 sheet with refresh is the Worker's job (`src/worker.js`, read-only
 routes) and waits for the service account and the move into the desk.
 
+## Exporting the rows (Gary, 09/10)
+
+Gary's second point of the afternoon: "an export option like in the desk",
+and the database copy is not needed for that. Under the result, "Rows
+Accept will write" has Copy, Download CSV and Download .xlsx (the sheet's
+45 columns, the tab named "Import Database", prices as numbers); the
+webmaster block has the same three in the BROKER OUTREACH layout. The file
+is named `ljc-lists-accepted-<date>` or `ljc-lists-webmaster-<date>`, like
+the desk's `ljc-ready-<date>.csv`. With no database copy loaded every site
+is new and the rows export the same; the copy only tells which sites are
+already in the sheet.
+
 ## Not yet
 
 Google Sheet links as list input (they need the service account). A real
