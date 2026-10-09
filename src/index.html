@@ -1455,7 +1455,18 @@ $("copy").addEventListener("click", () => copyFrom("tsv", "copynote"));
    then) writes prices as numbers under the sheet's own tab name. */
 const outputs = { accepted: null, webmaster: null };
 function stamp(){ return new Date().toISOString().slice(0, 10); }
-function saveBlob(blob, name){
+/* In the claude.ai viewer a page cannot download by itself: the file goes
+   through the viewer's own save prompt (claude.use("downloads")). Anywhere
+   else (GitHub Pages, a file on disk, the desk) it is a plain download. */
+async function saveBlob(blob, name){
+  if(window.claude && typeof window.claude.use === "function"){
+    const dl = await window.claude.use("downloads").catch(() => null);
+    if(dl){
+      try{ await dl.save({ filename: name, data: blob }); }
+      catch(e){ if(!e || e.code !== "declined") console.error("save:", e); }
+      return;
+    }
+  }
   const a = document.createElement("a");
   a.href = URL.createObjectURL(blob); a.download = name;
   document.body.appendChild(a); a.click(); a.remove();
