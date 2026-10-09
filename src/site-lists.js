@@ -617,7 +617,7 @@ export function priceDiff(item, row){
    `sender` is the email the list came from; when the database already has it
    on `brokerHintAt` or more domains, `brokerHint` is set on every item. */
 export function matchList(items, index, { sender, brokerHintAt = 10, senderCount, senderType = "Publisher" } = {}){
-  const groups = { unchanged: [], changed: [], unknown: [], removed: [] };
+  const groups = { unchanged: [], changed: [], unknown: [], removed: [], missing: [] };
   const mail = String(sender || "").trim().toLowerCase();
   /* senderCount comes from the Worker, which sees the whole sheet; the
      local index only sees the rows it was given. */
@@ -639,7 +639,32 @@ export function matchList(items, index, { sender, brokerHintAt = 10, senderCount
     if(allEqual) groups.unchanged.push({ ...base, diffs });
     else groups.changed.push({ ...base, diffs, sameSender: !!mail && hit.some(h => senderOf(h.row) === mail) });
   }
+  /* Senad, 09/10: "if a site is no longer present on the list provided by
+     either a Webmaster or Broker, we put that site in the Removed Sites
+     tab". The sender's rows that this list does not name. */
+  if(mail){
+    const listed = new Set(items.map(i => i.domain));
+    for(const d of (index.bySender.get(mail) || [])){
+      if(listed.has(d)) continue;
+      const hit = index.byDomain.get(d) || [];
+      if(!hit.length) continue;
+      groups.missing.push({ item: { domain: d, path: "", raw: d, prices: {}, terms: "" }, rows: hit.map(h => h.row), rowIndexes: hit.map(h => h.index), brokerHint, conversion: false, keepWebmaster: false, missing: true });
+    }
+  }
   return groups;
+}
+
+/* The "removed sites" tab has the database's columns without the two
+   Unlicensed Casino ones (read 07/10). A row moving there keeps its data,
+   gets the reason first in Admin Comments and today's date. */
+export const REMOVED_COLUMNS = DB_COLUMNS.filter(c => !/Unlicensed Casino/.test(c));
+export function rowForRemoved(row, { reason = "REMOVED FROM THE LIST", listLabel = "", today = new Date() } = {}){
+  const d = String(today.getDate()).padStart(2, "0"), m = String(today.getMonth() + 1).padStart(2, "0"), y = today.getFullYear();
+  const out = Object.fromEntries(REMOVED_COLUMNS.map(c => [c, row[c] == null ? "" : String(row[c])]));
+  out["Admin Comments"] = [reason, String(row["Admin Comments"] || "").trim()].filter(Boolean).join("\n");
+  out["User Comments"] = [String(row["User Comments"] || "").trim(), listLabel && `missing from list ${listLabel}`].filter(Boolean).join("; ");
+  out["Last Updated"] = `${d}/${m}/${y}`;
+  return out;
 }
 
 /* ---------- terms, as the database's fixed values ---------- */

@@ -90,7 +90,7 @@ const T = {
     unchanged:"unchanged", changed:"changed", fromSender:"from this sender", unknown:"unknown", removed:"removed", decided:(a,b)=>`${a} of ${b} decided`,
     broker:(n)=>`This sender already has ${n} domains in the database: likely a broker.`,
     removedNote:(n)=>`${n} in removed sites: never written as new.`,
-    gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed",
+    gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed", gMissing:"Missing", hMissing:"In the database from this sender but not on this list. Senad, 09/10: they go to removed sites as REMOVED FROM THE LIST. Reject keeps a row when the list was only partial.", remove:"To removed sites", notListed:"not on this list", rmT:(n)=>`${n} row${n === 1 ? "" : "s"} for removed sites`, rmhint:"Rows in the removed sites layout, with the reason first in Admin Comments. Paste or import them into the removed sites tab and delete them from Import Database by hand.",
     hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab, with the reason. Restore writes it back to the database and the row says so.", hAll:"",
     thDomain:"Domain", thOffered:"Offered", thDb:"In the database", thRemoved:"Removed sites", thTerms:"Terms", thDecision:"Decision",
     accept:"Accept", reject:"Reject", ask:"Ask", none:"none", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
@@ -111,7 +111,7 @@ const T = {
     unchanged:"iguales", changed:"cambiados", fromSender:"de este remitente", unknown:"desconocidos", removed:"removidos", decided:(a,b)=>`${a} de ${b} decididos`,
     broker:(n)=>`Este remitente ya tiene ${n} dominios en la base: probable broker.`,
     removedNote:(n)=>`${n} en removed sites: nunca se escriben como nuevos.`,
-    gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos",
+    gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos", gMissing:"Faltan", hMissing:"Están en la base de este remitente pero no en esta lista. Senad, 09/10: van a removed sites como REMOVED FROM THE LIST. Rechazar conserva la fila si la lista era parcial.", remove:"A removed sites", notListed:"no está en esta lista", rmT:(n)=>`${n} fila${n === 1 ? "" : "s"} para removed sites`, rmhint:"Filas con el formato de removed sites, con el motivo primero en Admin Comments. Pégalas o impórtalas en la pestaña removed sites y bórralas de Import Database a mano.",
     hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites, con el motivo. Restaurar la devuelve a la base y la fila lo dice.", hAll:"",
     thDomain:"Dominio", thOffered:"Ofrece", thDb:"En la base", thRemoved:"Removed sites", thTerms:"Condiciones", thDecision:"Decisión",
     accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
@@ -239,7 +239,7 @@ function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCa
    moves to the first group that has rows; a view chosen by hand stays. */
 function pickView(){
   if(view === "all" || !groups || !groups[view] || groups[view].length) return;
-  const k = ["changed", "unknown", "unchanged", "removed"].find(g => groups[g] && groups[g].length);
+  const k = ["changed", "unknown", "unchanged", "removed", "missing"].find(g => groups[g] && groups[g].length);
   if(k) view = k;
 }
 function run(){
@@ -261,7 +261,7 @@ async function matchRemote(){
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     lastMatch = j;
-    const idx = indexDatabase(Object.values(j.rows || {}).flat().map(prepareRow), Object.values(j.removed || {}).flat().map(prepareRow));
+    const idx = indexDatabase(Object.values(j.rows || {}).flat().concat(j.senderRows || []).map(prepareRow), Object.values(j.removed || {}).flat().map(prepareRow));
     groups = matchList(items, idx, { sender, senderCount: j.senderCount, senderType: stype });
     pickView();
     remote = { ...remote, rows: j.total, readAt: j.readAt };
@@ -315,7 +315,8 @@ function decisionCell(domain){
      the webmaster) and a webmaster's row is never replaced; a removed site
      comes back with Restore, and the row says so. */
   let keys;
-  if(removedDomains.has(domain)) keys = ["accept","webmaster","ask","reject"];
+  if(e && e.missing) keys = ["remove","ask","reject"];
+  else if(removedDomains.has(domain)) keys = ["accept","webmaster","ask","reject"];
   else if(e && e.keepWebmaster) keys = ["ask","reject"];
   else if(isReseller(stype)) keys = unknown ? ["webmaster","ask","reject"] : ["webmaster","accept","ask","reject"];
   else keys = ["accept","webmaster","ask","reject"];
@@ -328,7 +329,9 @@ function table(entries, kind){
     const d = e.item.domain; const done = decisions[d] ? " done" : "";
     const flag = e.conversion ? `<span class="fv off">${t().convChip}</span>` : e.keepWebmaster ? `<span class="fv">${t().keepChip}</span>` : "";
     const dbCol = flag + (e.removedRows ? dbCells(e.removedRows, true) : dbCells(e.rows));
-    return `<tr class="${done.trim()}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offeredCells(e.item, e.diffs)}</td><td>${dbCol}</td><td class="ancha">${termsCells(e.item)}</td><td class="dec">${decisionCell(d)}</td></tr>`;
+    const offered = e.missing ? `<span class="sender">${t().notListed}</span>` : offeredCells(e.item, e.diffs);
+    const terms = e.missing ? "" : termsCells(e.item);
+    return `<tr class="${done.trim()}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offered}</td><td>${dbCol}</td><td class="ancha">${terms}</td><td class="dec">${decisionCell(d)}</td></tr>`;
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -339,13 +342,14 @@ function render(){
   const first = groups.unknown.concat(groups.changed, groups.unchanged, groups.removed)[0];
   const broker = isReseller(stype) ? `<div class="aviso acc">${t().brokerHint}</div>` : (first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "");
   const sameSender = groups.changed.filter(c => c.sameSender).length;
-  const all = groups.changed.concat(groups.unknown, groups.unchanged, groups.removed);
+  const all = groups.changed.concat(groups.unknown, groups.unchanged, groups.removed, groups.missing || []);
   entryOf = new Map(all.map(e => [e.item.domain, e]));
   const tabs = [
     ["changed", "wait", t().gChanged, groups.changed, t().hChanged],
     ["unknown", "", t().gUnknown, groups.unknown, t().hUnknown],
     ["unchanged", "ok", t().gUnchanged, groups.unchanged, t().hUnchanged],
     ["removed", "", t().gRemoved, groups.removed, t().hRemoved],
+    ["missing", "", t().gMissing, groups.missing || [], t().hMissing],
     ["all", "", t().all, all, ""]
   ];
   if(!tabs.find(x => x[0] === view)) view = "changed";
@@ -449,6 +453,17 @@ function renderExport(){
     $("wm-tsv").value = [cols.join("\t")].concat(rows.map(r => cols.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");
     outputs.webmaster = { cols, rows, name: "webmaster", sheet: "BROKER OUTREACH" };
   }
+  /* Rows for the removed sites tab: the sender's sites this list no longer names. */
+  const gone = ((groups && groups.missing) || []).filter(e => decisions[e.item.domain] === "remove");
+  $("rm").hidden = !gone.length;
+  if(gone.length){
+    $("rm-t").textContent = t().rmT(gone.length);
+    const rows = gone.map(e => rowForRemoved(e.rows[0], { listLabel: label }));
+    const used = ["Domain", "Webmaster Contact", "Admin Comments", "Last Updated"];
+    $("rm-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]).replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
+    $("rm-tsv").value = [REMOVED_COLUMNS.join("\t")].concat(rows.map(r => REMOVED_COLUMNS.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");
+    outputs.removed = { cols: REMOVED_COLUMNS, rows, name: "removed", sheet: "removed sites" };
+  }
 }
 function copyFrom(id, note){
   const el = $(id); const txt = el.value;
@@ -462,7 +477,7 @@ $("copy").addEventListener("click", () => copyFrom("tsv", "copynote"));
    like in the desk"). The CSV carries a BOM for Excel and keeps the line
    breaks of Admin Comments inside quotes; the .xlsx (SheetJS, loaded only
    then) writes prices as numbers under the sheet's own tab name. */
-const outputs = { accepted: null, webmaster: null };
+const outputs = { accepted: null, webmaster: null, removed: null };
 function stamp(){ return new Date().toISOString().slice(0, 10); }
 /* In the claude.ai viewer a page cannot download by itself: the file goes
    through the viewer's own save prompt (claude.use("downloads")). Anywhere
@@ -498,6 +513,10 @@ async function downloadXlsx(out, note){
 }
 $("dl-csv").addEventListener("click", () => downloadCsv(outputs.accepted));
 $("dl-xlsx").addEventListener("click", () => downloadXlsx(outputs.accepted, "copynote"));
+$("rm-copy").addEventListener("click", () => copyFrom("rm-tsv", "rm-note"));
+$("rm-csv").addEventListener("click", () => downloadCsv(outputs.removed));
+$("rm-xlsx").addEventListener("click", () => downloadXlsx(outputs.removed, "rm-note"));
+$("rm-h").addEventListener("click", () => { const open = $("rm-body").hidden; $("rm-body").hidden = !open; $("rm-h").setAttribute("aria-expanded", String(open)); });
 $("wm-csv").addEventListener("click", () => downloadCsv(outputs.webmaster));
 $("wm-xlsx").addEventListener("click", () => downloadXlsx(outputs.webmaster, "wm-note"));
 

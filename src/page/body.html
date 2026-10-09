@@ -52,6 +52,15 @@
         <textarea id="wm-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
       </div>
     </section>
+    <section class="export" id="rm" hidden>
+      <button type="button" class="panel-h" id="rm-h" aria-expanded="true" aria-controls="rm-body"><span class="caret" aria-hidden="true">▾</span><span id="rm-t"></span></button>
+      <div id="rm-body">
+        <p class="hint" data-i18n="rmhint"></p>
+        <div class="tabla-wrap" id="rm-prev"></div>
+        <div class="actions"><button type="button" class="btn" id="rm-copy" data-i18n="copy">Copy</button><button type="button" class="btn" id="rm-csv" data-i18n="dlCsv">Download CSV</button><button type="button" class="btn" id="rm-xlsx" data-i18n="dlXlsx">Download .xlsx</button><span class="said" id="rm-note"></span></div>
+        <textarea id="rm-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
+      </div>
+    </section>
   </main>
 </div>
 

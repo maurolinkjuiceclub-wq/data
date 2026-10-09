@@ -202,7 +202,10 @@ export default {
         if(db.byDomain.has(d.domain)) rows[d.domain] = db.byDomain.get(d.domain).map(h => publicRow(h.row));
         if(db.removedByDomain.has(d.domain)) removed[d.domain] = db.removedByDomain.get(d.domain).map(h => publicRow(h.row));
       }
-      return json({ rows, removed, senderCount: sender ? (db.bySender.get(sender) || []).length : 0, readAt: new Date(db.at).toISOString(), total: db.rows });
+      /* The sender's other rows, so the page can list what this list no
+         longer names (Senad, 09/10: those go to removed sites). */
+      const senderRows = sender ? (db.bySender.get(sender) || []).flatMap(dom => (db.byDomain.get(dom) || []).map(h => publicRow(h.row))) : [];
+      return json({ rows, removed, senderRows, senderCount: sender ? (db.bySender.get(sender) || []).length : 0, readAt: new Date(db.at).toISOString(), total: db.rows });
     }
 
     /* The database screen: a page of rows after filters, with facets on

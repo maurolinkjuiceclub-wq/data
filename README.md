@@ -94,7 +94,10 @@ ones get Webmaster, Ask or Reject, never Accept. A webmaster's list over a
 broker's row is a "Broker conversion": the row is flagged and the exported
 row says which row it replaces. A webmaster's row is never replaced by a
 broker's offer. A site on removed sites shows its reason and can be
-Restored; the row says so. Details and sources in BRIEF.md.
+Restored; the row says so. With the sender filled in, the sites we have from
+that sender that the list no longer names appear under Missing: "To removed
+sites" builds their rows for the removed tab, with the reason. Details and
+sources in BRIEF.md.
 
 ## Exporting the rows (Gary, 09/10)
 

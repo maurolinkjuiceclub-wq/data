@@ -71,6 +71,7 @@ r = await pedir("/api/match", "POST", { domains: ["https://www.alpha.com/", "bet
 caso("match: rows by normalised domain", r.status === 200 && r.json.rows["alpha.com"].length === 1 && r.json.rows["beta.es"].length === 2 && !r.json.rows["nobody.io"], Object.keys(r.json.rows || {}));
 caso("match: row headers normalised to one line", r.json.rows["alpha.com"][0]["Buying Casino"] === 400 && r.json.rows["alpha.com"][0]["Ahrefs Domain Rating"] === "", r.json.rows["alpha.com"][0]);
 caso("match: removed sites", r.json.removed["gamma.net"] && r.json.removed["gamma.net"][0].Domain === "gamma.net", r.json.removed);
+caso("match: the sender's rows travel for the missing group", Array.isArray(r.json.senderRows), r.json.senderRows);
 caso("match: sender count", r.json.senderCount === 1, r.json.senderCount);
 caso("match: served from cache, no new Google call", calls.length === before, calls.slice(before));
 

@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -307,6 +307,18 @@ caso("a restored row says so, with the reason", /Restored from removed sites \(R
 caso("dates as the sheet writes them", eq([sheetDate("31.12.2026"), sheetDate("1-7-26"), sheetDate("2026-12-31"), sheetDate("end of year")], ["31/12/2026", "01/07/2026", "31/12/2026", "end of year"]));
 const acNotes = termsOf({ terms: "Indexing cannot be guaranteed. No promotional or affiliate content. No competitor links.", prices: {} }).adminComments;
 caso("admin comments from Senad's sheet: indexing, affiliates, competitors", eq(acNotes, ["Indexing is not guaranteed", "No Affiliates", "No Competitor Links"]) && acNotes.every(c => ADMIN_COMMENTS.includes(c)), acNotes);
+/* The sender's rows a list no longer names go to removed sites (Senad). */
+const idxMiss = indexDatabase([
+  Object.assign(Object.fromEntries(DB_COLUMNS.map(c => [c, ""])), { Type: "Publisher", Domain: "kept.example", "Webmaster Contact": "wm@kept.example", "Buying General": "100" }),
+  Object.assign(Object.fromEntries(DB_COLUMNS.map(c => [c, ""])), { Type: "Publisher", Domain: "dropped.example", "Webmaster Contact": "wm@kept.example", "Buying General": "80", "Admin Comments": "Written by WM", "Buying Unlicensed Casino": "500" }),
+  Object.assign(Object.fromEntries(DB_COLUMNS.map(c => [c, ""])), { Type: "Publisher", Domain: "other.example", "Webmaster Contact": "x@other.example", "Buying General": "70" })
+].map(prepareRow), []);
+const gm = matchList(parseList("kept.example\t100").items, idxMiss, { sender: "WM@kept.example" });
+caso("missing: the sender's other rows, not other senders'", eq(gm.missing.map(e => e.item.domain), ["dropped.example"]) && gm.unchanged.length === 1, gm.missing);
+caso("missing: without a sender there is nothing to miss", matchList(parseList("kept.example\t100").items, idxMiss, {}).missing.length === 0);
+const rr = rowForRemoved(gm.missing[0].rows[0], { listLabel: "kept 09/10", today: new Date(2026, 9, 9) });
+caso("removed row: 43 columns, no Unlicensed Casino, reason first, today's date", Object.keys(rr).length === 43 && !("Buying Unlicensed Casino" in rr) && rr["Admin Comments"] === "REMOVED FROM THE LIST\nWritten by WM" && rr["Last Updated"] === "09/10/2026" && rr["Buying General"] === "80" && /missing from list kept 09\/10/.test(rr["User Comments"]), rr);
+caso("REMOVED_COLUMNS is the sheet's removed tab", REMOVED_COLUMNS.length === 43 && REMOVED_COLUMNS.includes("Majestic Citation Flow"));
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31/12/2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

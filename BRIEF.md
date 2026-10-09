@@ -601,6 +601,16 @@ what changed in the page the same evening:
   "No Affiliates" and "No Competitor Links" are now read from the text.
   "Date Confirmed" is Senad's name for what the sheet header calls Last
   Updated; the page keeps the header's name.
+- **Missing from the list.** Senad: "if a site is no longer present on the
+  list provided by either a Webmaster or Broker, we put that site in the
+  Removed Sites tab". With the sender filled in and a copy of the database
+  (or the Worker), the page lists the sender's rows the list no longer
+  names in a fifth group, Missing, with the decision "To removed sites"
+  (or Reject to keep the row when the list was only partial). A third
+  output gives those rows in the removed tab's 43 columns, "REMOVED FROM
+  THE LIST" first in Admin Comments, today's date, with Copy, CSV and
+  .xlsx (tab "removed sites"); deleting them from Import Database stays by
+  hand. The Worker's /api/match now carries the sender's rows for this.
 
 ## Where it lives (Gary, 08/10)
 
