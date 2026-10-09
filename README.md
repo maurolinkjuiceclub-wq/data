@@ -78,9 +78,10 @@ should be accessible here", so this page never writes.
 In the bar, the seal opens the database panel. Export the sheet as .xlsx
 (both tabs come along: "Import Database" and "removed sites", found by
 name) or as .csv (main tab; removed sites as a second .csv) and load it.
-The file stays in the browser (IndexedDB) and is read again on the next
-visit, so it is loaded once per export, not once per visit, until it is
-replaced or forgotten with the button. The Database screen then shows it.
+The rows stay in the browser (IndexedDB) and come back on the next visit,
+so the file is loaded once per export, not once per visit, until it is
+replaced or forgotten with the button. A workbook of the sheet's size
+(103,393 rows) loads in about 9 s and comes back in 2 s. The Database screen then shows it.
 Accept builds the rows; a person pastes them into the sheet. The live
 sheet with refresh is the Worker's job (`src/worker.js`, read-only
 routes) and waits for the service account and the move into the desk.

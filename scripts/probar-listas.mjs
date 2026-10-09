@@ -270,6 +270,7 @@ const pdfTerms = listTermsOf(pdfParsed);
 caso("pdf table parsed: Article is general, Homepage Link a labelled term, metrics labelled", pdfParsed.items.length === 3 && eq(pdfParsed.items.map(i => i.prices.general.amount), [599, 499, 399]) && /Homepage Link: 2\.990€/.test(pdfParsed.items[0].terms) && /DA: 24/.test(pdfParsed.items[0].terms) && !pdfParsed.items[0].prices.casino, pdfParsed.items);
 caso("pdf notes: No follow and 2 Years are what is included; permanent on request and do-follow at a surcharge are not", pdfTerms.linkType === "No follow" && pdfTerms.placement === "2 Years", pdfTerms);
 caso("pdf prose page: words joined into lines", eq(pdfTextOf([it("Rate", 50, 700, 20), it("card", 73, 700, 20), it("alpha.example 250 EUR", 50, 684, 100)]), "Rate card\nalpha.example 250 EUR"));
+caso("a Google Sheets link is not a site", parseList("https://docs.google.com/spreadsheets/d/abc/edit?gid=0#gid=0").items.length === 0);
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

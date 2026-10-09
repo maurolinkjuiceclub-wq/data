@@ -64,7 +64,10 @@ function setStype(v){
 function noteParse(){
   if(!lastParsed) return;
   const cols = lastParsed.columns ? lastParsed.columns.filter(Boolean).join(", ") : t().noheader;
-  $("parsenote").textContent = t().parsed(items.length, lastParsed.skipped.length, cols);
+  /* A Google Sheets link cannot be read from the browser (sign-in, no
+     CORS): say what to do instead of showing zero domains. */
+  const gsheet = /docs\.google\.com\/spreadsheets/.test($("list").value);
+  $("parsenote").textContent = t().parsed(items.length, lastParsed.skipped.length, cols) + (gsheet && items.length < 3 ? " · " + t().gsheetHint : "");
 }
 const decisions = {};   /* domain -> accept | reject | ask */
 const $ = id => document.getElementById(id);
@@ -73,7 +76,7 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;
 /* ---------- two languages, as the desk ---------- */
 const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
-    dbhint:"Sample rows until a copy of the sheet is loaded. Export the sheet as .xlsx (both tabs) or .csv and load it here: it stays in this browser, also after closing it, until it is replaced or forgotten.", dbfileL:"Copy of the sheet · .xlsx (both tabs) or .csv", rmfileL:"removed sites · .csv, when the copy is a CSV", dbnever:"This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.", dbLoaded:(name, when)=>`${name} · loaded ${when}`, all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
+    dbhint:"Sample rows until a copy of the sheet is loaded. Export the sheet as .xlsx (both tabs) or .csv and load it here: it stays in this browser, also after closing it, until it is replaced or forgotten.", dbfileL:"Copy of the sheet · .xlsx (both tabs) or .csv", rmfileL:"removed sites · .csv, when the copy is a CSV", dbnever:"This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.", dbLoaded:(name, when)=>`${name} · loaded ${when}`, gsheetHint:"A Google Sheets link cannot be read from here: open it, File → Download → .xlsx, and load that file above.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
     sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
     modeList:"List", modeDb:"Database", fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
     dbSearch:"Search domain, contact or name", dbCount:(n, total)=>`${n.toLocaleString("en")} of ${total.toLocaleString("en")} rows`, dbEmpty:"No row matches.", dbLoading:"Loading…", dbRemovedTab:"removed sites", dbCols:{Domain:"Domain", Type:"Type", Contact:"Contact", Country:"Country", Language:"Language", Updated:"Updated", Terms:"Terms"},
@@ -94,7 +97,7 @@ const T = {
     accept:"Accept", reject:"Reject", ask:"Ask", none:"none", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
-    dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
+    dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
     sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
     modeList:"Lista", modeDb:"Base de datos", fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
     dbSearch:"Buscar dominio, contacto o nombre", dbCount:(n, total)=>`${n.toLocaleString("es")} de ${total.toLocaleString("es")} filas`, dbEmpty:"Ninguna fila coincide.", dbLoading:"Cargando…", dbRemovedTab:"removed sites", dbCols:{Domain:"Dominio", Type:"Tipo", Contact:"Contacto", Country:"País", Language:"Idioma", Updated:"Actualizado", Terms:"Condiciones"},
@@ -186,41 +189,45 @@ function idb(){
 function idbPut(key, val){ return idb().then(db => new Promise((ok, no) => { const tx = db.transaction("files", "readwrite"); tx.objectStore("files").put(val, key); tx.oncomplete = () => ok(); tx.onerror = () => no(tx.error); })).catch(e => console.error("store:", e)); }
 function idbGet(key){ return idb().then(db => new Promise((ok, no) => { const q = db.transaction("files", "readonly").objectStore("files").get(key); q.onsuccess = () => ok(q.result); q.onerror = () => no(q.error); })).catch(() => null); }
 function idbDel(key){ return idb().then(db => new Promise((ok, no) => { const tx = db.transaction("files", "readwrite"); tx.objectStore("files").delete(key); tx.oncomplete = () => ok(); tx.onerror = () => no(tx.error); })).catch(() => {}); }
+/* The rows are stored, not the file: reading the 103,393-row workbook
+   takes about 20 s and 540 MB, reading the stored rows a couple of
+   seconds (measured 09/10). */
+function rememberDb(){ return idbPut("db", { name: dbSource, when: dbLoadedAt ? dbLoadedAt.getTime() : Date.now(), db: dbRows, rm: rmRows }); }
 async function loadDbFile(f, opts){
   opts = opts || {};
   $("dbmeta").textContent = t().fileLoading;
+  await new Promise(r => setTimeout(r, 30));   /* let the note paint before the parse blocks */
   try{
     if(/\.(xlsx|xls|xlsm|ods)$/i.test(f.name)){
       const XLSX = await loadSheetJS();
-      const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+      const wb = XLSX.read(await f.arrayBuffer(), { type: "array", dense: true });
       const names = wb.SheetNames;
       const dbName = names.find(n => /import|datab/i.test(n)) || names[0];
       const rmName = names.find(n => n !== dbName && /remov|elimin/i.test(n)) || (names.length > 1 ? names.find(n => n !== dbName) : null);
       const objs = n => XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: "", raw: false }).map(prepareRow);
       dbRows = objs(dbName);
-      if(rmName){ rmRows = objs(rmName); if(opts.remember) idbDel("rm"); }
+      if(rmName) rmRows = objs(rmName);
     }else{
       dbRows = csvToObjects(await f.text()).map(prepareRow);
     }
-    dbSource = f.name; dbLoadedAt = opts.when ? new Date(opts.when) : new Date();
-    if(opts.remember) idbPut("db", { name: f.name, when: dbLoadedAt.getTime(), file: f });
+    dbSource = f.name; dbLoadedAt = new Date();
     rebuild();
+    if(opts.remember) rememberDb();
   }catch(e){
     console.error("database file:", e);
     $("dbmeta").textContent = t().fileFail;
   }
 }
-async function loadRmFile(f, opts){
-  opts = opts || {};
+async function loadRmFile(f){
   try{
     rmRows = csvToObjects(await f.text()).map(prepareRow);
-    if(opts.remember) idbPut("rm", { name: f.name, when: Date.now(), file: f });
     rebuild();
+    if(dbLoadedAt) rememberDb();
   }catch(e){ $("dbmeta").textContent = t().fileFail; }
 }
 $("dbfile").addEventListener("change", () => { const f = $("dbfile").files && $("dbfile").files[0]; if(f) loadDbFile(f, { remember: true }); });
-$("rmfile").addEventListener("change", () => { const f = $("rmfile").files && $("rmfile").files[0]; if(f) loadRmFile(f, { remember: true }); });
-$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = SAMPLE_REMOVED.map(prepareRow); dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); idbDel("rm"); rebuild(); });
+$("rmfile").addEventListener("change", () => { const f = $("rmfile").files && $("rmfile").files[0]; if(f) loadRmFile(f); });
+$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = SAMPLE_REMOVED.map(prepareRow); dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
 function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
 
 /* ---------- matching ---------- */
@@ -690,7 +697,12 @@ bootStep("language", () => applyLang());
 bootStep("match", () => run());
 /* The copy loaded on an earlier visit, if any: read again from the browser. */
 bootStep("stored database", () => {
-  idbGet("db").then(rec => { if(rec && rec.file) return loadDbFile(rec.file, { when: rec.when }); }).then(() => idbGet("rm")).then(rec => { if(rec && rec.file) return loadRmFile(rec.file); });
+  idbGet("db").then(rec => {
+    if(!rec || !Array.isArray(rec.db)) return;
+    dbRows = rec.db; if(Array.isArray(rec.rm)) rmRows = rec.rm;
+    dbSource = rec.name; dbLoadedAt = new Date(rec.when);
+    rebuild();
+  });
 });
 /* The Worker, if there is one next to the page; the sample result stays
    until it answers. */

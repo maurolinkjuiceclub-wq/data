@@ -238,7 +238,8 @@ export function parseList(text){
     /* One site per sheet row: the header's domain column when there is one;
        otherwise the first cell of each host, so a "Sample Post" URL on the
        same site is not a second item. */
-    let domIdxs = cells.map((c, j) => normaliseDomain(c) ? j : -1).filter(j => j >= 0);
+    /* A link to a Google Sheet or Drive file is where a list lives, not a site. */
+    let domIdxs = cells.map((c, j) => { const d = normaliseDomain(c); return d && !/^(docs|drive|sheets)\.google\.com$/.test(d.domain) ? j : -1; }).filter(j => j >= 0);
     if(domIdxs.length > 1){
       if(domainCol >= 0 && domIdxs.includes(domainCol)) domIdxs = [domainCol];
       else { const seen = new Set(); domIdxs = domIdxs.filter(j => { const h = normaliseDomain(cells[j]).domain; if(seen.has(h)) return false; seen.add(h); return true; }); }

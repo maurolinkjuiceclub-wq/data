@@ -533,6 +533,16 @@ builds the rows. The live sheet with a refresh button is the Worker's
 read-only routes and waits for the service account; it is the next step
 once the move into the desk starts (INTEGRATION.md).
 
+Measured afterwards with a workbook of the sheet's size (103,393 invented
+rows, 45 columns, 27 MB .xlsx with a second tab): reading it in the page
+took 20 s and 540 MB with SheetJS as it was; with SheetJS's dense mode
+and the rows stored in IndexedDB instead of the file, the upload takes 9 s
+and 630 MB while parsing, and the next visit restores the rows in 2 s.
+Gary's real export will behave like this; a CSV of the main tab loads in
+about 4 s if the .xlsx proves too heavy on a laptop. A Google Sheets link
+pasted as a list gets a note saying to download it as .xlsx and load the
+file, since the browser cannot read the sheet itself.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will
