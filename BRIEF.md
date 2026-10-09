@@ -454,6 +454,35 @@ MB of memory. A decision then redrew the whole table, about a second per
 click; now it redraws its own row, the counter and the outputs through one
 listener on the result area: 2 to 5 ms per click, measured in the page.
 
+**The mattbarltd thread (09/10, evening).** Mauro pasted the whole thread
+Senad forwarded: Senad's reply on top (headers in Bosnian), Matt's answer
+on niches, Senad's questions, and two replies down Matt's list of 03/02:
+twenty UK sports sites in blocks, each block a price line above its
+domains ("£100 football links / £150 any other links"), prices in pounds
+plus VAT, then the conditions (dofollow, "not marked as sponsored or
+tagged", permanent, no adult, CBD or non-gamstop links), then Senad's
+first email with our signature. The parser read nothing: the first "Best
+regards" closed the whole text, and had it not, Senad's question ("which
+other niche links are accepted: Crypto, Forex?") would have been taken as
+a header, "not marked as sponsored" as rel=sponsored, "lifestyle" as Fixed
+and "football links" as "all links". Fixed the same evening: a message
+header (From:, On ... wrote:, Šalje:, De:, Von:) reopens reading and drops
+the header of the message above; a price line standing above domains gives
+them its prices, each price taking the niches its words name, "any other
+links", "all links" or a lone price being general and a topical price
+("football") staying in the terms; in prose a header needs short cells,
+most of them niches, and no sentence punctuation; "not marked as
+sponsored" is no sponsor tag; "no illegal gambling" and "non-gamstop"
+give Only Licensed Casinos; the words are matched whole. Result: 20 items,
+each with the "any other links" price in GBP, Do follow, permanent, no tag,
+Only Licensed Casinos. The database is in EUR (Gary): a price in another
+currency is shown with it on the row ("150 GBP") and written as given with
+"Prices in GBP, not converted" in User Comments; converting is a decision
+for Gary, not the page. Matt's second email says the sensitive niches
+(gambling, crypto, forex) take the "any other links" price: the page does
+not infer that across messages, the person reads it in the terms and
+decides. Shape in the tests with invented domains.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will

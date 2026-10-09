@@ -454,6 +454,7 @@ function parseList(text){
   let order = null;     /* niches in order of the prices, when it does not ("General / Casino / CBD") */
   let group = [];       /* domains named on a line without prices; the price lines below belong to them */
   let signedOff = false;
+  let pending = null;   /* a price line above its domains: "£100 football / £150 any other links" */
   let skip = 0;
   const tabbed = /\t/.test(String(text || ""));
   /* A header row has no domain and no price with a currency; a bare number
@@ -486,6 +487,10 @@ function parseList(text){
   rows.forEach((cells, i) => {
     if(skip){ skip--; return; }
     const line = cells.filter(Boolean).join(" ");
+    /* A pasted thread holds several messages (mattbarltd, 09/10: the list
+       was two replies down). A message header ends the signature of the
+       one above and starts reading again. */
+    if(MSG_HEAD.test(line)){ signedOff = false; group = []; pending = null; columns = null; headers = null; order = null; domainCol = -1; skipped.push({ line: i + 1, text: line }); return; }
     /* A sheet header on several rows (MM Group Media: two; librawebcorp:
        three under a title row, 09/10). Rows without an offer at the top of a
        sheet are joined; the join that names the most niche columns wins; a
@@ -507,7 +512,7 @@ function parseList(text){
     /* After "Thanks," / "Best regards" / "Multumesc" what follows is a
        signature: its domain and phone are not an offer. */
     if(signedOff){ skipped.push({ line: i + 1, text: line }); return; }
-    if(SIGN_OFF.test(line) && !cells.some(c => normaliseDomain(c))){ signedOff = true; skipped.push({ line: i + 1, text: line }); return; }
+    if(SIGN_OFF.test(line) && !cells.some(c => normaliseDomain(c))){ signedOff = true; pending = null; skipped.push({ line: i + 1, text: line }); return; }
     /* One site per sheet row: the header's domain column when there is one;
        otherwise the first cell of each host, so a "Sample Post" URL on the
        same site is not a second item. */
@@ -526,10 +531,36 @@ function parseList(text){
          domain column maps by index and may appear again (a second sheet);
          one that does not maps by position and is taken once. */
       const namesDomain = cells.some(c => /domain|dominio|site|web|url/i.test(c) && !nicheOf(c));
-      if(niches.some(Boolean) && !priceIdxs.length && (namesDomain || (!columns && !order && !group.length))){
+      /* In pasted prose a sentence can name niches and "websites" without
+         being a header ("which other niche links are accepted: Crypto,
+         Forex?", Senad, 04/02): a header has short cells, most of them a
+         niche or the domain column, and no sentence punctuation. */
+      const headerLike = tabbed || (cells.length >= 2 && cells.every(c => c.length <= 60 && !/^[-•*]|^(no|not|non|without|nicht|kein|sin|fără)\b/i.test(c)) && !/[?!.]$/.test(line) &&
+        cells.filter(c => nichesOf(c).length || /^(domain|dominio|site|website|web|url)s?$/i.test(c)).length >= Math.max(2, cells.length - 1));
+      if(headerLike && niches.some(Boolean) && !priceIdxs.length && (namesDomain || (!columns && !order && !group.length))){
         if(namesDomain) setHeader(cells);
         else order = cells.map(nichesOf).filter(a => a.length);
         return;
+      }
+      /* A price line above its domains: "£100 football links / £150 any
+         other links", then the sites, one per line (mattbarltd, 09/10). Each
+         price takes the niches its words name; "any other links", "all
+         links" or a lone price is general; a topical price ("football") is
+         kept in the terms only. The next prose line closes it. */
+      if(!group.length){
+        const found = pricesOfLine(line);
+        if(found.length && !columns && !order){
+          const prices = {};
+          found.forEach((f, k) => {
+            let niches = nichesOf(f.label);
+            if(!niches.length && (/\bany other\b|\ball links\b|\bother links\b|^all\b|^other\b|\brest\b/i.test(f.label) || found.length === 1)) niches = ["general"];
+            niches.forEach(n => { if(!prices[n]) prices[n] = f.price; });
+          });
+          pending = { prices, text: line };
+          skipped.push({ line: i + 1, text: line });
+          return;
+        }
+        pending = null;
       }
       /* A price line under a group of domains: "1. Articol SEO - 35 EUR",
          "Bet / Casino - 100 EUR + TVA". The niche comes from the words on
@@ -553,8 +584,13 @@ function parseList(text){
       skipped.push({ line: i + 1, text: line });
       return;
     }
-    /* Domains with no price on their line open a group. */
+    /* Domains with no price on their line take the price line above them,
+       or open a group for the price lines below. */
     if(!priceIdxs.length){
+      if(pending){
+        domIdxs.forEach(j => { const d = normaliseDomain(cells[j]); items.push({ domain: d.domain, path: d.path, raw: cells[j], prices: Object.assign({}, pending.prices), terms: pending.text, line: i + 1 }); });
+        return;
+      }
       group = domIdxs.map(j => {
         const d = normaliseDomain(cells[j]);
         const it = { domain: d.domain, path: d.path, raw: cells[j], prices: {}, terms: "", line: i + 1 };
@@ -602,6 +638,21 @@ function parseList(text){
   /* A domain named without any price, and nothing below it, stays as an
      item with no price: the person sees it and decides. */
   return { items, skipped, columns: columns ? columns.map(a => a.length ? a.join("+") : null) : (order ? order.map(a => a.join("+")) : null) };
+}
+/* The start of a message inside a pasted thread, in the mail clients and
+   languages seen so far. */
+const MSG_HEAD = /^(from|de|von|da|šalje|od|poslano|sent|enviado|gesendet|wysłano|date|to|an|prima|para)\s*:|^on .{3,80} wrote:?$|^el .{3,80} escribi[oó]:?$|^am .{3,80} schrieb.{0,40}:?$|^le .{3,80} a écrit ?:?$|^-{2,}\s*(original|forwarded|mensaje original|ursprüngliche)/i;
+/* Every price in a line, each with the words that follow it up to the next
+   price: "£100 football links / £150 any other links". */
+function pricesOfLine(line){
+  const re = /(?:€|\$|£|\beur(?:os?)?\b|\busd\b|\bgbp\b)\s*\d[\d.,]*|\d[\d.,]*\s*(?:€|\$|£|\beur(?:os?)?\b|\busd\b|\bgbp\b)/gi;
+  const hits = []; let m;
+  while((m = re.exec(line))) hits.push([m.index, m[0]]);
+  return hits.map(([at, txt], k) => {
+    const end = k + 1 < hits.length ? hits[k + 1][0] : line.length;
+    const label = line.slice(at + txt.length, end).replace(/^[\s\/|·,;:-]+|[\s\/|·,;:-]+$/g, "").trim();
+    return { price: parsePrice(txt), label, text: txt };
+  }).filter(f => f.price);
 }
 const SIGN_OFF = /^(thanks|thank you|many thanks|best|best regards|kind regards|regards|cheers|saludos|gracias|un saludo|atentamente|multumesc|mulțumesc|cu stima|mit freundlichen|viele grüße|beste grüße|lg|cordialement|met vriendelijke|vänliga hälsningar|mvh)\b/i;
 
@@ -779,17 +830,18 @@ function matchList(items, index, { sender, brokerHintAt = 10, senderCount } = {}
 function termsOf(item){
   const text = item.terms || "";
   const t = text.toLowerCase();
-  const marked = text.match(/(?:marked\s+as|marcat(?:\s+cu)?|gekennzeichnet\s+als|marcado\s+como)\s+["“'(]?([\p{L}\d-]+)[)"”']?/iu);
-  const sponsorTag = /rel=sponsored|sponsored (tag|link)s? (is |are )?(mandatory|required|added|used|included|obligator)|with (a |the )?sponsored (tag|link)|marked as sponsored|as sponsored/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
+  const notMarked = /not marked as sponsored|not marked or tagged|no sponsored (tag|label)|without (a |any )?sponsored|not tagged as sponsored|nicht als (werbung|anzeige) (markiert|gekennzeichnet)|sin (etiqueta|marca) (de )?patrocin/.test(t);
+  const marked = notMarked ? null : text.match(/(?:marked\s+as|marcat(?:\s+cu)?|gekennzeichnet\s+als|marcado\s+como)\s+["“'(]?([\p{L}\d-]+)[)"”']?/iu);
+  const sponsorTag = notMarked ? "" : /rel=sponsored|sponsored (tag|link)s? (is |are )?(mandatory|required|added|used|included|obligator)|with (a |the )?sponsored (tag|link)|marked as sponsored|as sponsored/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
   const linkType = /no-?\s?follow/.test(t) ? "No follow" : /do-?\s?follow|dofollow/.test(t) ? "Do follow" : "";
   const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
   const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
-  const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /fixed|fijo|fest/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
+  const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /\bfixed\b|\bfijo\b|\bfest(e|er|es|en)?\b/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
   const adminComments = [];
   if(marked) adminComments.push(`Marked as "${marked[1]}"`);
   if(item.prices && item.prices.unlicensedCasino) adminComments.push(`Unlicensed Casinos - ${formatPrice(item.prices.unlicensedCasino)} EUR`);
   else if(/unlicen[cs]ed casinos? accepted/.test(t)) adminComments.push("Unlicensed Casinos Accepted");
-  else if(/only (properly |duly )?licen[cs]ed/.test(t)) adminComments.push("Only Licensed Casinos");
+  else if(/only (properly |duly )?licen[cs]ed|no (any )?illegal gambling|non[- ]?gamstop|gambling \(legal\)|licen[cs]ed (casinos?|gambling|operators?) only/.test(t)) adminComments.push("Only Licensed Casinos");
   if(/written by (the )?(wm|webmaster)/.test(t)) adminComments.push("Written by WM");
   if(/no ?index/.test(t)) adminComments.push("NO INDEX");
   return { sponsorTag, linkType, placement, priceValidity, adminComments };
@@ -857,7 +909,10 @@ function rowForAccept(item, { type = "Publisher", sender = "", contactName = "",
   row["Admin Comments"] = admin.join("\n");
   /* User Comments is the team's, by hand: here only who accepted and from
      which list, so the row can be traced. */
-  row["User Comments"] = [who && `Accepted by ${who}`, listLabel && `from list ${listLabel}`].filter(Boolean).join("; ");
+  /* The database is in EUR (Gary, 06/10). A price given in another currency
+     is written as given and said so, never converted here. */
+  const foreign = NICHES.map(n => item.prices[n]).filter(p => p && p.currency && p.currency !== "EUR").map(p => p.currency).filter((c, i, a) => a.indexOf(c) === i);
+  row["User Comments"] = [who && `Accepted by ${who}`, listLabel && `from list ${listLabel}`, foreign.length && `Prices in ${foreign.join("/")}, not converted`].filter(Boolean).join("; ");
   row["Last Updated"] = `${d}/${m}/${y}`;
   return row;
 }
@@ -1087,7 +1142,8 @@ async function matchRemote(){
 }
 $("match").addEventListener("click", run);
 
-function price(p){ return p ? formatPrice(p) : ""; }
+/* A price in another currency than the database's EUR shows it. */
+function price(p){ return p ? formatPrice(p) + (p.currency && p.currency !== "EUR" ? " " + p.currency : "") : ""; }
 function offeredCells(item, diffs){
   const deltas = new Map();
   (diffs || []).forEach(list => priceDelta(list).forEach(d => { if(!deltas.has(d.niche)) deltas.set(d.niche, d); }));

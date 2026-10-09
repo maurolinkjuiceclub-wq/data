@@ -109,7 +109,7 @@ caso("row buying prices as bare numbers", fila["Buying General"] === "99.99" && 
 caso("row sell prices empty", fila.General === "" && fila.Casino === "");
 caso("row sponsored tag", fila["Sponsor Tag Type"] === "rel=sponsored", fila["Sponsor Tag Type"]);
 caso("row date dd/mm/yyyy", fila["Last Updated"] === "06/10/2026");
-caso("row user comment traces the accept", fila["User Comments"] === "Accepted by mauro@linkjuiceclub.com; from list gamma 06/10", fila["User Comments"]);
+caso("row user comment traces the accept", fila["User Comments"] === "Accepted by mauro@linkjuiceclub.com; from list gamma 06/10; Prices in USD, not converted", fila["User Comments"]);
 caso("row admin comments only fixed phrases", fila["Admin Comments"] === "", fila["Admin Comments"]);
 const filaBeta = rowForAccept(beta, {});
 caso("row validity date", filaBeta["Price Validity"] === "31.12.2026", filaBeta["Price Validity"]);
@@ -205,6 +205,43 @@ caso("three-row header: the branded advertorial keeps its column name, DA and PA
 caso("a domain with a second name in brackets", li.items[1].domain === "radio-doi.example", li.items[1].domain);
 caso("notes: Do follow and Only Licensed Casinos, no sponsored tag from a disclaimer", liTerms.linkType === "Do follow" && eq(liTerms.adminComments, ["Only Licensed Casinos"]) && liTerms.sponsorTag === "", liTerms);
 caso("a specific niche beats the general words in one header", eq(nichesOf("PRICE / ARTICLE (EUR) Special Content Advertorial (GAMBLING)"), ["casino"]));
+/* A pasted thread (shape of the mattbarltd emails Senad forwarded, 09/10,
+   domains invented): the list is two replies down, a price line stands
+   above its domains, prices are in pounds, our own signature is quoted. */
+const thread = parseList(`From: Publisher <contact@mattbar.example>
+Sent: Tuesday, February 3, 2026 5:08 PM
+Subject: Re: Article Placement
+
+Hi,
+
+I've included a list of the sites where we accept guest posts below. All prices are + VAT where applicable.
+
+£100 football links / £150 any other links
+tales-one.example
+tempo-two.example
+
+£100 all links
+euro-three.example
+
+Links are dofollow and not marked as sponsored or tagged.  Posts and links are permanent.
+- No adult, CBD, non-gamstop / no-kyc related links
+- No lifestyle fluff
+
+Kind Regards
+
+Matt
+
+On Tue, 3 Feb at 4:03 PM , Senad Tiro <senad@linkjuiceclub.com> wrote:
+Hello,
+Apart from Sports Betting and Casino, which other niche links are accepted: Crypto, Forex?
+Best regards,
+Website: https://www.linkjuiceclub.com`);
+const thTerms = listTermsOf(thread);
+caso("thread: three sites, our signature is not one, the question is not a header", eq(thread.items.map(i => i.domain), ["tales-one.example", "tempo-two.example", "euro-three.example"]) && thread.columns === null, [thread.items.map(i => i.domain), thread.columns]);
+caso("thread: 'any other links' is the general price, in pounds, the topical price stays a term", eq(thread.items.map(i => [i.prices.general.amount, i.prices.general.currency]), [[150, "GBP"], [150, "GBP"], [100, "GBP"]]) && /£100 football links/.test(thread.items[0].terms), thread.items.map(i => i.prices));
+caso("thread: dofollow, permanent, not marked as sponsored, only licensed, no Fixed from 'lifestyle'", thTerms.linkType === "Do follow" && thTerms.placement === "permanent" && thTerms.sponsorTag === "" && eq(thTerms.adminComments, ["Only Licensed Casinos"]) && thTerms.priceValidity === "", thTerms);
+const gbpRow = rowForAccept(withListTerms(thread.items[0], thTerms), { sender: "contact@mattbar.example", listLabel: "mattbar 03/02" });
+caso("a price in pounds is written as given and said so", gbpRow["Buying General"] === "150" && /Prices in GBP, not converted/.test(gbpRow["User Comments"]) && gbpRow["Sponsor Tag Type"] === "" && gbpRow.Placement === "permanent", gbpRow);
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

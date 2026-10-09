@@ -217,7 +217,8 @@ async function matchRemote(){
 }
 $("match").addEventListener("click", run);
 
-function price(p){ return p ? formatPrice(p) : ""; }
+/* A price in another currency than the database's EUR shows it. */
+function price(p){ return p ? formatPrice(p) + (p.currency && p.currency !== "EUR" ? " " + p.currency : "") : ""; }
 function offeredCells(item, diffs){
   const deltas = new Map();
   (diffs || []).forEach(list => priceDelta(list).forEach(d => { if(!deltas.has(d.niche)) deltas.set(d.niche, d); }));
