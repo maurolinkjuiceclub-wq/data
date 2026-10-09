@@ -97,7 +97,7 @@ const NICHE_WORDS = [
   ["forex", /forex|trading|finance|finanzen|finanzas/i],
   ["cbd", /\bcbd\b|cannabis|hemp|vape|hanf/i],
   ["dating", /dating|adult|citas/i],
-  ["general", /general|allgemein|mainstream|normal|standard|regular|price|precio|preis|cost/i],
+  ["general", /general|allgemein|mainstream|normal|standard|regular|price|precio|preis|cost|article|artikel|articol|guest ?post|gastbeitrag|advertorial/i],
   /* "Gambling & Grey Niches" (MM Group Media, 09/10): grey is everything
      that is not mainstream, so the price fills the four grey columns too. */
   ["crypto", GREY], ["forex", GREY], ["cbd", GREY], ["dating", GREY]
@@ -388,6 +388,81 @@ export function tableToList(rows){
   return lines.join("\n");
 }
 
+/* ---------- a PDF's text ----------
+   pdf.js gives the text of a page as items with a position (transform[4],
+   transform[5]) and a width, in no useful order and with no lines. This
+   rebuilds lines from the baselines and, when the page is a table (drivar.de
+   price list, 09/10), its columns from the x positions, as tab-separated
+   rows, so parseList reads it like a sheet. A long cell wrapped onto the
+   next line ("https://motion-drive-" over "vermietung.de") is glued back to
+   its row. */
+export function pdfTextOf(items){
+  const rows = [];
+  for(const it of items || []){
+    if(!it || !it.str || !it.str.trim() || !it.transform) continue;
+    const y = it.transform[5], x = it.transform[4];
+    let row = null;
+    for(const r of rows){ if(Math.abs(r.y - y) < 2.5){ row = r; break; } }
+    if(!row){ row = { y, parts: [] }; rows.push(row); }
+    row.parts.push({ x, s: it.str, w: it.width || 0 });
+  }
+  rows.sort((a, b) => b.y - a.y);
+  rows.forEach(r => {
+    r.parts.sort((a, b) => a.x - b.x);
+    /* A glyph the font maps wrongly: in the drivar.de PDF every "f" came as
+       a one-letter item "E" between lowercase letters ("rundElug.com").
+       A lone capital E glued to lowercase letters on both sides is an f. */
+    r.parts.forEach((p, k) => {
+      const a = r.parts[k - 1], b = r.parts[k + 1];
+      const before = !a || (/[a-z\/.-]$/.test(a.s) && p.x - (a.x + a.w) < 1.5);   /* or the line starts with it ("Einden.com" under "https://mentor-") */
+      if(p.s === "E" && b && before && /^[a-z]/.test(b.s) && b.x - (p.x + p.w) < 1.5) p.s = "f";
+    });
+    /* Touching items are one word; a gap is a space. */
+    const merged = [];
+    for(const p of r.parts){
+      const last = merged[merged.length - 1];
+      if(last && p.x - (last.x + last.w) < 1.5 && !/\s$/.test(last.s) && !/^\s/.test(p.s)){ last.s += p.s; last.w = p.x + p.w - last.x; }
+      else merged.push({ x: p.x, s: p.s, w: p.w });
+    }
+    r.parts = merged.map(p => ({ x: p.x, w: p.w, s: p.s.replace(/\s+/g, " ").trim() })).filter(p => p.s);
+  });
+  /* A table: at least three rows with four or more cells. Its columns are
+     the x positions of the row with most cells (the header, usually); each
+     cell goes to the nearest column start. Otherwise prose: words joined. */
+  const wide = rows.filter(r => r.parts.length >= 4);
+  if(wide.length < 3) return rows.map(r => r.parts.map(p => p.s).join(" ")).join("\n");
+  const template = wide.reduce((a, b) => b.parts.length > a.parts.length ? b : a, wide[0]);
+  const cols = template.parts.map(p => p.x);
+  const colOf = x => { let best = 0; cols.forEach((c, k) => { if(Math.abs(c - x) < Math.abs(cols[best] - x)) best = k; }); return best; };
+  const table = rows.map(r => {
+    const cells = cols.map(() => "");
+    r.parts.forEach(p => { const k = colOf(p.x); cells[k] = cells[k] ? cells[k] + " " + p.s : p.s; });
+    return cells;
+  });
+  /* A wrapped cell: a row of one or two cells, no digit, each under a cell
+     of the row above, which has digits (a data row). It continues that row:
+     a domain or a word cut at "-" or "/" without a space, anything else
+     with one. */
+  const out = [];
+  for(const cells of table){
+    const filled = cells.map((c, k) => c ? k : -1).filter(k => k >= 0);
+    const prev = out[out.length - 1];
+    const isUrl = c => /^(https?:\/\/|www\.)|\.[a-z]{2,}(\/|$)/i.test(c);
+    /* Under a domain, only a piece that continues it: the domain was cut
+       ("-", "/", ".") or the piece carries a dot ("shop.de"). "Inclusive"
+       under the last row is a note, not a domain. */
+    const fits = k => !isUrl(prev[k]) || /[-\/.]$/.test(prev[k]) || (/\./.test(cells[k]) && /^[a-z]/.test(cells[k]));
+    const continues = prev && filled.length && filled.length <= 2 && !cells.some(c => /\d/.test(c)) && prev.some(c => /\d/.test(c)) && filled.every(k => prev[k] && fits(k));
+    if(continues){
+      filled.forEach(k => { const glue = /[-\/.]$/.test(prev[k]) || isUrl(prev[k]) ? "" : " "; prev[k] += glue + cells[k]; });
+      continue;
+    }
+    out.push(cells);
+  }
+  /* A row with one cell is a line of prose (title, note): no tabs. */
+  return out.map(cells => cells.filter(Boolean).length <= 1 ? cells.filter(Boolean).join("") : cells.join("\t")).join("\n");
+}
+
 /* ---------- the database side ---------- */
 
 /* Column names of "Import Database" as the sheet has them, read through the
@@ -555,8 +630,12 @@ export function termsOf(item){
   const notMarked = /not marked as sponsored|not marked or tagged|no sponsored (tag|label)|without (a |any )?sponsored|not tagged as sponsored|nicht als (werbung|anzeige) (markiert|gekennzeichnet)|sin (etiqueta|marca) (de )?patrocin/.test(t);
   const marked = notMarked ? null : text.match(/(?:marked\s+as|marcat(?:\s+cu)?|gekennzeichnet\s+als|marcado\s+como)\s+["“'(]?([\p{L}\d-]+)[)"”']?/iu);
   const sponsorTag = notMarked ? "" : /rel=sponsored|sponsored (tag|link)s? (is |are )?(mandatory|required|added|used|included|obligator)|with (a |the )?sponsored (tag|link)|marked as sponsored|as sponsored/.test(t) ? "rel=sponsored" : (marked || /marked by (the )?(wm|webmaster)/.test(t)) ? "Marked by WM" : "";
-  const linkType = /no-?\s?follow/.test(t) ? "No follow" : /do-?\s?follow|dofollow/.test(t) ? "Do follow" : "";
-  const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t) ? "permanent" : /2\s*(years?|jahre|años)/.test(t) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t) ? "1 Year" : "";
+  /* "permanent placement on request", "do-follow instead of no-follow:
+     +99€" (drivar.de, 09/10) are options, not the included terms: a clause
+     that says so is left out when reading link type and placement. */
+  const t2 = t.replace(/[^.|\n]*(on request|auf anfrage|a petición|la cerere|optional|surcharge|aufpreis|extra charge|\+\s?\d)[^.|\n]*/g, " ");
+  const linkType = /no-?\s?follow/.test(t2) ? "No follow" : /do-?\s?follow|dofollow/.test(t2) ? "Do follow" : "";
+  const placement = /permanent|lifetime|forever|dauerhaft|permanente|pe viata|pe viață|for life/.test(t2) ? "permanent" : /2\s*(years?|jahre|años)|24\s*(months?|monate)/.test(t2) ? "2 Years" : /1\s*(year|jahr|año)|12\s*months?/.test(t2) ? "1 Year" : "";
   const until = text.match(/valid(?:o|a)?s?\s*(?:until|hasta|till|bis)\s*([\d.\/-]+)/i);
   const priceValidity = until ? until[1].replace(/[.\/-]+$/, "") : /\bfixed\b|\bfijo\b|\bfest(e|er|es|en)?\b/.test(t) ? "Fixed" : /not fixed|negotiable|negociable|verhandelbar/.test(t) ? "Not fixed" : "";
   const adminComments = [];

@@ -483,6 +483,37 @@ for Gary, not the page. Matt's second email says the sensitive niches
 not infer that across messages, the person reads it in the terms and
 decides. Shape in the tests with invented domains.
 
+**The drivar.de PDF (09/10, night).** Mauro attached it. Three pages, a
+table per page: Domain, Category, Links, DA, PA, TF, CF, Article Link,
+Homepage Link, 48 sites, prices "599€", header on two rows ("Article" over
+"Link"), a title and "Last updated: 01.11.2024" above, notes below
+("Inclusive: min. 24 months online, No advertising marking, No-follow",
+discounts, "Optional: do-follow link instead of no-follow: +99€, Casino,
+crypto etc. +25%, permanent placement on request"). pdf.js hands the text
+over as items with a position and no lines; long cells wrap onto the next
+line ("https://motion-drive-" over "vermietung.de", "Driving" over
+"school"); and the font maps every "f" to a lone "E" ("rundElug.com",
+"proEi.com"). Read as lines, the parser made 23 items out of the wrapped
+halves with the Links count as the price. Fixed the same night, in the
+module so the page and the tests share it (`pdfTextOf`): items on one
+baseline form a line and touching items a word; a page with three or more
+rows of four or more cells is a table whose columns are the x positions of
+the widest row, each cell going to the nearest column, written out with
+tabs so parseList reads it like a sheet; a short row without digits under
+a data row continues it, glued without a space when the cell above is a cut
+domain and the piece carries a dot, with a space otherwise, and never when
+it is a note ("Inclusive"); a lone capital E glued to lowercase letters or
+a URL separator on both sides is an f. "Article" joins the general words.
+In termsOf a clause that is an option ("on request", "+99€", "surcharge")
+is left out when reading link type and placement, so this list is No
+follow and 2 Years, not permanent and Do follow. Result: 48 items, every
+one with its Article price, metrics and the Homepage price as labelled
+terms, 12 note lines. Two things for Gary: this publisher is nofollow by
+default and dofollow costs +99€ per link, so the dofollow price the
+database wants is Article + 99 and the page does not add that up; and
+"Casino, crypto etc. +25%" is likewise shown, not computed. Shape in the
+tests with invented domains.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will

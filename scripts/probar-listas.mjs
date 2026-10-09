@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, nichesOf, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -242,6 +242,34 @@ caso("thread: 'any other links' is the general price, in pounds, the topical pri
 caso("thread: dofollow, permanent, not marked as sponsored, only licensed, no Fixed from 'lifestyle'", thTerms.linkType === "Do follow" && thTerms.placement === "permanent" && thTerms.sponsorTag === "" && eq(thTerms.adminComments, ["Only Licensed Casinos"]) && thTerms.priceValidity === "", thTerms);
 const gbpRow = rowForAccept(withListTerms(thread.items[0], thTerms), { sender: "contact@mattbar.example", listLabel: "mattbar 03/02" });
 caso("a price in pounds is written as given and said so", gbpRow["Buying General"] === "150" && /Prices in GBP, not converted/.test(gbpRow["User Comments"]) && gbpRow["Sponsor Tag Type"] === "" && gbpRow.Placement === "permanent", gbpRow);
+/* A PDF table as pdf.js hands it over (shape of the drivar.de price list,
+   09/10, domains invented): items with x, y and width; a two-row header;
+   a domain wrapped onto the next line; an "f" the font gives as a lone "E";
+   a note under the last row. */
+const it = (s, x, y, w) => ({ str: s, transform: [1, 0, 0, 1, x, y], width: w });
+const pdfItems = [
+  it("Price list", 146, 758, 60),
+  it("Domain", 81, 689, 43), it("Category", 204, 689, 49), it("DA", 314, 689, 16), it("Article", 411, 689, 37), it("Homepage", 458, 689, 59),
+  it("Link", 411, 675, 25), it("Link", 458, 675, 25),
+  it("https://alpha-one.example", 81, 652, 120), it("Auto", 204, 652, 24), it("24", 314, 652, 13), it("599€", 411, 652, 27), it("2.990€", 458, 652, 37),
+  it("https://beta-two-", 81, 629, 100), it("Driving", 204, 629, 40), it("33", 314, 629, 13), it("499€", 411, 629, 27), it("2.490€", 458, 629, 37),
+  it("rental.example", 81, 615, 74), it("school", 204, 615, 30),
+  it("https://mein-rund", 81, 592, 90), it("E", 171, 592, 5), it("lug.example", 176, 592, 25), it("Sport", 204, 592, 30), it("17", 314, 592, 13), it("399€", 411, 592, 27), it("1.990€", 458, 592, 37),
+  it("Inclusive", 81, 560, 45),
+  it("• min. 24 months online", 81, 546, 110),
+  it("• No-follow", 81, 532, 50),
+  it("5. permanent online placement on request", 81, 518, 180),
+  it("1. do-follow link instead of no-follow link: +99€", 81, 504, 200)
+];
+const pdfTxt = pdfTextOf(pdfItems);
+const pdfLines = pdfTxt.split("\n");
+caso("pdf table: columns by x, two header rows, wrapped domain and category glued", eq(pdfLines.slice(0, 5), ["Price list", "Domain\tCategory\tDA\tArticle\tHomepage", "\t\t\tLink\tLink", "https://alpha-one.example\tAuto\t24\t599€\t2.990€", "https://beta-two-rental.example\tDriving school\t33\t499€\t2.490€"]), pdfLines);
+caso("pdf table: a lone E between letters is an f; a note under the last row is prose", pdfLines[5] === "https://mein-rundflug.example\tSport\t17\t399€\t1.990€" && pdfLines[6] === "Inclusive", pdfLines.slice(5, 7));
+const pdfParsed = parseList(pdfTxt);
+const pdfTerms = listTermsOf(pdfParsed);
+caso("pdf table parsed: Article is general, Homepage Link a labelled term, metrics labelled", pdfParsed.items.length === 3 && eq(pdfParsed.items.map(i => i.prices.general.amount), [599, 499, 399]) && /Homepage Link: 2\.990€/.test(pdfParsed.items[0].terms) && /DA: 24/.test(pdfParsed.items[0].terms) && !pdfParsed.items[0].prices.casino, pdfParsed.items);
+caso("pdf notes: No follow and 2 Years are what is included; permanent on request and do-follow at a surcharge are not", pdfTerms.linkType === "No follow" && pdfTerms.placement === "2 Years", pdfTerms);
+caso("pdf prose page: words joined into lines", eq(pdfTextOf([it("Rate", 50, 700, 20), it("card", 73, 700, 20), it("alpha.example 250 EUR", 50, 684, 100)]), "Rate card\nalpha.example 250 EUR"));
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31.12.2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

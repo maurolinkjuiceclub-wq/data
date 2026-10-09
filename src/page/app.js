@@ -395,7 +395,9 @@ function loadSheetJS(){
 /* pdf.js the same way, for rate cards sent as PDF (businessamlive sent one
    on 05/10). A PDF has no lines: the text of each page is rebuilt from the
    glyph positions, one line per baseline, left to right. The pinned version
-   is 4.10.38; the worker is loaded from the same place. */
+   is 4.10.38; the worker is loaded from the same place. The text of a page
+   is rebuilt by pdfTextOf in the module: lines, and columns when it is a
+   table. */
 const PDFJS = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.min.mjs";
 const PDFJS_WORKER = "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.10.38/pdf.worker.min.mjs";
 let pdfjs = null;
@@ -404,36 +406,13 @@ function loadPdfJS(){
   pdfjs = import(PDFJS).then(m => { m.GlobalWorkerOptions.workerSrc = PDFJS_WORKER; return m; }, e => { pdfjs = null; throw e; });
   return pdfjs;
 }
-/* Text items of one page → lines. Items on the same baseline (within 2.5pt)
-   form a line, sorted by x; a gap wider than 1.5pt becomes a space. */
-function pdfLines(items){
-  const rows = [];
-  for(const it of items){
-    if(!it.str || !it.transform) continue;
-    const y = it.transform[5], x = it.transform[4];
-    let row = null;
-    for(const r of rows){ if(Math.abs(r.y - y) < 2.5){ row = r; break; } }
-    if(!row){ row = { y, parts: [] }; rows.push(row); }
-    row.parts.push({ x, s: it.str, w: it.width || 0 });
-  }
-  rows.sort((a, b) => b.y - a.y);
-  return rows.map(r => {
-    r.parts.sort((a, b) => a.x - b.x);
-    let s = "", end = null;
-    for(const p of r.parts){
-      if(end !== null && p.x - end > 1.5 && !/\s$/.test(s) && !/^\s/.test(p.s)) s += " ";
-      s += p.s; end = p.x + p.w;
-    }
-    return s.replace(/\s+/g, " ").trim();
-  }).filter(Boolean).join("\n");
-}
 async function pdfText(buf){
   const lib = await loadPdfJS();
   const doc = await lib.getDocument({ data: buf }).promise;
   const pages = [];
   for(let n = 1; n <= doc.numPages; n++){
     const page = await doc.getPage(n);
-    pages.push(pdfLines((await page.getTextContent()).items));
+    pages.push(pdfTextOf((await page.getTextContent()).items));
   }
   return { text: pages.join("\n\n"), pages: doc.numPages };
 }
