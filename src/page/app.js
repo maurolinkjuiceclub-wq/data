@@ -90,7 +90,7 @@ const T = {
     unchanged:"unchanged", changed:"changed", fromSender:"from this sender", unknown:"unknown", removed:"removed", decided:(a,b)=>`${a} of ${b} decided`,
     broker:(n)=>`This sender already has ${n} domains in the database: likely a broker.`,
     removedNote:(n)=>`${n} in removed sites: never written as new.`,
-    gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed", gMissing:"Missing", hMissing:"In the database from this sender but not on this list. Senad, 09/10: they go to removed sites as REMOVED FROM THE LIST. Reject keeps a row when the list was only partial.", remove:"To removed sites", notListed:"not on this list", rmT:(n)=>`${n} row${n === 1 ? "" : "s"} for removed sites`, rmhint:"Rows in the removed sites layout, with the reason first in Admin Comments. Paste or import them into the removed sites tab and delete them from Import Database by hand.",
+    gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed", gMissing:"Missing", hMissing:"In the database from this sender but not on this list. Senad, 09/10: they go to removed sites as REMOVED FROM THE LIST. Reject keeps a row when the list was only partial.", remove:"Remove", notListed:"not on this list", rmT:(n)=>`${n} row${n === 1 ? "" : "s"} for removed sites`, rmhint:"Rows in the removed sites layout, with the reason first in Admin Comments. Paste or import them into the removed sites tab and delete them from Import Database by hand.",
     hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab, with the reason. Restore writes it back to the database and the row says so.", hAll:"",
     thDomain:"Domain", thOffered:"Offered", thDb:"In the database", thRemoved:"Removed sites", thTerms:"Terms", thDecision:"Decision",
     accept:"Accept", reject:"Reject", ask:"Ask", none:"none", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
@@ -111,7 +111,7 @@ const T = {
     unchanged:"iguales", changed:"cambiados", fromSender:"de este remitente", unknown:"desconocidos", removed:"removidos", decided:(a,b)=>`${a} de ${b} decididos`,
     broker:(n)=>`Este remitente ya tiene ${n} dominios en la base: probable broker.`,
     removedNote:(n)=>`${n} en removed sites: nunca se escriben como nuevos.`,
-    gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos", gMissing:"Faltan", hMissing:"Están en la base de este remitente pero no en esta lista. Senad, 09/10: van a removed sites como REMOVED FROM THE LIST. Rechazar conserva la fila si la lista era parcial.", remove:"A removed sites", notListed:"no está en esta lista", rmT:(n)=>`${n} fila${n === 1 ? "" : "s"} para removed sites`, rmhint:"Filas con el formato de removed sites, con el motivo primero en Admin Comments. Pégalas o impórtalas en la pestaña removed sites y bórralas de Import Database a mano.",
+    gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos", gMissing:"Faltan", hMissing:"Están en la base de este remitente pero no en esta lista. Senad, 09/10: van a removed sites como REMOVED FROM THE LIST. Rechazar conserva la fila si la lista era parcial.", remove:"Quitar", notListed:"no está en esta lista", rmT:(n)=>`${n} fila${n === 1 ? "" : "s"} para removed sites`, rmhint:"Filas con el formato de removed sites, con el motivo primero en Admin Comments. Pégalas o impórtalas en la pestaña removed sites y bórralas de Import Database a mano.",
     hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites, con el motivo. Restaurar la devuelve a la base y la fila lo dice.", hAll:"",
     thDomain:"Dominio", thOffered:"Ofrece", thDb:"En la base", thRemoved:"Removed sites", thTerms:"Condiciones", thDecision:"Decisión",
     accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
@@ -321,7 +321,7 @@ function decisionCell(domain){
   else if(isReseller(stype)) keys = unknown ? ["webmaster","ask","reject"] : ["webmaster","accept","ask","reject"];
   else keys = ["accept","webmaster","ask","reject"];
   const label = k => (k === "accept" && removedDomains.has(domain)) ? t().restore : t()[k];
-  return `<span class="seg">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${label(k)}</button>`).join("") + `</span>`;
+  return `<span class="seg${keys.length === 3 ? " three" : ""}">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${label(k)}</button>`).join("") + `</span>`;
 }
 function table(entries, kind){
   if(!entries.length) return `<div class="tabla-wrap"><div class="empty">${t().empty}</div></div>`;
@@ -331,7 +331,7 @@ function table(entries, kind){
     const dbCol = flag + (e.removedRows ? dbCells(e.removedRows, true) : dbCells(e.rows));
     const offered = e.missing ? `<span class="sender">${t().notListed}</span>` : offeredCells(e.item, e.diffs);
     const terms = e.missing ? "" : termsCells(e.item);
-    return `<tr class="${done.trim()}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offered}</td><td>${dbCol}</td><td class="ancha">${terms}</td><td class="dec">${decisionCell(d)}</td></tr>`;
+    return `<tr class="${done.trim()}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offered}</td><td class="dbc">${dbCol}</td><td class="ancha">${terms}</td><td class="dec">${decisionCell(d)}</td></tr>`;
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
