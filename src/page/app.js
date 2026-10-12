@@ -67,7 +67,7 @@ function noteParse(){
   /* A Google Sheets link cannot be read from the browser (sign-in, no
      CORS): say what to do instead of showing zero domains. */
   const gsheet = /docs\.google\.com\/spreadsheets/.test($("list").value);
-  $("parsenote").textContent = t().parsed(items.length, lastParsed.skipped.length, cols) + (gsheet && items.length < 3 ? " · " + t().gsheetHint : "");
+  $("parsenote").textContent = t().parsed(items.length, lastParsed.skipped.length, cols) + (dupes.length ? " · " + t().dupNote(dupes.length) : "") + (gsheet && items.length < 3 ? " · " + t().gsheetHint : "");
 }
 const decisions = {};   /* domain -> accept | reject | ask | webmaster | remove */
 const notes = {};       /* domain -> a short note that goes to User Comments */
@@ -95,7 +95,7 @@ const T = {
     gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed", gMissing:"Missing", hMissing:"In the database from this sender but not on this list. Senad, 09/10: they go to removed sites as REMOVED FROM THE LIST. Reject keeps a row when the list was only partial.", remove:"Remove", notListed:"not on this list", rmT:(n)=>`${n} row${n === 1 ? "" : "s"} for removed sites`, rmhint:"Rows in the removed sites layout, with the reason first in Admin Comments. Paste or import them into the removed sites tab and delete them from Import Database by hand.",
     hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab, with the reason. Restore writes it back to the database and the row says so.", hAll:"",
     thDomain:"Domain", thOffered:"Offered", thDb:"In the database", thRemoved:"Removed sites", thTerms:"Terms", thDecision:"Decision",
-    accept:"Accept", reject:"Reject", ask:"Ask", none:"none", lFilter:"Filter these rows (domain, terms, contact)", sortDefault:"List order", sortDelta:"Biggest price change first", sortPriceUp:"Cheapest first", sortDomain:"Domain A–Z", allShown:"All shown:", clearShown:"Clear", choose:"choose…", shownN:(n, m)=>`${n} of ${m} rows`, keysHint:"Keys: ↑ ↓ move · A accept · W webmaster · Q ask · R reject · M remove · X clear · N note", noteBtn:"Note for User Comments", notePh:"Note (goes to User Comments)", summary:"Copy summary", summaryCopied:"Summary copied", mins:"Sellable metrics, minimum", minTraffic:"traffic", minshint:"Leave blank until Gary gives the thresholds. Rows under them are flagged, never hidden.", lowMetrics:"below the minimum", monthsOld:(m)=>`${m} months old`, warnNoPrice:(n, d)=>`${n} row${n === 1 ? "" : "s"} with no price in any Buying column: ${d}`, warnNoContact:"No sender: Webmaster Contact will be empty in every row.", warnCurrency:(n, d)=>`${n} row${n === 1 ? "" : "s"} priced in another currency than EUR, written as given: ${d}`, warnNoTerms:(n, d)=>`${n} row${n === 1 ? "" : "s"} with no link type or placement stated: ${d}`, askT:(n)=>n ? `Draft reply: ${n} question${n === 1 ? "" : "s"}` : "Draft reply: closing, no questions", askhint:"A draft for Outlook. Nothing is sent from here. It thanks them, says what was updated, and asks only what the rows do not answer; every reply asks about unlicensed casinos and price validity unless the list already says.", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
+    accept:"Accept", reject:"Reject", ask:"Ask", none:"none", lFilter:"Filter these rows (domain, terms, contact)", sortDefault:"List order", sortDelta:"Biggest price change first", sortPriceUp:"Cheapest first", sortDomain:"Domain A–Z", allShown:"All shown:", clearShown:"Clear", choose:"choose…", shownN:(n, m)=>`${n} of ${m} rows`, keysHint:"Keys: ↑ ↓ move · A accept · W webmaster · Q ask · R reject · M remove · X clear · N note", noteBtn:"Note for User Comments", notePh:"Note (goes to User Comments)", summary:"Copy summary", summaryCopied:"Summary copied", dupNote:(n)=>`${n} site${n === 1 ? "" : "s"} listed more than once, merged`, dupChip:(n, c)=>`listed ${n}× ${c ? "· " + c : ""}`, histPh:"Previous lists…", histItem:(h)=>`${h.label} · ${h.sender || "no sender"} · ${h.when} · ${h.n} sites · ${h.decided} decided`, prevList:(h, dropped, added)=>`Previous list from this sender: "${h.label}" on ${h.when}, ${h.n} sites. Now ${added} new and ${dropped} no longer listed${dropped ? ": " : "."}`, mins:"Sellable metrics, minimum", minTraffic:"traffic", minshint:"Leave blank until Gary gives the thresholds. Rows under them are flagged, never hidden.", lowMetrics:"below the minimum", monthsOld:(m)=>`${m} months old`, warnNoPrice:(n, d)=>`${n} row${n === 1 ? "" : "s"} with no price in any Buying column: ${d}`, warnNoContact:"No sender: Webmaster Contact will be empty in every row.", warnCurrency:(n, d)=>`${n} row${n === 1 ? "" : "s"} priced in another currency than EUR, written as given: ${d}`, warnNoTerms:(n, d)=>`${n} row${n === 1 ? "" : "s"} with no link type or placement stated: ${d}`, askT:(n)=>n ? `Draft reply: ${n} question${n === 1 ? "" : "s"}` : "Draft reply: closing, no questions", askhint:"A draft for Outlook. Nothing is sent from here. It thanks them, says what was updated, and asks only what the rows do not answer; every reply asks about unlicensed casinos and price validity unless the list already says.", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
@@ -116,7 +116,7 @@ const T = {
     gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos", gMissing:"Faltan", hMissing:"Están en la base de este remitente pero no en esta lista. Senad, 09/10: van a removed sites como REMOVED FROM THE LIST. Rechazar conserva la fila si la lista era parcial.", remove:"Quitar", notListed:"no está en esta lista", rmT:(n)=>`${n} fila${n === 1 ? "" : "s"} para removed sites`, rmhint:"Filas con el formato de removed sites, con el motivo primero en Admin Comments. Pégalas o impórtalas en la pestaña removed sites y bórralas de Import Database a mano.",
     hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites, con el motivo. Restaurar la devuelve a la base y la fila lo dice.", hAll:"",
     thDomain:"Dominio", thOffered:"Ofrece", thDb:"En la base", thRemoved:"Removed sites", thTerms:"Condiciones", thDecision:"Decisión",
-    accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", lFilter:"Filtrar estas filas (dominio, condiciones, contacto)", sortDefault:"Orden de la lista", sortDelta:"Mayor cambio de precio primero", sortPriceUp:"Más barato primero", sortDomain:"Dominio A–Z", allShown:"Todas las visibles:", clearShown:"Limpiar", choose:"elegir…", shownN:(n, m)=>`${n} de ${m} filas`, keysHint:"Teclas: ↑ ↓ mover · A aceptar · W webmaster · Q preguntar · R rechazar · M quitar · X limpiar · N nota", noteBtn:"Nota para User Comments", notePh:"Nota (va a User Comments)", summary:"Copiar resumen", summaryCopied:"Resumen copiado", mins:"Métricas vendibles, mínimo", minTraffic:"tráfico", minshint:"En blanco hasta que Gary dé los umbrales. Las filas por debajo se marcan, nunca se ocultan.", lowMetrics:"por debajo del mínimo", monthsOld:(m)=>`${m} meses`, warnNoPrice:(n, d)=>`${n} fila${n === 1 ? "" : "s"} sin precio en ninguna columna Buying: ${d}`, warnNoContact:"Sin remitente: Webmaster Contact saldrá vacío en todas las filas.", warnCurrency:(n, d)=>`${n} fila${n === 1 ? "" : "s"} con precio en otra moneda que EUR, se escribe tal cual: ${d}`, warnNoTerms:(n, d)=>`${n} fila${n === 1 ? "" : "s"} sin tipo de enlace ni permanencia: ${d}`, askT:(n)=>n ? `Borrador de respuesta: ${n} pregunta${n === 1 ? "" : "s"}` : "Borrador de respuesta: cierre, sin preguntas", askhint:"Un borrador para Outlook. Desde aquí no se envía nada. Agradece, dice qué se actualizó y pregunta solo lo que las filas no responden; toda respuesta pregunta por casinos sin licencia y validez salvo que la lista ya lo diga.", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
+    accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", lFilter:"Filtrar estas filas (dominio, condiciones, contacto)", sortDefault:"Orden de la lista", sortDelta:"Mayor cambio de precio primero", sortPriceUp:"Más barato primero", sortDomain:"Dominio A–Z", allShown:"Todas las visibles:", clearShown:"Limpiar", choose:"elegir…", shownN:(n, m)=>`${n} de ${m} filas`, keysHint:"Teclas: ↑ ↓ mover · A aceptar · W webmaster · Q preguntar · R rechazar · M quitar · X limpiar · N nota", noteBtn:"Nota para User Comments", notePh:"Nota (va a User Comments)", summary:"Copiar resumen", summaryCopied:"Resumen copiado", dupNote:(n)=>`${n} sitio${n === 1 ? "" : "s"} repetido${n === 1 ? "" : "s"} en la lista, fusionado${n === 1 ? "" : "s"}`, dupChip:(n, c)=>`${n}× en la lista ${c ? "· " + c : ""}`, histPh:"Listas anteriores…", histItem:(h)=>`${h.label} · ${h.sender || "sin remitente"} · ${h.when} · ${h.n} sitios · ${h.decided} decididos`, prevList:(h, dropped, added)=>`Lista anterior de este remitente: "${h.label}" del ${h.when}, ${h.n} sitios. Ahora ${added} nuevos y ${dropped} que ya no vienen${dropped ? ": " : "."}`, mins:"Métricas vendibles, mínimo", minTraffic:"tráfico", minshint:"En blanco hasta que Gary dé los umbrales. Las filas por debajo se marcan, nunca se ocultan.", lowMetrics:"por debajo del mínimo", monthsOld:(m)=>`${m} meses`, warnNoPrice:(n, d)=>`${n} fila${n === 1 ? "" : "s"} sin precio en ninguna columna Buying: ${d}`, warnNoContact:"Sin remitente: Webmaster Contact saldrá vacío en todas las filas.", warnCurrency:(n, d)=>`${n} fila${n === 1 ? "" : "s"} con precio en otra moneda que EUR, se escribe tal cual: ${d}`, warnNoTerms:(n, d)=>`${n} fila${n === 1 ? "" : "s"} sin tipo de enlace ni permanencia: ${d}`, askT:(n)=>n ? `Borrador de respuesta: ${n} pregunta${n === 1 ? "" : "s"}` : "Borrador de respuesta: cierre, sin preguntas", askhint:"Un borrador para Outlook. Desde aquí no se envía nada. Agradece, dice qué se actualizó y pregunta solo lo que las filas no responden; toda respuesta pregunta por casinos sin licencia y validez salvo que la lista ya lo diga.", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
     niche:{casino:"Casino",unlicensedCasino:"Casino s/lic.",crypto:"Cripto",forex:"Forex",cbd:"CBD",dating:"Citas",general:"General"} }
 };
 let lang = "en";
@@ -140,7 +140,11 @@ function loadDecisions(){
   for(const k in notes) delete notes[k];
   try{ Object.assign(notes, JSON.parse(localStorage.getItem(storageKey() + ":notes") || "{}")); }catch(e){}
 }
-function saveDecisions(){ try{ localStorage.setItem(storageKey(), JSON.stringify(decisions)); localStorage.setItem(storageKey() + ":notes", JSON.stringify(notes)); }catch(e){} }
+let histTimer = null;
+function saveDecisions(){
+  try{ localStorage.setItem(storageKey(), JSON.stringify(decisions)); localStorage.setItem(storageKey() + ":notes", JSON.stringify(notes)); }catch(e){}
+  clearTimeout(histTimer); histTimer = setTimeout(rememberList, 800);
+}
 
 function describeDb(){
   const contacts = [...index.bySender.keys()].filter(Boolean).length;
@@ -251,10 +255,12 @@ function pickView(){
   const k = ["changed", "unknown", "unchanged", "removed", "missing"].find(g => groups[g] && groups[g].length);
   if(k) view = k;
 }
+let dupes = [];   /* sites named more than once in this list */
 function run(){
   const parsed = parseList($("list").value);
   const listTerms = listTermsOf(parsed);
-  items = parsed.items.map(i => withListTerms(i, listTerms)); lastParsed = parsed;
+  const merged = mergeDuplicates(parsed.items.map(i => withListTerms(i, listTerms)));
+  items = merged.items; dupes = merged.dupes; lastParsed = parsed;
   noteParse();
   for(const k in decisions) delete decisions[k];
   loadDecisions();
@@ -262,6 +268,7 @@ function run(){
   indexEntries(); pruneDecisions();
   pickView();
   render();
+  rememberList();
   if(remote) matchRemote();
 }
 async function matchRemote(){
@@ -352,6 +359,51 @@ function decisionCell(domain){
   const sel = `<select class="decsel${d ? " on-" + d : ""}" data-dom="${esc(domain)}" aria-label="${esc(t().thDecision)}"><option value="-">${d ? "" : "—"}</option>${keys.map(k => `<option value="${k}"${d === k ? " selected" : ""}>${label(k)}</option>`).join("")}</select>`;
   return `<span class="seg${keys.length === 3 ? " three" : ""}">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${label(k)}</button>`).join("") + `</span>` + sel;
 }
+/* Every list worked is remembered in the browser (label, sender, type, the
+   text, the sites, how many decided), so a list can be picked up again and
+   the next list from the same sender is compared with the previous one. */
+let histCache = [];
+function histKey(){ return "hist:" + ($("label").value || "list").trim(); }
+function rememberList(){
+  if(!items.length) return;
+  const decided = items.filter(i => decisions[i.domain]).length;
+  const rec = { label: $("label").value.trim() || "list", sender: $("sender").value.trim(), stype, when: Date.now(), text: $("list").value, domains: items.map(i => i.domain), n: items.length, decided };
+  idbPut(histKey(), rec).then(() => loadHistory());
+}
+function fmtDay(ms){ const d = new Date(ms); return `${String(d.getDate()).padStart(2, "0")}/${String(d.getMonth() + 1).padStart(2, "0")}/${d.getFullYear()}`; }
+function loadHistory(){
+  return idb().then(db => new Promise((ok, no) => {
+    const st = db.transaction("files", "readonly").objectStore("files");
+    const ks = st.getAllKeys(), vs = st.getAll();
+    vs.onsuccess = () => { const keys = ks.result || []; const vals = vs.result || []; ok(vals.filter((v, i) => String(keys[i]).startsWith("hist:") && v && v.domains)); };
+    vs.onerror = () => no(vs.error);
+  })).then(list => {
+    histCache = list.sort((a, b) => b.when - a.when).slice(0, 50);
+    const sel = $("hist");
+    sel.innerHTML = `<option value="">${esc(t().histPh)}</option>` + histCache.map((h, i) => `<option value="${i}">${esc(t().histItem({ label: h.label, sender: h.sender, when: fmtDay(h.when), n: h.n, decided: h.decided }))}</option>`).join("");
+    sel.hidden = !histCache.length;
+    previousListNote();
+  }).catch(() => {});
+}
+function openHistory(i){
+  const h = histCache[i]; if(!h) return;
+  $("label").value = h.label; $("sender").value = h.sender || ""; $("list").value = h.text || "";
+  if(FIXED.type.includes(h.stype)) setStype(h.stype); else run();
+  $("hist").value = "";
+}
+/* The sender's previous list, when this one is a different list. */
+function previousListNote(){
+  const old = $("prevlist"); if(old) old.remove();
+  const sender = $("sender").value.trim().toLowerCase(); const label = ($("label").value || "").trim();
+  if(!sender || !items.length) return;
+  const prev = histCache.find(h => (h.sender || "").toLowerCase() === sender && h.label !== label);
+  if(!prev) return;
+  const now = new Set(items.map(i => i.domain)), before = new Set(prev.domains);
+  const dropped = prev.domains.filter(d => !now.has(d)), added = items.filter(i => !before.has(i.domain)).length;
+  const div = document.createElement("div"); div.className = "aviso"; div.id = "prevlist";
+  div.textContent = t().prevList({ label: prev.label, when: fmtDay(prev.when), n: prev.n }, dropped.length, added) + (dropped.length ? dropped.slice(0, 10).join(", ") + (dropped.length > 10 ? ` +${dropped.length - 10}` : "") : "");
+  const tabs = $("results").querySelector(".gtabs"); if(tabs) tabs.insertAdjacentElement("afterend", div);
+}
 /* Filter and order of the rows on screen (the toolbar over the table). */
 let listQ = "", listSort = "default";
 /* The team's minimums for a site to be worth contacting (Senad: "sellable
@@ -392,7 +444,9 @@ function table(entries, kind){
     const offered = e.missing ? `<span class="sender">${t().notListed}</span>` : offeredCells(e.item, e.diffs);
     const terms = e.missing ? "" : termsCells(e.item);
     const note = notes[d] ? `<span class="note" data-notetext="${esc(d)}">${esc(notes[d])}</span>` : `<span class="note" data-notetext="${esc(d)}"></span>`;
-    return `<tr class="${done.trim()}" data-row="${esc(d)}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button><button type="button" class="notebtn" data-note="${esc(d)}" title="${esc(t().noteBtn)}">✎</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}${note}</td><td>${offered}</td><td class="dbc">${dbCol}</td><td class="ancha">${terms}</td><td class="dec">${decisionCell(d)}</td></tr>`;
+    const dup = dupes.find(x => x.domain === d);
+    const dupChip = dup ? `<span class="dup">${esc(t().dupChip(dup.count, dup.conflicts.map(c => `${t().niche[c.niche]} ${formatPrice(c.first)} vs ${formatPrice(c.other)}`).join(", ")))}</span>` : "";
+    return `<tr class="${done.trim()}" data-row="${esc(d)}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button><button type="button" class="notebtn" data-note="${esc(d)}" title="${esc(t().noteBtn)}">✎</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}${dupChip}${note}</td><td>${offered}</td><td class="dbc">${dbCol}</td><td class="ancha">${terms}</td><td class="dec">${decisionCell(d)}</td></tr>`;
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -431,6 +485,7 @@ function render(){
     <div id="ltable"></div>`;
   renderTable();
   renderExport();
+  previousListNote();
 }
 /* The decisions every row on this tab can take, for the batch buttons. */
 function batchKeys(entries){
@@ -1007,6 +1062,8 @@ function bootStep(name, fn){
 }
 bootStep("buttons", () => {
   document.querySelectorAll("[data-stype]").forEach(b => b.addEventListener("click", () => setStype(b.dataset.stype)));
+  $("hist").addEventListener("change", () => { if($("hist").value !== "") openHistory(Number($("hist").value)); });
+  loadHistory();
   $("min-dr").value = mins.dr; $("min-traffic").value = mins.traffic;
   ["dr", "traffic"].forEach(k => $("min-" + k).addEventListener("change", () => { mins[k] = $("min-" + k).value; try{ localStorage.setItem("ljc-lists-mins", JSON.stringify(mins)); }catch(e){} if(groups) renderTable(); }));
 });

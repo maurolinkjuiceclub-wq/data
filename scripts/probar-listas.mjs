@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, metricsOf, belowThreshold, monthsSince, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, metricsOf, belowThreshold, monthsSince, mergeDuplicates, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -327,6 +327,11 @@ caso("metrics read from labelled terms", eq([mt.dr, mt.rd, mt.traffic, mt.da, mt
 caso("metrics: none in plain terms", metricsOf("do follow, permanent") === null);
 caso("below threshold names the metrics that miss", eq(belowThreshold(mt, { dr: 50, traffic: "" }), ["dr"]) && eq(belowThreshold(mt, { dr: 20, traffic: 20000 }), ["traffic"]) && eq(belowThreshold(mt, {}), []));
 caso("months since a sheet date", monthsSince("05/10/2025", new Date(2026, 9, 12)) === 12 && monthsSince("2026-04-12", new Date(2026, 9, 12)) === 6 && monthsSince("", new Date()) === null);
+const md = mergeDuplicates(parseList("a.example\t100\nwww.a.example\t\t300\nb.example\t50\na.example\t120").items);
+caso("a site twice in one list is merged into the first; a different price is a conflict", md.items.length === 2 && md.items[0].prices.general.amount === 100 && md.dupes.length === 1 && md.dupes[0].count === 3 && md.dupes[0].conflicts.length === 2 && md.dupes[0].conflicts.every(c => c.niche === "general") && md.dupes[0].conflicts[1].other.amount === 120, md);
+const md2 = mergeDuplicates(parseList("Domain\tGeneral\tCasino\na.example\t100\t\na.example\t\t300").items);
+caso("a second line fills the niche the first lacks", md2.items.length === 1 && md2.items[0].prices.general.amount === 100 && md2.items[0].prices.casino.amount === 300 && md2.dupes[0].conflicts.length === 0, md2);
+caso("no duplicates: nothing merged", mergeDuplicates(parseList("a.example\t100\nb.example\t50").items).dupes.length === 0);
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31/12/2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

@@ -473,6 +473,29 @@ export function pdfTextOf(items){
   return out.map(cells => cells.filter(Boolean).length <= 1 ? cells.filter(Boolean).join("") : cells.join("\t")).join("\n");
 }
 
+/* ---------- the same site twice in one list ---------- */
+
+/* A list can name a site twice (two blocks, www and bare, a second sheet).
+   The items are merged into the first: a niche the first lacks takes the
+   later price; a niche priced differently in both is a conflict the person
+   has to see. Returns the merged items and what was merged. */
+export function mergeDuplicates(items){
+  const byDomain = new Map(); const out = []; const dupes = [];
+  for(const it of items){
+    const first = byDomain.get(it.domain);
+    if(!first){ byDomain.set(it.domain, it); out.push(it); continue; }
+    let d = dupes.find(x => x.domain === it.domain);
+    if(!d){ d = { domain: it.domain, count: 1, conflicts: [] }; dupes.push(d); }
+    d.count++;
+    for(const n in it.prices){
+      if(!first.prices[n]) first.prices[n] = it.prices[n];
+      else if(first.prices[n].amount !== it.prices[n].amount || first.prices[n].currency !== it.prices[n].currency) d.conflicts.push({ niche: n, first: first.prices[n], other: it.prices[n] });
+    }
+    if(it.terms && it.terms !== first.terms) first.terms = [first.terms, it.terms].filter(Boolean).join(" | ");
+  }
+  return { items: out, dupes };
+}
+
 /* ---------- metrics the list carries, age of a row ---------- */
 
 /* "Ahrefs DR: 44 | RD: 1102 | Avg Traffic: 18176 | DA: 35 | Links: 3.570"
