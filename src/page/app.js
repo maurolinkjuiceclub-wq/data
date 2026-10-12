@@ -69,7 +69,8 @@ function noteParse(){
   const gsheet = /docs\.google\.com\/spreadsheets/.test($("list").value);
   $("parsenote").textContent = t().parsed(items.length, lastParsed.skipped.length, cols) + (gsheet && items.length < 3 ? " · " + t().gsheetHint : "");
 }
-const decisions = {};   /* domain -> accept | reject | ask */
+const decisions = {};   /* domain -> accept | reject | ask | webmaster | remove */
+const notes = {};       /* domain -> a short note that goes to User Comments */
 const $ = id => document.getElementById(id);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 
@@ -94,7 +95,7 @@ const T = {
     gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed", gMissing:"Missing", hMissing:"In the database from this sender but not on this list. Senad, 09/10: they go to removed sites as REMOVED FROM THE LIST. Reject keeps a row when the list was only partial.", remove:"Remove", notListed:"not on this list", rmT:(n)=>`${n} row${n === 1 ? "" : "s"} for removed sites`, rmhint:"Rows in the removed sites layout, with the reason first in Admin Comments. Paste or import them into the removed sites tab and delete them from Import Database by hand.",
     hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab, with the reason. Restore writes it back to the database and the row says so.", hAll:"",
     thDomain:"Domain", thOffered:"Offered", thDb:"In the database", thRemoved:"Removed sites", thTerms:"Terms", thDecision:"Decision",
-    accept:"Accept", reject:"Reject", ask:"Ask", none:"none", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
+    accept:"Accept", reject:"Reject", ask:"Ask", none:"none", lFilter:"Filter these rows (domain, terms, contact)", sortDefault:"List order", sortDelta:"Biggest price change first", sortPriceUp:"Cheapest first", sortDomain:"Domain A–Z", allShown:"All shown:", clearShown:"Clear", shownN:(n, m)=>`${n} of ${m} rows`, keysHint:"Keys: ↑ ↓ move · A accept · W webmaster · Q ask · R reject · M remove · X clear · N note", noteBtn:"Note for User Comments", notePh:"Note (goes to User Comments)", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
@@ -115,7 +116,7 @@ const T = {
     gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos", gMissing:"Faltan", hMissing:"Están en la base de este remitente pero no en esta lista. Senad, 09/10: van a removed sites como REMOVED FROM THE LIST. Rechazar conserva la fila si la lista era parcial.", remove:"Quitar", notListed:"no está en esta lista", rmT:(n)=>`${n} fila${n === 1 ? "" : "s"} para removed sites`, rmhint:"Filas con el formato de removed sites, con el motivo primero en Admin Comments. Pégalas o impórtalas en la pestaña removed sites y bórralas de Import Database a mano.",
     hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites, con el motivo. Restaurar la devuelve a la base y la fila lo dice.", hAll:"",
     thDomain:"Dominio", thOffered:"Ofrece", thDb:"En la base", thRemoved:"Removed sites", thTerms:"Condiciones", thDecision:"Decisión",
-    accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
+    accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", lFilter:"Filtrar estas filas (dominio, condiciones, contacto)", sortDefault:"Orden de la lista", sortDelta:"Mayor cambio de precio primero", sortPriceUp:"Más barato primero", sortDomain:"Dominio A–Z", allShown:"Todas las visibles:", clearShown:"Limpiar", shownN:(n, m)=>`${n} de ${m} filas`, keysHint:"Teclas: ↑ ↓ mover · A aceptar · W webmaster · Q preguntar · R rechazar · M quitar · X limpiar · N nota", noteBtn:"Nota para User Comments", notePh:"Nota (va a User Comments)", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
     niche:{casino:"Casino",unlicensedCasino:"Casino s/lic.",crypto:"Cripto",forex:"Forex",cbd:"CBD",dating:"Citas",general:"General"} }
 };
 let lang = "en";
@@ -134,8 +135,12 @@ $("lang-en").addEventListener("click", () => { lang = "en"; try{ localStorage.se
 $("lang-es").addEventListener("click", () => { lang = "es"; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} applyLang(); });
 
 function storageKey(){ return "ljc-lists:" + ($("label").value || "list").trim(); }
-function loadDecisions(){ try{ Object.assign(decisions, JSON.parse(localStorage.getItem(storageKey()) || "{}")); }catch(e){} }
-function saveDecisions(){ try{ localStorage.setItem(storageKey(), JSON.stringify(decisions)); }catch(e){} }
+function loadDecisions(){
+  try{ Object.assign(decisions, JSON.parse(localStorage.getItem(storageKey()) || "{}")); }catch(e){}
+  for(const k in notes) delete notes[k];
+  try{ Object.assign(notes, JSON.parse(localStorage.getItem(storageKey() + ":notes") || "{}")); }catch(e){}
+}
+function saveDecisions(){ try{ localStorage.setItem(storageKey(), JSON.stringify(decisions)); localStorage.setItem(storageKey() + ":notes", JSON.stringify(notes)); }catch(e){} }
 
 function describeDb(){
   const contacts = [...index.bySender.keys()].filter(Boolean).length;
@@ -346,6 +351,21 @@ function decisionCell(domain){
   const label = k => (k === "accept" && removedDomains.has(domain)) ? t().restore : t()[k];
   return `<span class="seg${keys.length === 3 ? " three" : ""}">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${label(k)}</button>`).join("") + `</span>`;
 }
+/* Filter and order of the rows on screen (the toolbar over the table). */
+let listQ = "", listSort = "default";
+function entryText(e){
+  return [e.item.domain, e.item.terms || "", ...(e.rows || []).map(r => (senderOf(r) || "") + " " + (r["Contact Name"] || "")), ...(e.removedRows || []).map(r => senderOf(r) || "")].join(" ").toLowerCase();
+}
+function maxDelta(e){ let m = 0; (e.diffs || []).forEach(list => priceDelta(list).forEach(d => { if(d.delta != null && Math.abs(d.delta) > Math.abs(m)) m = d.delta; })); return m; }
+function minPrice(e){ const ps = NICHES.map(n => e.item.prices[n]).filter(Boolean).map(p => p.amount); return ps.length ? Math.min(...ps) : Infinity; }
+function shownEntries(entries){
+  const q = listQ.trim().toLowerCase();
+  let out = q ? entries.filter(e => entryText(e).includes(q)) : entries.slice();
+  if(listSort === "delta") out.sort((a, b) => Math.abs(maxDelta(b)) - Math.abs(maxDelta(a)));
+  else if(listSort === "price") out.sort((a, b) => minPrice(a) - minPrice(b));
+  else if(listSort === "domain") out.sort((a, b) => a.item.domain.localeCompare(b.item.domain));
+  return out;
+}
 function table(entries, kind){
   if(!entries.length) return `<div class="tabla-wrap"><div class="empty">${t().empty}</div></div>`;
   const rows = entries.map(e => {
@@ -354,7 +374,8 @@ function table(entries, kind){
     const dbCol = flag + (e.removedRows ? dbCells(e.removedRows, true) : dbCells(e.rows));
     const offered = e.missing ? `<span class="sender">${t().notListed}</span>` : offeredCells(e.item, e.diffs);
     const terms = e.missing ? "" : termsCells(e.item);
-    return `<tr class="${done.trim()}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}</td><td>${offered}</td><td class="dbc">${dbCol}</td><td class="ancha">${terms}</td><td class="dec">${decisionCell(d)}</td></tr>`;
+    const note = notes[d] ? `<span class="note" data-notetext="${esc(d)}">${esc(notes[d])}</span>` : `<span class="note" data-notetext="${esc(d)}"></span>`;
+    return `<tr class="${done.trim()}" data-row="${esc(d)}"><td class="dom"><button type="button" class="domlink" data-open="${esc(d)}" title="${esc(t().openInDb)}">${esc(d)}</button><button type="button" class="notebtn" data-note="${esc(d)}" title="${esc(t().noteBtn)}">✎</button>${e.item.path ? `<span class="sender">${esc(e.item.path)}</span>` : ""}${note}</td><td>${offered}</td><td class="dbc">${dbCol}</td><td class="ancha">${terms}</td><td class="dec">${decisionCell(d)}</td></tr>`;
   }).join("");
   return `<div class="tabla-wrap"><table class="outreach"><thead><tr><th>${t().thDomain}</th><th>${t().thOffered}</th><th>${kind === "removed" ? t().thRemoved : t().thDb}</th><th>${t().thTerms}</th><th>${t().thDecision}</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }
@@ -383,9 +404,85 @@ function render(){
     </div>
     ${broker}
     ${cur[4] ? `<p class="ghint">${cur[4]}${view === "changed" && sameSender ? ` ${sameSender} ${t().fromSender}.` : ""}</p>` : ""}
-    ${table(cur[3], view === "removed" ? "removed" : view)}`;
+    ${cur[3].length ? `<div class="ltools">
+      <input type="search" id="lq" class="inp" placeholder="${esc(t().lFilter)}" value="${esc(listQ)}" autocomplete="off">
+      <select id="lsort">${[["default", t().sortDefault], ["delta", t().sortDelta], ["price", t().sortPriceUp], ["domain", t().sortDomain]].map(([v, l]) => `<option value="${v}"${v === listSort ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>
+      <span class="lbl">${esc(t().allShown)}</span><span class="seg">${batchKeys(cur[3]).map(k => `<button type="button" data-all="${k}">${esc(t()[k])}</button>`).join("")}<button type="button" data-all="">${esc(t().clearShown)}</button></span>
+      <span class="said" id="shownn"></span>
+    </div><p class="keys">${t().keysHint}</p>` : ""}
+    <div id="ltable"></div>`;
+  renderTable();
   renderExport();
 }
+/* The decisions every row on this tab can take, for the batch buttons. */
+function batchKeys(entries){
+  const counts = {};
+  entries.forEach(e => decisionKeys(e.item.domain).forEach(k => { counts[k] = (counts[k] || 0) + 1; }));
+  return ["accept", "webmaster", "ask", "reject", "remove"].filter(k => counts[k]);
+}
+let curRow = null;   /* domain of the row the keys act on */
+function currentEntries(){
+  if(!groups) return [];
+  const all = groups.changed.concat(groups.unknown, groups.unchanged, groups.removed, groups.missing || []);
+  const byView = { changed: groups.changed, unknown: groups.unknown, unchanged: groups.unchanged, removed: groups.removed, missing: groups.missing || [], all };
+  return byView[view] || [];
+}
+function renderTable(){
+  const entries = currentEntries();
+  const shown = shownEntries(entries);
+  const el = $("ltable"); if(!el) return;
+  el.innerHTML = table(shown, view === "removed" ? "removed" : view);
+  const n = $("shownn"); if(n) n.textContent = shown.length === entries.length ? "" : t().shownN(shown.length, entries.length);
+  if(curRow){ const tr = el.querySelector(`tr[data-row="${CSS.escape(curRow)}"]`); if(tr) tr.classList.add("cur"); }
+}
+/* Batch: the same decision on every row shown, where the row offers it. */
+function decideShown(dec){
+  const shown = shownEntries(currentEntries());
+  shown.forEach(e => { const d = e.item.domain; if(written[d]) return; if(!dec) delete decisions[d]; else if(decisionKeys(d).includes(dec)) decisions[d] = dec; });
+  saveDecisions(); renderTable();
+  const p = $("progreso"); if(p) p.innerHTML = progressHtml();
+  renderExport();
+}
+function setCurRow(d){
+  curRow = d;
+  $("results").querySelectorAll("tr.cur").forEach(tr => tr.classList.remove("cur"));
+  const tr = d ? $("results").querySelector(`tr[data-row="${CSS.escape(d)}"]`) : null;
+  if(tr){ tr.classList.add("cur"); tr.scrollIntoView({ block: "nearest" }); }
+}
+function decide(d, dec){
+  if(written[d]) return;
+  if(remote && dec === "accept" && decisions[d] !== "accept"){ const b = $("results").querySelector(`button[data-dom="${CSS.escape(d)}"][data-dec="accept"]`); if(b) acceptRemote(d, b); return; }
+  if(!dec || decisions[d] === dec) delete decisions[d]; else if(decisionKeys(d).includes(dec)) decisions[d] = dec; else return;
+  saveDecisions(); refreshRow(d);
+}
+/* Notes: an inline box under the domain, kept with the decisions. */
+function editNote(d){
+  const span = $("results").querySelector(`.note[data-notetext="${CSS.escape(d)}"]`); if(!span) return;
+  if(span.querySelector("input")) { span.querySelector("input").focus(); return; }
+  const inp = document.createElement("input"); inp.className = "noteinp"; inp.value = notes[d] || ""; inp.placeholder = t().notePh;
+  const done = () => { const v = inp.value.trim(); if(v) notes[d] = v; else delete notes[d]; saveDecisions(); span.textContent = v; renderExport(); };
+  inp.addEventListener("keydown", ev => { if(ev.key === "Enter"){ ev.preventDefault(); inp.blur(); } if(ev.key === "Escape"){ inp.value = notes[d] || ""; inp.blur(); } ev.stopPropagation(); });
+  inp.addEventListener("blur", done);
+  span.textContent = ""; span.appendChild(inp); inp.focus();
+}
+document.addEventListener("keydown", e => {
+  if(mode !== "list" || !groups) return;
+  const tag = (e.target && e.target.tagName || "").toLowerCase();
+  if(tag === "input" || tag === "textarea" || tag === "select" || e.metaKey || e.ctrlKey || e.altKey) return;
+  const rows = [...$("results").querySelectorAll("tr[data-row]")].map(tr => tr.dataset.row);
+  if(!rows.length) return;
+  const i = rows.indexOf(curRow);
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    const j = e.key === "ArrowDown" ? Math.min(rows.length - 1, i + 1) : Math.max(0, i < 0 ? 0 : i - 1);
+    setCurRow(rows[j]); return;
+  }
+  if(!curRow) return;
+  const map = { a: "accept", w: "webmaster", q: "ask", r: "reject", m: "remove", x: "" };
+  const k = e.key.toLowerCase();
+  if(k === "n"){ e.preventDefault(); editNote(curRow); return; }
+  if(k in map){ e.preventDefault(); decide(curRow, map[k]); }
+});
 function progressHtml(){
   const total = items.length, decided = Object.keys(decisions).filter(k => items.some(i => i.domain === k)).length;
   return `${t().decided(decided, total)} <i><b style="width:${total ? Math.round(decided / total * 100) : 0}%"></b></i>`;
@@ -396,21 +493,30 @@ function progressHtml(){
 function refreshRow(dom){
   const sel = `button[data-dom="${window.CSS && CSS.escape ? CSS.escape(dom) : dom}"]`;
   const tds = new Set(); $("results").querySelectorAll(sel).forEach(b => { const td = b.closest("td.dec"); if(td) tds.add(td); });
-  tds.forEach(td => { td.innerHTML = decisionCell(dom); const tr = td.closest("tr"); if(tr) tr.className = decisions[dom] ? "done" : ""; });
+  tds.forEach(td => { td.innerHTML = decisionCell(dom); const tr = td.closest("tr"); if(tr) tr.classList.toggle("done", !!decisions[dom]); });
   const p = $("progreso"); if(p) p.innerHTML = progressHtml();
   renderExport();
 }
 /* One listener for the whole result area: tabs, domain links, decisions. */
 $("results").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-row]"); if(tr) setCurRow(tr.dataset.row);
   const b = e.target.closest("button"); if(!b) return;
-  if(b.classList.contains("gtab")){ view = b.dataset.view; render(); return; }
+  if(b.classList.contains("gtab")){ view = b.dataset.view; curRow = null; render(); return; }
   if(b.dataset.open){ openInDb(b.dataset.open); return; }
+  if(b.dataset.note){ editNote(b.dataset.note); return; }
+  if(b.dataset.all != null){ decideShown(b.dataset.all); return; }
   if(!b.dataset.dec) return;
   const dom = b.dataset.dom, dec = b.dataset.dec;
   if(written[dom]) return;   /* already in the sheet: no undo from here */
   if(remote && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
   if(decisions[dom] === dec) delete decisions[dom]; else decisions[dom] = dec;
   saveDecisions(); refreshRow(dom);
+});
+$("results").addEventListener("input", e => {
+  if(e.target.id === "lq"){ listQ = e.target.value; renderTable(); }
+});
+$("results").addEventListener("change", e => {
+  if(e.target.id === "lsort"){ listSort = e.target.value; renderTable(); }
 });
 async function acceptRemote(dom, btn){
   const item = items.find(i => i.domain === dom); if(!item) return;
@@ -453,7 +559,7 @@ function renderExport(){
     $("export-t").textContent = remote && done ? t().writtenT(done) : t().exportT(accepted.length);
     document.querySelector("[data-i18n=rowshint]").textContent = remote && done ? t().writtenHint : t().rowshint;
     /* No identity on this page: the trace names the list, not a person. */
-    const rows = accepted.map(i => rowForAccept(i, Object.assign({ type: stype, sender, who: "", listLabel: label }, acceptFlags(i.domain))));
+    const rows = accepted.map(i => rowForAccept(i, Object.assign({ type: stype, sender, who: "", listLabel: label, note: notes[i.domain] || "" }, acceptFlags(i.domain))));
     const show = ["Type", "Domain", "Webmaster Contact", ...NICHES.map(n => BUYING_COLUMN[n]), "Sponsor Tag Type", "Link Type", "Placement", "Price Validity", "Admin Comments", "Last Updated"];
     const used = show.filter(c => c === "Type" || c === "Domain" || rows.some(r => r[c]));
     $("export-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c.replace("Buying ", "B. "))}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]).replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -468,7 +574,7 @@ function renderExport(){
     const rows = wm.map(i => {
       const offered = NICHES.filter(n => i.prices[n]).map(n => `${t().niche[n]} ${formatPrice(i.prices[n])}`).join(", ");
       return { Domain: i.domain, Country: "", "Date Sent": "", "Whatsapp / Phone Number": "", "Status WA / Number": "", "Contact Email": "", "Alternative contact": "", "Replied?": "FALSE", "Database?": "FALSE",
-        "Additional Comments": `${stype} ${sender} offered ${offered || "no price"}${label ? ` (list ${label})` : ""}${i.terms ? `; ${i.terms}` : ""}` };
+        "Additional Comments": `${stype} ${sender} offered ${offered || "no price"}${label ? ` (list ${label})` : ""}${i.terms ? `; ${i.terms}` : ""}${notes[i.domain] ? `; ${notes[i.domain]}` : ""}` };
     });
     const used = ["Domain", "Contact Email", "Additional Comments"];
     $("wm-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]) || "<span class=sender>—</span>"}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
@@ -480,7 +586,7 @@ function renderExport(){
   $("rm").hidden = !gone.length;
   if(gone.length){
     $("rm-t").textContent = t().rmT(gone.length);
-    const rows = gone.map(e => rowForRemoved(e.rows[0], { listLabel: label }));
+    const rows = gone.map(e => rowForRemoved(e.rows[0], { listLabel: label, note: notes[e.item.domain] || "" }));
     const used = ["Domain", "Webmaster Contact", "Admin Comments", "Last Updated"];
     $("rm-prev").innerHTML = `<table class="outreach"><thead><tr>${used.map(c => `<th>${esc(c)}</th>`).join("")}</tr></thead><tbody>${rows.map(r => `<tr>${used.map(c => `<td class="${c === "Domain" ? "dom" : ""}">${esc(r[c]).replace(/\n/g, "<br>")}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
     $("rm-tsv").value = [REMOVED_COLUMNS.join("\t")].concat(rows.map(r => REMOVED_COLUMNS.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");

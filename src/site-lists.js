@@ -658,11 +658,11 @@ export function matchList(items, index, { sender, brokerHintAt = 10, senderCount
    Unlicensed Casino ones (read 07/10). A row moving there keeps its data,
    gets the reason first in Admin Comments and today's date. */
 export const REMOVED_COLUMNS = DB_COLUMNS.filter(c => !/Unlicensed Casino/.test(c));
-export function rowForRemoved(row, { reason = "REMOVED FROM THE LIST", listLabel = "", today = new Date() } = {}){
+export function rowForRemoved(row, { reason = "REMOVED FROM THE LIST", listLabel = "", today = new Date(), note = "" } = {}){
   const d = String(today.getDate()).padStart(2, "0"), m = String(today.getMonth() + 1).padStart(2, "0"), y = today.getFullYear();
   const out = Object.fromEntries(REMOVED_COLUMNS.map(c => [c, row[c] == null ? "" : String(row[c])]));
   out["Admin Comments"] = [reason, String(row["Admin Comments"] || "").trim()].filter(Boolean).join("\n");
-  out["User Comments"] = [String(row["User Comments"] || "").trim(), listLabel && `missing from list ${listLabel}`].filter(Boolean).join("; ");
+  out["User Comments"] = [String(row["User Comments"] || "").trim(), listLabel && `missing from list ${listLabel}`, note && String(note).trim()].filter(Boolean).join("; ");
   out["Last Updated"] = `${d}/${m}/${y}`;
   return out;
 }
@@ -750,7 +750,7 @@ export function priceDelta(diffs){
    terms, contact and bookkeeping are filled; metrics stay empty for the team.
    `who` is the desk user's email, `listLabel` names the list ("starmagazines
    05/10"). Nothing here touches the sheet: the Worker does, on Accept. */
-export function rowForAccept(item, { type = "Publisher", sender = "", contactName = "", who = "", listLabel = "", today = new Date(), conversion = false, restored = false } = {}){
+export function rowForAccept(item, { type = "Publisher", sender = "", contactName = "", who = "", listLabel = "", today = new Date(), conversion = false, restored = false, note = "" } = {}){
   const d = String(today.getDate()).padStart(2, "0"), m = String(today.getMonth() + 1).padStart(2, "0"), y = today.getFullYear();
   const row = Object.fromEntries(DB_COLUMNS.map(c => [c, ""]));
   row.Type = FIXED.type.includes(type) ? type : "Publisher";
@@ -780,7 +780,8 @@ export function rowForAccept(item, { type = "Publisher", sender = "", contactNam
      it knows what to remove or restore by hand. */
   row["User Comments"] = [who && `Accepted by ${who}`, listLabel && `from list ${listLabel}`, foreign.length && `Prices in ${foreign.join("/")}, not converted`,
     conversion && `Broker conversion: replaces the row from ${typeof conversion === "string" ? conversion : "the broker"}`,
-    restored && `Restored from removed sites${typeof restored === "string" && restored ? " (" + restored + ")" : ""}`].filter(Boolean).join("; ");
+    restored && `Restored from removed sites${typeof restored === "string" && restored ? " (" + restored + ")" : ""}`,
+    note && String(note).trim()].filter(Boolean).join("; ");
   row["Last Updated"] = `${d}/${m}/${y}`;
   return row;
 }

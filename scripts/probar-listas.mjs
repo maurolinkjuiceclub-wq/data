@@ -321,6 +321,7 @@ caso("removed row: 43 columns, no Unlicensed Casino, reason first, today's date"
 caso("REMOVED_COLUMNS is the sheet's removed tab", REMOVED_COLUMNS.length === 43 && REMOVED_COLUMNS.includes("Majestic Citation Flow"));
 caso("review 12/10: a guarantee of indexing is not the comment", eq(termsOf({ terms: "Indexing is guaranteed within 48h. We have no competitor in this niche.", prices: {} }).adminComments, []));
 caso("review 12/10: the negations still read", eq(termsOf({ terms: "Indexing isn't guaranteed; no competitor links please", prices: {} }).adminComments, ["Indexing is not guaranteed", "No Competitor Links"]));
+caso("a note goes to User Comments of the accepted row and of the removed row", /only sports content$/.test(rowForAccept(parseList("alpha.example\t100").items[0], { note: " only sports content " })["User Comments"]) && /; keep an eye$/.test(rowForRemoved({ Domain: "x.example" }, { listLabel: "l", note: "keep an eye" })["User Comments"]));
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31/12/2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));
