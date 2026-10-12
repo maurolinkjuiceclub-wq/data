@@ -116,6 +116,18 @@ table.outreach tbody tr.cur td{background:var(--accent-wash)}
 .ltools select{padding:6px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px}
 .ltools .lbl{margin:0;white-space:nowrap}
 .keys{font-size:11px;color:var(--muted);margin:-4px 0 10px}
+/* Narrow screens: the decision is a dropdown, the keys hint is off, the
+   toolbar stacks. Wide screens keep the button grid. */
+td.dec .decsel{display:none}
+.decsel{padding:5px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px;max-width:160px}
+.decsel.on-accept{background:var(--ok-bg);color:var(--ok-ink)} .decsel.on-reject{background:var(--bad-bg);color:var(--bad-ink)} .decsel.on-ask,.decsel.on-remove{background:var(--wait-bg);color:var(--wait-ink)} .decsel.on-webmaster{background:var(--accent-wash);color:var(--accent-ink)}
+@media (max-width:719px){
+  table.outreach td.dec .seg{display:none} table.outreach td.dec .decsel{display:inline-block}
+  .keys{display:none}
+  .ltools{gap:6px} .ltools .inp{flex-basis:100%} .ltools select{flex:1 1 120px;min-width:0}
+  .gtabs{gap:4px} .sumbtn{margin-left:0;flex-basis:100%}
+  .rail .seg.stype{flex-wrap:wrap}
+}
 .minrow{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .minrow label{margin:0;font-size:11px;color:var(--muted);text-transform:none;letter-spacing:0}
 .minrow input{width:84px;padding:5px 8px;font:inherit;font-size:12.5px;border:1px solid var(--line-strong);border-radius:7px;background:var(--paper);color:var(--ink)}
