@@ -1000,9 +1000,9 @@ function termsOf(item){
   else if(/only (properly |duly )?licen[cs]ed|no (any )?illegal gambling|non[- ]?gamstop|gambling \(legal\)|licen[cs]ed (casinos?|gambling|operators?) only/.test(t)) adminComments.push("Only Licensed Casinos");
   if(/written by (the )?(wm|webmaster)/.test(t)) adminComments.push("Written by WM");
   if(/no ?index\b/.test(t)) adminComments.push("NO INDEX");
-  if(/index(ing|ación|ierung)? (is |cannot be |can't be |can not be |not )?(not )?guarante|indexing cannot be guaranteed|no (se )?garantiza (la )?indexaci|indexierung (wird )?nicht garantiert/.test(t)) adminComments.push("Indexing is not guaranteed");
+  if(/index(ing|ación|ierung)?\s+(is\s+)?(not|cannot be|can'?t be|can not be|isn'?t)\s+guarante|no (se )?garantiza (la )?indexaci|indexierung (wird )?nicht garantiert/.test(t)) adminComments.push("Indexing is not guaranteed");
   if(/\bno (promotional or )?affiliates?\b/.test(t)) adminComments.push("No Affiliates");
-  if(/no competitor/.test(t)) adminComments.push("No Competitor Links");
+  if(/no competitor('?s)? (links?|sites?|backlinks?|brands?)/.test(t)) adminComments.push("No Competitor Links");
   return { sponsorTag, linkType, placement, priceValidity, adminComments };
 }
 
@@ -1123,7 +1123,8 @@ Unsere Leistungen: Dauerhafte Veröffentlichung von Gastbeiträgen · Do-Follow-
    enter: the sample rows here, a CSV in the file handlers, the Worker's
    pages when they arrive. One copy per row, shared by the matcher and the
    Database screen (review of 08/10). */
-let dbRows = SAMPLE_DB.map(prepareRow), rmRows = SAMPLE_REMOVED.map(prepareRow), dbSource = "sample rows", dbLoadedAt = null, rmFromWorkbook = false;
+const sampleRm = SAMPLE_REMOVED.map(prepareRow);
+let dbRows = SAMPLE_DB.map(prepareRow), rmRows = sampleRm, dbSource = "sample rows", dbLoadedAt = null, rmFromWorkbook = false;
 let index = indexDatabase(dbRows, rmRows);
 let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
 /* The Worker, when the page is served next to it. In the claude.ai copy
@@ -1281,7 +1282,7 @@ function idbDel(key){ return idb().then(db => new Promise((ok, no) => { const tx
 /* The rows are stored, not the file: reading the 103,393-row workbook
    takes about 20 s and 540 MB, reading the stored rows a couple of
    seconds (measured 09/10). */
-function rememberDb(){ return idbPut("db", { name: dbSource, when: dbLoadedAt ? dbLoadedAt.getTime() : Date.now(), db: dbRows, rm: rmRows }); }
+function rememberDb(){ return idbPut("db", { name: dbSource, when: dbLoadedAt ? dbLoadedAt.getTime() : Date.now(), db: dbRows, rm: rmRows, rmFromWorkbook }); }
 async function loadDbFile(f, opts){
   opts = opts || {};
   $("dbmeta").textContent = t().fileLoading;
@@ -1295,14 +1296,17 @@ async function loadDbFile(f, opts){
       const rmName = names.find(n => n !== dbName && /remov|elimin/i.test(n)) || (names.length > 1 ? names.find(n => n !== dbName) : null);
       const objs = n => XLSX.utils.sheet_to_json(wb.Sheets[n], { defval: "", raw: false }).map(prepareRow);
       dbRows = objs(dbName);
-      rmRows = rmName ? objs(rmName) : SAMPLE_REMOVED.map(prepareRow);
+      /* A real database: the sample removed row goes; the workbook's own
+         removed tab comes, or nothing. */
+      rmRows = rmName ? objs(rmName) : [];
+      rmFromWorkbook = !!rmName;
     }else{
       dbRows = csvToObjects(await f.text()).map(prepareRow);
       /* A CSV is the main tab only: removed sites from an earlier workbook
-         do not belong to it. */
-      if(rmFromWorkbook) rmRows = SAMPLE_REMOVED.map(prepareRow);
+         do not belong to it; a removed-sites CSV loaded before stays. */
+      if(rmFromWorkbook || rmRows === sampleRm){ rmRows = []; }
+      rmFromWorkbook = false;
     }
-    rmFromWorkbook = /\.(xlsx|xls|xlsm|ods)$/i.test(f.name) && rmRows !== SAMPLE_REMOVED;
     dbSource = f.name; dbLoadedAt = new Date();
     rebuild();
     if(opts.remember) rememberDb();
@@ -1320,7 +1324,7 @@ async function loadRmFile(f){
 }
 $("dbfile").addEventListener("change", () => { const f = $("dbfile").files && $("dbfile").files[0]; if(f) loadDbFile(f, { remember: true }); });
 $("rmfile").addEventListener("change", () => { const f = $("rmfile").files && $("rmfile").files[0]; if(f) loadRmFile(f); });
-$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = SAMPLE_REMOVED.map(prepareRow); dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
+$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = sampleRm; rmFromWorkbook = false; dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
 function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
 
 /* ---------- matching ---------- */
@@ -1340,6 +1344,7 @@ function run(){
   for(const k in decisions) delete decisions[k];
   loadDecisions();
   groups = matchList(items, index, { sender: $("sender").value, senderType: stype });
+  indexEntries(); pruneDecisions();
   pickView();
   render();
   if(remote) matchRemote();
@@ -1353,6 +1358,7 @@ async function matchRemote(){
     lastMatch = j;
     const idx = indexDatabase(Object.values(j.rows || {}).flat().concat(j.senderRows || []).map(prepareRow), Object.values(j.removed || {}).flat().map(prepareRow));
     groups = matchList(items, idx, { sender, senderCount: j.senderCount, senderType: stype });
+    indexEntries(); pruneDecisions();
     pickView();
     remote = { ...remote, rows: j.total, readAt: j.readAt };
     describeDb(); render();
@@ -1396,20 +1402,37 @@ function dbCells(rows, removed){
   }).join("");
 }
 let entryOf = new Map();   /* domain -> its entry in the current groups */
+function indexEntries(){
+  const all = groups ? groups.changed.concat(groups.unknown, groups.unchanged, groups.removed, groups.missing || []) : [];
+  entryOf = new Map(all.map(e => [e.item.domain, e]));
+  removedDomains = new Set(groups ? groups.removed.map(e => e.item.domain) : []);
+}
+/* The decisions a row can take (Senad, 09/10): from a reseller nothing
+   new is added (leads: write to the webmaster) and a webmaster's row is
+   never replaced; a removed site comes back with Restore; a row missing
+   from the list goes to removed sites. */
+function decisionKeys(domain){
+  const e = entryOf.get(domain);
+  const unknown = !e || !e.rows || !e.rows.length;
+  if(e && e.missing) return ["remove","ask","reject"];
+  if(removedDomains.has(domain)) return ["accept","webmaster","ask","reject"];
+  if(e && e.keepWebmaster) return ["ask","reject"];
+  if(isReseller(stype)) return unknown ? ["webmaster","ask","reject"] : ["webmaster","accept","ask","reject"];
+  return ["accept","webmaster","ask","reject"];
+}
+/* A decision taken under another sender type or another list (they are
+   kept per list label) may no longer be on offer: a Publisher's Accept
+   over a webmaster's row after switching to Broker would export a
+   reseller's row. Such decisions are dropped (review of 12/10). */
+function pruneDecisions(){
+  let changed = false;
+  for(const d in decisions){ if(entryOf.has(d) && !decisionKeys(d).includes(decisions[d])){ delete decisions[d]; changed = true; } }
+  if(changed) saveDecisions();
+}
 function decisionCell(domain){
   const d = decisions[domain];
   if(written[domain]) return `<span class="fv" style="border-color:var(--ok-line);color:var(--ok-ink)" title="${esc(written[domain])}">${esc(t().written(""))}</span>`;
-  const e = entryOf.get(domain);
-  const unknown = !e || !e.rows || !e.rows.length;
-  /* Senad, 09/10: from a reseller nothing new is added (leads: write to
-     the webmaster) and a webmaster's row is never replaced; a removed site
-     comes back with Restore, and the row says so. */
-  let keys;
-  if(e && e.missing) keys = ["remove","ask","reject"];
-  else if(removedDomains.has(domain)) keys = ["accept","webmaster","ask","reject"];
-  else if(e && e.keepWebmaster) keys = ["ask","reject"];
-  else if(isReseller(stype)) keys = unknown ? ["webmaster","ask","reject"] : ["webmaster","accept","ask","reject"];
-  else keys = ["accept","webmaster","ask","reject"];
+  const keys = decisionKeys(domain);
   const label = k => (k === "accept" && removedDomains.has(domain)) ? t().restore : t()[k];
   return `<span class="seg${keys.length === 3 ? " three" : ""}">` + keys.map(k => `<button type="button" data-dom="${esc(domain)}" data-dec="${k}" class="${d === k ? "on-" + k : ""}">${label(k)}</button>`).join("") + `</span>`;
 }
@@ -1428,12 +1451,11 @@ function table(entries, kind){
 let removedDomains = new Set();
 function render(){
   if(!groups) return;
-  removedDomains = new Set(groups.removed.map(e => e.item.domain));
+  indexEntries();
   const first = groups.unknown.concat(groups.changed, groups.unchanged, groups.removed)[0];
   const broker = isReseller(stype) ? `<div class="aviso acc">${t().brokerHint}</div>` : (first && first.brokerHint ? `<div class="aviso">${t().broker(first.brokerHint)}</div>` : "");
   const sameSender = groups.changed.filter(c => c.sameSender).length;
   const all = groups.changed.concat(groups.unknown, groups.unchanged, groups.removed, groups.missing || []);
-  entryOf = new Map(all.map(e => [e.item.domain, e]));
   const tabs = [
     ["changed", "wait", t().gChanged, groups.changed, t().hChanged],
     ["unknown", "", t().gUnknown, groups.unknown, t().hUnknown],
@@ -1880,7 +1902,7 @@ bootStep("match", () => run());
 bootStep("stored database", () => {
   idbGet("db").then(rec => {
     if(!rec || !Array.isArray(rec.db)) return;
-    dbRows = rec.db; if(Array.isArray(rec.rm)) rmRows = rec.rm;
+    dbRows = rec.db; rmRows = Array.isArray(rec.rm) ? rec.rm : []; rmFromWorkbook = !!rec.rmFromWorkbook;
     dbSource = rec.name; dbLoadedAt = new Date(rec.when);
     rebuild();
   });

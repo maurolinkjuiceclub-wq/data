@@ -204,7 +204,7 @@ export default {
       }
       /* The sender's other rows, so the page can list what this list no
          longer names (Senad, 09/10: those go to removed sites). */
-      const senderRows = sender ? (db.bySender.get(sender) || []).flatMap(dom => (db.byDomain.get(dom) || []).map(h => publicRow(h.row))) : [];
+      const senderRows = sender ? (db.bySender.get(sender) || []).filter(dom => !(dom in rows)).flatMap(dom => (db.byDomain.get(dom) || []).map(h => publicRow(h.row))) : [];
       return json({ rows, removed, senderRows, senderCount: sender ? (db.bySender.get(sender) || []).length : 0, readAt: new Date(db.at).toISOString(), total: db.rows });
     }
 

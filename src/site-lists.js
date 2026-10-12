@@ -703,9 +703,9 @@ export function termsOf(item){
   else if(/only (properly |duly )?licen[cs]ed|no (any )?illegal gambling|non[- ]?gamstop|gambling \(legal\)|licen[cs]ed (casinos?|gambling|operators?) only/.test(t)) adminComments.push("Only Licensed Casinos");
   if(/written by (the )?(wm|webmaster)/.test(t)) adminComments.push("Written by WM");
   if(/no ?index\b/.test(t)) adminComments.push("NO INDEX");
-  if(/index(ing|ación|ierung)? (is |cannot be |can't be |can not be |not )?(not )?guarante|indexing cannot be guaranteed|no (se )?garantiza (la )?indexaci|indexierung (wird )?nicht garantiert/.test(t)) adminComments.push("Indexing is not guaranteed");
+  if(/index(ing|ación|ierung)?\s+(is\s+)?(not|cannot be|can'?t be|can not be|isn'?t)\s+guarante|no (se )?garantiza (la )?indexaci|indexierung (wird )?nicht garantiert/.test(t)) adminComments.push("Indexing is not guaranteed");
   if(/\bno (promotional or )?affiliates?\b/.test(t)) adminComments.push("No Affiliates");
-  if(/no competitor/.test(t)) adminComments.push("No Competitor Links");
+  if(/no competitor('?s)? (links?|sites?|backlinks?|brands?)/.test(t)) adminComments.push("No Competitor Links");
   return { sponsorTag, linkType, placement, priceValidity, adminComments };
 }
 

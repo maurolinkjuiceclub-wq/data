@@ -612,6 +612,18 @@ what changed in the page the same evening:
   .xlsx (tab "removed sites"); deleting them from Import Database stays by
   hand. The Worker's /api/match now carries the sender's rows for this.
 
+**Review of 12/10** (a second reader over everything since 09/10's review,
+five findings, all applied with checks): a decision kept per list label
+could outlive the sender type that allowed it (a Publisher's Accept over a
+webmaster's row, switched to Broker, exported a reseller's row), so after
+every match the decisions a row no longer offers are dropped; the Worker's
+sender rows duplicated the listed domains' rows on the page; a one-tab
+workbook kept the sample removed row and a removed-sites CSV loaded after
+a workbook was discarded; "Indexing is guaranteed" read as the opposite;
+"no competitor" inside a sentence read as the comment. Also the layout
+measured at 1366, 1920 and 400 px: the table had outgrown a laptop's work
+area and now fits (956 px in 958).
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will

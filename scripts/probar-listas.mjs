@@ -319,6 +319,8 @@ caso("missing: without a sender there is nothing to miss", matchList(parseList("
 const rr = rowForRemoved(gm.missing[0].rows[0], { listLabel: "kept 09/10", today: new Date(2026, 9, 9) });
 caso("removed row: 43 columns, no Unlicensed Casino, reason first, today's date", Object.keys(rr).length === 43 && !("Buying Unlicensed Casino" in rr) && rr["Admin Comments"] === "REMOVED FROM THE LIST\nWritten by WM" && rr["Last Updated"] === "09/10/2026" && rr["Buying General"] === "80" && /missing from list kept 09\/10/.test(rr["User Comments"]), rr);
 caso("REMOVED_COLUMNS is the sheet's removed tab", REMOVED_COLUMNS.length === 43 && REMOVED_COLUMNS.includes("Majestic Citation Flow"));
+caso("review 12/10: a guarantee of indexing is not the comment", eq(termsOf({ terms: "Indexing is guaranteed within 48h. We have no competitor in this niche.", prices: {} }).adminComments, []));
+caso("review 12/10: the negations still read", eq(termsOf({ terms: "Indexing isn't guaranteed; no competitor links please", prices: {} }).adminComments, ["Indexing is not guaranteed", "No Competitor Links"]));
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31/12/2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));
