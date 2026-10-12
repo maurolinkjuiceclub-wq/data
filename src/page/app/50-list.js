@@ -231,7 +231,7 @@ function render(){
     ${cur[3].length ? `<div class="ltools">
       <input type="search" id="lq" class="inp" placeholder="${esc(t().lFilter)}" value="${esc(listQ)}" autocomplete="off">
       <select id="lsort">${[["default", t().sortDefault], ["delta", t().sortDelta], ["price", t().sortPriceUp], ["domain", t().sortDomain]].map(([v, l]) => `<option value="${v}"${v === listSort ? " selected" : ""}>${esc(l)}</option>`).join("")}</select>
-      <label class="lbl" for="lall">${esc(t().allShown)}</label><select id="lall"><option value="-">${esc(t().choose)}</option>${batchKeys(cur[3]).map(k => `<option value="${k}">${esc(t()[k])}</option>`).join("")}<option value="">${esc(t().clearShown)}</option></select>
+      <span class="lall"><label class="lbl" for="lall">${esc(t().allShown)}</label><select id="lall"><option value="-">${esc(t().choose)}</option>${batchKeys(cur[3]).map(k => `<option value="${k}">${esc(t()[k])}</option>`).join("")}<option value="">${esc(t().clearShown)}</option></select></span>
       <span class="said" id="shownn"></span>
     </div><p class="keys">${t().keysHint}</p>` : ""}
     <div id="ltable"></div>`;
@@ -263,16 +263,23 @@ function renderTable(){
 /* Batch: the same decision on every row shown, where the row offers it. */
 function decideShown(dec){
   const shown = shownEntries(currentEntries());
-  shown.forEach(e => { const d = e.item.domain; if(written[d]) return; if(!dec) delete decisions[d]; else if(decisionKeys(d).includes(dec)) decisions[d] = dec; });
+  shown.forEach(e => {
+    const d = e.item.domain; if(written[d]) return;
+    if(!dec) delete decisions[d];
+    else if(!decisionKeys(d).includes(dec)) return;
+    /* With the sheet connected an Accept is a write: one per row, as a click. */
+    else if(remote && dec === "accept"){ if(decisions[d] !== "accept") decide(d, "accept"); }
+    else decisions[d] = dec;
+  });
   saveDecisions(); renderTable();
   const p = $("progreso"); if(p) p.innerHTML = progressHtml();
   renderExport();
 }
-function setCurRow(d){
+function setCurRow(d, scroll){
   curRow = d;
   $("results").querySelectorAll("tr.cur").forEach(tr => tr.classList.remove("cur"));
   const tr = d ? $("results").querySelector(`tr[data-row="${CSS.escape(d)}"]`) : null;
-  if(tr){ tr.classList.add("cur"); tr.scrollIntoView({ block: "nearest" }); }
+  if(tr){ tr.classList.add("cur"); if(scroll) tr.scrollIntoView({ block: "nearest" }); }
 }
 function decide(d, dec){
   if(written[d]) return;
@@ -297,10 +304,11 @@ document.addEventListener("keydown", e => {
   const rows = [...$("results").querySelectorAll("tr[data-row]")].map(tr => tr.dataset.row);
   if(!rows.length) return;
   const i = rows.indexOf(curRow);
+  if(i < 0) curRow = null;   /* the filter hid it: the keys act on nothing */
   if(e.key === "ArrowDown" || e.key === "ArrowUp"){
     e.preventDefault();
     const j = e.key === "ArrowDown" ? Math.min(rows.length - 1, i + 1) : Math.max(0, i < 0 ? 0 : i - 1);
-    setCurRow(rows[j]); return;
+    setCurRow(rows[j], true); return;
   }
   if(!curRow) return;
   const map = { a: "accept", w: "webmaster", q: "ask", r: "reject", m: "remove", x: "" };
@@ -343,8 +351,24 @@ $("results").addEventListener("input", e => {
 });
 $("results").addEventListener("change", e => {
   if(e.target.id === "lsort"){ listSort = e.target.value; renderTable(); }
-  if(e.target.id === "lall"){ const v = e.target.value; if(v !== "-"){ decideShown(v); e.target.value = "-"; } }
-  if(e.target.classList.contains("decsel")){ const d = e.target.dataset.dom, v = e.target.value; if(v === "-"){ decide(d, ""); } else if(decisions[d] !== v) decide(d, v); }
+  /* An arrow key on a focused select changes its value and fires change:
+     a batch or a decision must not happen on a keystroke. From the
+     keyboard the choice applies on Enter; with the mouse at once. */
+  if(e.target.dataset.kb === "1" && (e.target.id === "lall" || e.target.classList.contains("decsel"))) return;
+  applySelect(e.target);
+});
+/* The flag: set by an arrow key inside the select, cleared by the mouse or by Enter. */
+$("results").addEventListener("keydown", e => {
+  if(!(e.target.id === "lall" || e.target.classList.contains("decsel"))) return;
+  if(/^Arrow|^(Home|End|PageUp|PageDown)$/.test(e.key)) e.target.dataset.kb = "1";
+}, true);
+$("results").addEventListener("mousedown", e => { const sel = e.target.closest("select"); if(sel) delete sel.dataset.kb; }, true);
+function applySelect(el){
+  if(el.id === "lall"){ const v = el.value; if(v !== "-"){ decideShown(v); el.value = "-"; } }
+  if(el.classList.contains("decsel")){ const d = el.dataset.dom, v = el.value; if(v === "-"){ decide(d, ""); } else if(decisions[d] !== v) decide(d, v); }
+}
+$("results").addEventListener("keydown", e => {
+  if(e.key === "Enter" && (e.target.id === "lall" || e.target.classList.contains("decsel"))){ e.preventDefault(); delete e.target.dataset.kb; applySelect(e.target); }
 });
 async function acceptRemote(dom, btn){
   const item = items.find(i => i.domain === dom); if(!item) return;

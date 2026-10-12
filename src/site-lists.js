@@ -503,15 +503,19 @@ export function mergeDuplicates(items){
    so the page shows them and flags the rows under the team's threshold. */
 export function metricsOf(terms){
   const t = String(terms || "");
-  const num = s => { const n = parseFloat(String(s).replace(/\.(?=\d{3}\b)/g, "").replace(/,(?=\d{3}\b)/g, "").replace(",", ".")); return Number.isFinite(n) ? n : null; };
-  const grab = re => { const m = t.match(re); return m ? num(m[1]) : null; };
+  /* "18.2k", "1,2M": a suffix multiplies. The two-letter names are taken
+     in capitals only ("da" is a word in Italian and Portuguese; "links:
+     300 €" is a price, not referring domains). */
+  const num = (s, suf) => { let n = parseFloat(String(s).replace(/\.(?=\d{3}\b)/g, "").replace(/,(?=\d{3}\b)/g, "").replace(",", ".")); if(!Number.isFinite(n)) return null; if(/k/i.test(suf || "")) n *= 1000; if(/m/i.test(suf || "")) n *= 1000000; return n; };
+  const grab = (...res) => { for(const re of res){ const m = t.match(re); if(m) return num(m[1], m[2]); } return null; };
+  const N = "\\s*:?\\s*(\\d[\\d.,]*)\\s*([kKmM])?\\b";
   const out = {
-    dr: grab(/(?:ahrefs\s*)?\b(?:dr|domain rating)\s*:?\s*(\d[\d.,]*)/i),
-    da: grab(/\b(?:da|domain authority)\s*:?\s*(\d[\d.,]*)/i),
-    rd: grab(/\b(?:rd|referring domains|links)\s*:?\s*(\d[\d.,]*)/i),
-    traffic: grab(/\b(?:avg\.? traffic|organic traffic|traffic|ot)\s*:?\s*(\d[\d.,]*)/i),
-    tf: grab(/\btf\s*:?\s*(\d[\d.,]*)/i),
-    cf: grab(/\bcf\s*:?\s*(\d[\d.,]*)/i)
+    dr: grab(new RegExp("\\bDR" + N), new RegExp("\\bdomain rating" + N, "i")),
+    da: grab(new RegExp("\\bDA" + N), new RegExp("\\bdomain authority" + N, "i")),
+    rd: grab(new RegExp("\\bRD" + N), new RegExp("\\breferring domains" + N, "i")),
+    traffic: grab(new RegExp("\\b(?:avg\\.? traffic|organic traffic|traffic)" + N, "i"), new RegExp("\\bOT" + N)),
+    tf: grab(new RegExp("\\bTF" + N), new RegExp("\\btrust flow" + N, "i")),
+    cf: grab(new RegExp("\\bCF" + N), new RegExp("\\bcitation flow" + N, "i"))
   };
   return Object.values(out).some(v => v != null) ? out : null;
 }
@@ -528,6 +532,8 @@ export function monthsSince(dateStr, today = new Date()){
   if(m) d = new Date(Number(m[3].length === 2 ? "20" + m[3] : m[3]), Number(m[2]) - 1, Number(m[1]));
   else { m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); }
   if(!d || isNaN(d)) return null;
+  /* 13/13/2025 or 12/31/2026 would roll over in Date: not a date we know. */
+  if(d.getMonth() !== Number(m[2]) - 1) return null;
   return Math.max(0, (today.getFullYear() - d.getFullYear()) * 12 + today.getMonth() - d.getMonth() - (today.getDate() < d.getDate() ? 1 : 0));
 }
 

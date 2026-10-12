@@ -332,6 +332,8 @@ caso("a site twice in one list is merged into the first; a different price is a 
 const md2 = mergeDuplicates(parseList("Domain\tGeneral\tCasino\na.example\t100\t\na.example\t\t300").items);
 caso("a second line fills the niche the first lacks", md2.items.length === 1 && md2.items[0].prices.general.amount === 100 && md2.items[0].prices.casino.amount === 300 && md2.dupes[0].conflicts.length === 0, md2);
 caso("no duplicates: nothing merged", mergeDuplicates(parseList("a.example\t100\nb.example\t50").items).dupes.length === 0);
+caso("review 12/10: traffic with k or M suffix, no RD from 'links: 300 €', no DA from Italian 'da'", eq([metricsOf("Traffic: 18.2k").traffic, metricsOf("Traffic 18K").traffic, metricsOf("Traffic: 1,2M").traffic], [18200, 18000, 1200000]) && metricsOf("2 links: 300 €") === null && metricsOf("Articolo sponsorizzato da 150€") === null && metricsOf("DA: 35 | RD: 1102").rd === 1102);
+caso("review 12/10: impossible dates are not dates", monthsSince("13/13/2025") === null && monthsSince("12/31/2026") === null && monthsSince("31/12/2025", new Date(2026, 9, 12)) === 9);
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31/12/2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));
