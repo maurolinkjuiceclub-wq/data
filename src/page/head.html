@@ -121,7 +121,22 @@ table.outreach tbody tr.cur td{background:var(--accent-wash)}
 td.dec .decsel{display:none}
 .decsel{padding:5px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px;max-width:160px}
 .decsel.on-accept{background:var(--ok-bg);color:var(--ok-ink)} .decsel.on-reject{background:var(--bad-bg);color:var(--bad-ink)} .decsel.on-ask,.decsel.on-remove{background:var(--wait-bg);color:var(--wait-ink)} .decsel.on-webmaster{background:var(--accent-wash);color:var(--accent-ink)}
+.helpsteps{margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.5;color:var(--ink-2);max-width:780px}
+.helpsteps li{margin:4px 0}
+#help{padding:3px 9px;font-size:12px;margin-right:8px}
+/* Narrow screens: each site a card, the column name over each cell. */
 @media (max-width:719px){
+  #ltable .tabla-wrap{overflow:visible;border:0;background:transparent;box-shadow:none}
+  #ltable table.outreach,#ltable table.outreach tbody,#ltable table.outreach tr,#ltable table.outreach td{display:block;white-space:normal;width:auto;max-width:none}
+  #ltable table.outreach thead{display:none}
+  #ltable table.outreach tr{border:1px solid var(--line-strong);border-radius:9px;background:var(--surface);margin:0 0 10px;padding:6px 0;box-shadow:var(--shadow)}
+  #ltable table.outreach td{border:0;padding:6px 12px}
+  #ltable table.outreach td[data-th]::before{content:attr(data-th);display:block;font-family:var(--sans);font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted);margin-bottom:2px}
+  #ltable table.outreach td.dom{font-size:14px}
+  #ltable table.outreach td.dbc{min-width:0}
+  #ltable table.outreach tr.cur td{box-shadow:none}
+  #ltable table.outreach tr.cur{box-shadow:inset 3px 0 0 var(--accent)}
+
   table.outreach td.dec .seg{display:none} table.outreach td.dec .decsel{display:inline-block}
   .keys{display:none}
   .ltools{gap:6px} .ltools .inp{flex-basis:100%} .ltools select{flex:1 1 120px;min-width:0}

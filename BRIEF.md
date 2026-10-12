@@ -650,6 +650,15 @@ Plus the draft reply (house rule 5), a fourth output: thanks, what was
 updated, one line per Ask row with what it lacks, the two standing
 questions unless the list answers them, a closing when nothing is open.
 
+Later the same day, after Mauro's phone screenshot: dropdowns instead of
+button rows under 720 px (batch at every width); then, from the list of
+what else to do: a site twice in one list merged and flagged (before, the
+export wrote it twice); lists remembered in the browser with a dropdown to
+reopen one and a note comparing with the sender's previous list; each site
+a card on a phone with the column name over each cell; a Help panel with
+the flow in six lines, both languages. Layout measured at 320, 400 and
+1366 px after each step.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will

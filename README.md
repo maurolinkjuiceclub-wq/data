@@ -117,6 +117,13 @@ desk: thanks, what was updated, only what the rows do not answer, plus
 unlicensed casinos and validity unless the list says). Nothing is sent
 from here.
 
+A site named twice in one list is merged into one row and flagged with
+the conflicting price. Every list worked is remembered in the browser: the
+dropdown under the label reopens one with its decisions, and when the
+sender has an earlier list a note says what is new and what is no longer
+listed. On a phone each site is a card and the decision a dropdown. "Help"
+in the bar shows the flow in six lines.
+
 ## Exporting the rows (Gary, 09/10)
 
 Gary's second point of the afternoon: "an export option like in the desk",

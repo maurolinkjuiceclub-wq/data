@@ -3,10 +3,11 @@
   <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button></span>
   <div class="estado">
     <button type="button" class="sello" id="state" aria-expanded="false" aria-controls="dbpanel"></button>
-    <span class="lang" role="group" aria-label="Language"><button type="button" id="lang-en" aria-pressed="true">EN</button><button type="button" id="lang-es" aria-pressed="false">ES</button></span>
+    <button type="button" class="btn sutil" id="help" aria-expanded="false" aria-controls="helppanel">Help</button><span class="lang" role="group" aria-label="Language"><button type="button" id="lang-en" aria-pressed="true">EN</button><button type="button" id="lang-es" aria-pressed="false">ES</button></span>
   </div>
 </header>
 
+<div class="dbpanel" id="helppanel" hidden><div class="dbpanel-in"><ol class="helpsteps" id="helplist"></ol></div></div>
 <div class="dbpanel" id="dbpanel" hidden>
   <div class="dbpanel-in">
     <div><span class="lbl" data-i18n="db">Database</span><p class="hint" data-i18n="dbhint"></p></div>
