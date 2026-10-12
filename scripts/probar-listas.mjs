@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, metricsOf, belowThreshold, monthsSince, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -322,6 +322,11 @@ caso("REMOVED_COLUMNS is the sheet's removed tab", REMOVED_COLUMNS.length === 43
 caso("review 12/10: a guarantee of indexing is not the comment", eq(termsOf({ terms: "Indexing is guaranteed within 48h. We have no competitor in this niche.", prices: {} }).adminComments, []));
 caso("review 12/10: the negations still read", eq(termsOf({ terms: "Indexing isn't guaranteed; no competitor links please", prices: {} }).adminComments, ["Indexing is not guaranteed", "No Competitor Links"]));
 caso("a note goes to User Comments of the accepted row and of the removed row", /only sports content$/.test(rowForAccept(parseList("alpha.example\t100").items[0], { note: " only sports content " })["User Comments"]) && /; keep an eye$/.test(rowForRemoved({ Domain: "x.example" }, { listLabel: "l", note: "keep an eye" })["User Comments"]));
+const mt = metricsOf("Category: Auto | Ahrefs DR: 44 | RD: 1.102 | Avg Traffic: 18176 | DA: 35 | PA: 39 | Link Insert Normal: 110 €");
+caso("metrics read from labelled terms", eq([mt.dr, mt.rd, mt.traffic, mt.da, mt.tf], [44, 1102, 18176, 35, null]), mt);
+caso("metrics: none in plain terms", metricsOf("do follow, permanent") === null);
+caso("below threshold names the metrics that miss", eq(belowThreshold(mt, { dr: 50, traffic: "" }), ["dr"]) && eq(belowThreshold(mt, { dr: 20, traffic: 20000 }), ["traffic"]) && eq(belowThreshold(mt, {}), []));
+caso("months since a sheet date", monthsSince("05/10/2025", new Date(2026, 9, 12)) === 12 && monthsSince("2026-04-12", new Date(2026, 9, 12)) === 6 && monthsSince("", new Date()) === null);
 caso("PDF rate card: list terms without the final dot", eq([tpl.linkType, tpl.placement, tpl.priceValidity], ["Do follow", "permanent", "31/12/2026"]), tpl);
 caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));

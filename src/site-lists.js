@@ -473,6 +473,41 @@ export function pdfTextOf(items){
   return out.map(cells => cells.filter(Boolean).length <= 1 ? cells.filter(Boolean).join("") : cells.join("\t")).join("\n");
 }
 
+/* ---------- metrics the list carries, age of a row ---------- */
+
+/* "Ahrefs DR: 44 | RD: 1102 | Avg Traffic: 18176 | DA: 35 | Links: 3.570"
+   as labelled terms become numbers: Senad decides on "sellable metrics",
+   so the page shows them and flags the rows under the team's threshold. */
+export function metricsOf(terms){
+  const t = String(terms || "");
+  const num = s => { const n = parseFloat(String(s).replace(/\.(?=\d{3}\b)/g, "").replace(/,(?=\d{3}\b)/g, "").replace(",", ".")); return Number.isFinite(n) ? n : null; };
+  const grab = re => { const m = t.match(re); return m ? num(m[1]) : null; };
+  const out = {
+    dr: grab(/(?:ahrefs\s*)?\b(?:dr|domain rating)\s*:?\s*(\d[\d.,]*)/i),
+    da: grab(/\b(?:da|domain authority)\s*:?\s*(\d[\d.,]*)/i),
+    rd: grab(/\b(?:rd|referring domains|links)\s*:?\s*(\d[\d.,]*)/i),
+    traffic: grab(/\b(?:avg\.? traffic|organic traffic|traffic|ot)\s*:?\s*(\d[\d.,]*)/i),
+    tf: grab(/\btf\s*:?\s*(\d[\d.,]*)/i),
+    cf: grab(/\bcf\s*:?\s*(\d[\d.,]*)/i)
+  };
+  return Object.values(out).some(v => v != null) ? out : null;
+}
+/* Which of the team's minimums a row misses: {dr: 20} against metrics. */
+export function belowThreshold(metrics, min){
+  if(!metrics || !min) return [];
+  return ["dr", "da", "rd", "traffic", "tf", "cf"].filter(k => min[k] != null && min[k] !== "" && metrics[k] != null && metrics[k] < Number(min[k]));
+}
+/* Months since a sheet date (31/12/2025, 2025-12-31); null when unreadable. */
+export function monthsSince(dateStr, today = new Date()){
+  const s = String(dateStr || "").trim();
+  let m = s.match(/^(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{2,4})/);
+  let d = null;
+  if(m) d = new Date(Number(m[3].length === 2 ? "20" + m[3] : m[3]), Number(m[2]) - 1, Number(m[1]));
+  else { m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/); if(m) d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3])); }
+  if(!d || isNaN(d)) return null;
+  return Math.max(0, (today.getFullYear() - d.getFullYear()) * 12 + today.getMonth() - d.getMonth() - (today.getDate() < d.getDate() ? 1 : 0));
+}
+
 /* ---------- the database side ---------- */
 
 /* Column names of "Import Database" as the sheet has them, read through the

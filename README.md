@@ -99,6 +99,24 @@ that sender that the list no longer names appear under Missing: "To removed
 sites" builds their rows for the removed tab, with the reason. Details and
 sources in BRIEF.md.
 
+## Working a long list (12/10)
+
+Over the table: a filter (domain, terms, contact; "below" finds the rows
+under the metric minimums), an order (list order, biggest price change,
+cheapest, domain), and "All shown" to give every row on screen the same
+decision where the row offers it. Keys: arrows move the active row, A W Q
+R M decide, X clears, N opens a note that goes to User Comments. In the
+rail, "Sellable metrics, minimum" (DR, traffic) flags, never hides, the
+rows under them when the list carries metrics; the thresholds come from
+Gary. A database row older than six months says so next to its date.
+
+Under the result, besides the three row outputs: warnings about what
+would arrive wrong in the sheet, "Copy summary" for the team channel, and
+a draft reply to the sender with the open questions (house rule 5 of the
+desk: thanks, what was updated, only what the rows do not answer, plus
+unlicensed casinos and validity unless the list says). Nothing is sent
+from here.
+
 ## Exporting the rows (Gary, 09/10)
 
 Gary's second point of the afternoon: "an export option like in the desk",

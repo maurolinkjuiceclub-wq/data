@@ -624,6 +624,32 @@ a workbook was discarded; "Indexing is guaranteed" read as the opposite;
 measured at 1366, 1920 and 400 px: the table had outgrown a laptop's work
 area and now fits (956 px in 958).
 
+## From the user's chair (Mauro, 12/10: "hazlo todo")
+
+Eight additions, thought from Senad's seat with an 877-row list open, all
+done the same day and checked in Chromium:
+
+1. Batch decisions ("All shown: Accept, Webmaster, Ask, Reject, Remove,
+   Clear") on the rows on screen, where each row offers the decision.
+2. Keyboard: arrows move an active row; A, W, Q, R, M decide; X clears; N
+   opens the note. Keys stay off while typing in a field.
+3. Warnings over the export: no sender, rows with no price, prices in
+   another currency, rows with neither link type nor placement.
+4. "Copy summary": one English paragraph for the channel with counts per
+   group and per decision, broker conversions and what is still open.
+5. Age of a database row next to its date when over six months.
+6. Metrics the list carries (DR, DA, RD, traffic, TF, CF read from the
+   labelled terms) shown under the offered prices; two minimums in the
+   rail (DR, traffic), blank until Gary gives them, flag the rows under
+   them; "below" in the filter finds them.
+7. A note per row (pencil or N), kept with the decisions, written to User
+   Comments of the accepted or removed row and to Additional Comments of
+   the webmaster row.
+8. Filter and order over the table.
+Plus the draft reply (house rule 5), a fourth output: thanks, what was
+updated, one line per Ask row with what it lacks, the two standing
+questions unless the list answers them, a closing when nothing is open.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will
