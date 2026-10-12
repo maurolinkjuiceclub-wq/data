@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/* Builds src/index.html from src/page/ (head, body, app) and src/site-lists.js,
+/* Builds src/index.html from src/page/ (head, body, app/*.js) and src/site-lists.js,
    as ONE file with the module inlined, so it works opened from disk, from
    GitHub, as the claude.ai copy and served by the Worker alike. Gary opened
    src/index.html from disk on 08/10 and saw an empty page: a module import
@@ -15,7 +15,10 @@ const ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), "..");
 const read = f => fs.readFileSync(path.join(ROOT, f), "utf8");
 const head = read("src/page/head.html");
 const body = read("src/page/body.html");
-const app = read("src/page/app.js");
+/* The page script is kept in parts under src/page/app/, concatenated in
+   name order (10-sample, 20-state, 30-i18n, ...): one global scope, as it
+   always was, just in files a person can find things in. */
+const app = fs.readdirSync(path.join(ROOT, "src/page/app")).filter(f => f.endsWith(".js")).sort().map(f => read("src/page/app/" + f)).join("\n");
 /* The module, with its exports turned into plain declarations. */
 const mod = read("src/site-lists.js").replace(/^export function /gm, "function ").replace(/^export const /gm, "const ");
 const page = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">

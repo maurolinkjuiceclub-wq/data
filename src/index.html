@@ -1460,7 +1460,7 @@ $("rmfile").addEventListener("change", () => { const f = $("rmfile").files && $(
 $("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = sampleRm; rmFromWorkbook = false; dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
 function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
 
-/* ---------- matching ---------- */
+/* ---------- matching: the list against the database ---------- */
 /* A list with nothing changed used to open on an empty "Changed" tab while
    the rows sat under "Unknown" (seen with a PDF rate card, 08/10). The view
    moves to the first group that has rows; a view chosen by hand stays. */
@@ -1885,6 +1885,8 @@ function renderExport(){
     outputs.removed = { cols: REMOVED_COLUMNS, rows, name: "removed", sheet: "removed sites" };
   }
 }
+
+/* ---------- the outputs under the result ---------- */
 /* Before the rows go to the sheet: what would arrive wrong. */
 function exportWarnings(accepted, sender){
   const few = arr => arr.slice(0, 6).join(", ") + (arr.length > 6 ? ` +${arr.length - 6}` : "");
@@ -2091,7 +2093,6 @@ $("listfile").addEventListener("change", async () => {
     $("filenote").textContent = t().fileFail;
   }
 });
-
 
 /* ---------- the database screen ----------
    Gary, 08/10: "I think it's best if you show the full database here?".

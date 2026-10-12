@@ -24,7 +24,7 @@ Nothing here is done yet; nothing here touches the desk until Gary says so.
 - **Tabs with counters**: `.apptab` with `.n`. Lists shows the number of
   rows still undecided on the open list.
 - **Theme and language**: the desk's dark/light and EN/ES switches; the
-  screen's strings (the `T` table in `src/page/app.js`) join the desk's
+  screen's strings (the `T` table in `src/page/app/30-i18n.js`) join the desk's
   dictionary.
 - **Deploy gate**: `comprobar-mesa.js`, `auditar.js`, `auditar-en.js`; the
   two test scripts here join that list in `deploy.yml` and `deploy.mjs`.

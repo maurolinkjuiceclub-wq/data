@@ -659,6 +659,12 @@ a card on a phone with the column name over each cell; a Help panel with
 the flow in six lines, both languages. Layout measured at 320, 400 and
 1366 px after each step.
 
+The page script, grown to 1,100 lines in a week, is split into parts under
+`src/page/app/` (sample rows, state, languages, database file, list,
+outputs, file input, database screen, boot), concatenated in name order
+by the build: one global scope as before, in files a person can find
+things in. Every check and every Chromium script passes unchanged.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will
