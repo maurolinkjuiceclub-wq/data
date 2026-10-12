@@ -665,6 +665,16 @@ outputs, file input, database screen, boot), concatenated in name order
 by the build: one global scope as before, in files a person can find
 things in. Every check and every Chromium script passes unchanged.
 
+**Third review (12/10, evening)**, a second reader over the day's eight
+features, seven findings, all applied: with the sheet connected "All
+shown: Accept" marked rows as written without writing (now one write per
+row, as a click); a key acted on a row the filter had hidden; an arrow
+key on the batch select or a row's dropdown fired the decision (keyboard
+choices now apply on Enter); "18.2k" traffic read as 18 and "links: 300
+€" as referring domains, the Italian "da" as DA; the "All shown" label
+and its select wrapped apart between 860 and 960 px; a click scrolled
+the page to the row; impossible dates got an age. 155 checks.
+
 ## Where it lives (Gary, 08/10)
 
 "Yes please just deploy it fully on GitHub so I can view it. Then we will
