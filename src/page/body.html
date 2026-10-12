@@ -38,6 +38,7 @@
       <button type="button" class="panel-h" id="export-h" aria-expanded="true" aria-controls="export-body"><span class="caret" aria-hidden="true">▾</span><span id="export-t"></span></button>
       <div id="export-body">
         <p class="hint" data-i18n="rowshint"></p>
+        <div class="aviso" id="export-warn" hidden></div>
         <div class="tabla-wrap" id="export-prev"></div>
         <div class="actions"><button type="button" class="btn" id="copy" data-i18n="copy">Copy</button><button type="button" class="btn" id="dl-csv" data-i18n="dlCsv">Download CSV</button><button type="button" class="btn" id="dl-xlsx" data-i18n="dlXlsx">Download .xlsx</button><span class="said" id="copynote"></span></div>
         <textarea id="tsv" class="inp" readonly spellcheck="false" hidden></textarea>
@@ -50,6 +51,14 @@
         <div class="tabla-wrap" id="wm-prev"></div>
         <div class="actions"><button type="button" class="btn" id="wm-copy" data-i18n="copy">Copy</button><button type="button" class="btn" id="wm-csv" data-i18n="dlCsv">Download CSV</button><button type="button" class="btn" id="wm-xlsx" data-i18n="dlXlsx">Download .xlsx</button><span class="said" id="wm-note"></span></div>
         <textarea id="wm-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
+      </div>
+    </section>
+    <section class="export" id="ask" hidden>
+      <button type="button" class="panel-h" id="ask-h" aria-expanded="true" aria-controls="ask-body"><span class="caret" aria-hidden="true">▾</span><span id="ask-t"></span></button>
+      <div id="ask-body">
+        <p class="hint" data-i18n="askhint"></p>
+        <textarea id="ask-txt" class="inp draft" spellcheck="false"></textarea>
+        <div class="actions"><button type="button" class="btn" id="ask-copy" data-i18n="copy">Copy</button><span class="said" id="ask-note"></span></div>
       </div>
     </section>
     <section class="export" id="rm" hidden>

@@ -95,7 +95,7 @@ const T = {
     gChanged:"Changed", gUnknown:"Unknown", gUnchanged:"Unchanged", gRemoved:"Removed", gMissing:"Missing", hMissing:"In the database from this sender but not on this list. Senad, 09/10: they go to removed sites as REMOVED FROM THE LIST. Reject keeps a row when the list was only partial.", remove:"Remove", notListed:"not on this list", rmT:(n)=>`${n} row${n === 1 ? "" : "s"} for removed sites`, rmhint:"Rows in the removed sites layout, with the reason first in Admin Comments. Paste or import them into the removed sites tab and delete them from Import Database by hand.",
     hChanged:"In the database with another price. The new figure is in green.", hUnknown:"Not in the database. Verify the site before accepting.", hUnchanged:"Same prices as recorded.", hRemoved:"On the removed sites tab, with the reason. Restore writes it back to the database and the row says so.", hAll:"",
     thDomain:"Domain", thOffered:"Offered", thDb:"In the database", thRemoved:"Removed sites", thTerms:"Terms", thDecision:"Decision",
-    accept:"Accept", reject:"Reject", ask:"Ask", none:"none", lFilter:"Filter these rows (domain, terms, contact)", sortDefault:"List order", sortDelta:"Biggest price change first", sortPriceUp:"Cheapest first", sortDomain:"Domain A–Z", allShown:"All shown:", clearShown:"Clear", shownN:(n, m)=>`${n} of ${m} rows`, keysHint:"Keys: ↑ ↓ move · A accept · W webmaster · Q ask · R reject · M remove · X clear · N note", noteBtn:"Note for User Comments", notePh:"Note (goes to User Comments)", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
+    accept:"Accept", reject:"Reject", ask:"Ask", none:"none", lFilter:"Filter these rows (domain, terms, contact)", sortDefault:"List order", sortDelta:"Biggest price change first", sortPriceUp:"Cheapest first", sortDomain:"Domain A–Z", allShown:"All shown:", clearShown:"Clear", shownN:(n, m)=>`${n} of ${m} rows`, keysHint:"Keys: ↑ ↓ move · A accept · W webmaster · Q ask · R reject · M remove · X clear · N note", noteBtn:"Note for User Comments", notePh:"Note (goes to User Comments)", summary:"Copy summary", summaryCopied:"Summary copied", warnNoPrice:(n, d)=>`${n} row${n === 1 ? "" : "s"} with no price in any Buying column: ${d}`, warnNoContact:"No sender: Webmaster Contact will be empty in every row.", warnCurrency:(n, d)=>`${n} row${n === 1 ? "" : "s"} priced in another currency than EUR, written as given: ${d}`, warnNoTerms:(n, d)=>`${n} row${n === 1 ? "" : "s"} with no link type or placement stated: ${d}`, askT:(n)=>n ? `Draft reply: ${n} question${n === 1 ? "" : "s"}` : "Draft reply: closing, no questions", askhint:"A draft for Outlook. Nothing is sent from here. It thanks them, says what was updated, and asks only what the rows do not answer; every reply asks about unlicensed casinos and price validity unless the list already says.", notInDb:"not in the database", noPrice:"no price", noContact:"no contact", empty:"Nothing here.",
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
@@ -116,7 +116,7 @@ const T = {
     gChanged:"Cambiados", gUnknown:"Desconocidos", gUnchanged:"Iguales", gRemoved:"Removidos", gMissing:"Faltan", hMissing:"Están en la base de este remitente pero no en esta lista. Senad, 09/10: van a removed sites como REMOVED FROM THE LIST. Rechazar conserva la fila si la lista era parcial.", remove:"Quitar", notListed:"no está en esta lista", rmT:(n)=>`${n} fila${n === 1 ? "" : "s"} para removed sites`, rmhint:"Filas con el formato de removed sites, con el motivo primero en Admin Comments. Pégalas o impórtalas en la pestaña removed sites y bórralas de Import Database a mano.",
     hChanged:"Está en la base con otro precio. El nuevo va en verde.", hUnknown:"No está en la base. Verifica el sitio antes de aceptar.", hUnchanged:"Mismos precios que los registrados.", hRemoved:"En la pestaña removed sites, con el motivo. Restaurar la devuelve a la base y la fila lo dice.", hAll:"",
     thDomain:"Dominio", thOffered:"Ofrece", thDb:"En la base", thRemoved:"Removed sites", thTerms:"Condiciones", thDecision:"Decisión",
-    accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", lFilter:"Filtrar estas filas (dominio, condiciones, contacto)", sortDefault:"Orden de la lista", sortDelta:"Mayor cambio de precio primero", sortPriceUp:"Más barato primero", sortDomain:"Dominio A–Z", allShown:"Todas las visibles:", clearShown:"Limpiar", shownN:(n, m)=>`${n} de ${m} filas`, keysHint:"Teclas: ↑ ↓ mover · A aceptar · W webmaster · Q preguntar · R rechazar · M quitar · X limpiar · N nota", noteBtn:"Nota para User Comments", notePh:"Nota (va a User Comments)", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
+    accept:"Aceptar", reject:"Rechazar", ask:"Preguntar", none:"ninguna", lFilter:"Filtrar estas filas (dominio, condiciones, contacto)", sortDefault:"Orden de la lista", sortDelta:"Mayor cambio de precio primero", sortPriceUp:"Más barato primero", sortDomain:"Dominio A–Z", allShown:"Todas las visibles:", clearShown:"Limpiar", shownN:(n, m)=>`${n} de ${m} filas`, keysHint:"Teclas: ↑ ↓ mover · A aceptar · W webmaster · Q preguntar · R rechazar · M quitar · X limpiar · N nota", noteBtn:"Nota para User Comments", notePh:"Nota (va a User Comments)", summary:"Copiar resumen", summaryCopied:"Resumen copiado", warnNoPrice:(n, d)=>`${n} fila${n === 1 ? "" : "s"} sin precio en ninguna columna Buying: ${d}`, warnNoContact:"Sin remitente: Webmaster Contact saldrá vacío en todas las filas.", warnCurrency:(n, d)=>`${n} fila${n === 1 ? "" : "s"} con precio en otra moneda que EUR, se escribe tal cual: ${d}`, warnNoTerms:(n, d)=>`${n} fila${n === 1 ? "" : "s"} sin tipo de enlace ni permanencia: ${d}`, askT:(n)=>n ? `Borrador de respuesta: ${n} pregunta${n === 1 ? "" : "s"}` : "Borrador de respuesta: cierre, sin preguntas", askhint:"Un borrador para Outlook. Desde aquí no se envía nada. Agradece, dice qué se actualizó y pregunta solo lo que las filas no responden; toda respuesta pregunta por casinos sin licencia y validez salvo que la lista ya lo diga.", notInDb:"no está en la base", noPrice:"sin precio", noContact:"sin contacto", empty:"Nada aquí.",
     niche:{casino:"Casino",unlicensedCasino:"Casino s/lic.",crypto:"Cripto",forex:"Forex",cbd:"CBD",dating:"Citas",general:"General"} }
 };
 let lang = "en";
@@ -401,6 +401,7 @@ function render(){
     <div class="gtabs" role="tablist">
       ${tabs.map(([k, cls, label, arr]) => `<button type="button" role="tab" class="gtab ${cls}" data-view="${k}" aria-selected="${k === view}">${label} <span class="n">${arr.length}</span></button>`).join("")}
       <span class="progreso" id="progreso">${progressHtml()}</span>
+      <button type="button" class="btn sutil sumbtn" id="sumcopy" title="${esc(t().summary)}">${esc(t().summary)}</button>
     </div>
     ${broker}
     ${cur[4] ? `<p class="ghint">${cur[4]}${view === "changed" && sameSender ? ` ${sameSender} ${t().fromSender}.` : ""}</p>` : ""}
@@ -504,6 +505,7 @@ $("results").addEventListener("click", e => {
   if(b.classList.contains("gtab")){ view = b.dataset.view; curRow = null; render(); return; }
   if(b.dataset.open){ openInDb(b.dataset.open); return; }
   if(b.dataset.note){ editNote(b.dataset.note); return; }
+  if(b.id === "sumcopy"){ copyText(summaryText(), b, t().summaryCopied); return; }
   if(b.dataset.all != null){ decideShown(b.dataset.all); return; }
   if(!b.dataset.dec) return;
   const dom = b.dataset.dom, dec = b.dataset.dec;
@@ -566,6 +568,8 @@ function renderExport(){
     $("tsv").value = [DB_COLUMNS.join("\t")].concat(rows.map(r => DB_COLUMNS.map(c => String(r[c]).replace(/\t|\n/g, " ")).join("\t"))).join("\n");
     outputs.accepted = { cols: DB_COLUMNS, rows, name: "accepted", sheet: "Import Database" };
   }
+  if(accepted.length) exportWarnings(accepted, sender); else $("export-warn").hidden = true;
+  renderDraft();
   const wm = items.filter(i => decisions[i.domain] === "webmaster");
   $("wm").hidden = !wm.length;
   if(wm.length){
@@ -593,6 +597,93 @@ function renderExport(){
     outputs.removed = { cols: REMOVED_COLUMNS, rows, name: "removed", sheet: "removed sites" };
   }
 }
+/* Before the rows go to the sheet: what would arrive wrong. */
+function exportWarnings(accepted, sender){
+  const few = arr => arr.slice(0, 6).join(", ") + (arr.length > 6 ? ` +${arr.length - 6}` : "");
+  const noPrice = accepted.filter(i => !NICHES.some(n => i.prices[n])).map(i => i.domain);
+  const foreign = accepted.filter(i => NICHES.some(n => i.prices[n] && i.prices[n].currency && i.prices[n].currency !== "EUR")).map(i => i.domain);
+  const noTerms = accepted.filter(i => { const f = termsOf(i); return !f.linkType && !f.placement; }).map(i => i.domain);
+  const lines = [];
+  if(!sender) lines.push(t().warnNoContact);
+  if(noPrice.length) lines.push(t().warnNoPrice(noPrice.length, few(noPrice)));
+  if(foreign.length) lines.push(t().warnCurrency(foreign.length, few(foreign)));
+  if(noTerms.length) lines.push(t().warnNoTerms(noTerms.length, few(noTerms)));
+  const w = $("export-warn"); w.hidden = !lines.length; w.innerHTML = lines.map(l => `<div>${esc(l)}</div>`).join("");
+}
+/* A summary for the team channel, in English whatever the screen's language. */
+function summaryText(){
+  if(!groups) return "";
+  const g = groups, n = items.length;
+  const c = k => items.filter(i => decisions[i.domain] === k).length;
+  const rm = (g.missing || []).filter(e => decisions[e.item.domain] === "remove").length;
+  const conv = g.changed.filter(e => e.conversion && decisions[e.item.domain] === "accept").length;
+  const label = $("label").value.trim(), sender = $("sender").value.trim();
+  const parts = [`List ${label || "(no label)"} from ${sender || "(no sender)"} (${stype}), ${new Date().toLocaleDateString("en-GB")}: ${n} site${n === 1 ? "" : "s"}.`,
+    `${g.changed.length} changed, ${g.unknown.length} new, ${g.unchanged.length} unchanged, ${g.removed.length} on removed sites, ${(g.missing || []).length} missing from the list.`,
+    `Decided: ${c("accept")} accepted${conv ? ` (${conv} broker conversion${conv === 1 ? "" : "s"})` : ""}, ${c("webmaster")} to webmaster, ${c("ask")} to ask, ${c("reject")} rejected, ${rm} to removed sites.`];
+  const open = n - ["accept", "webmaster", "ask", "reject"].reduce((a, k) => a + c(k), 0);
+  if(open) parts.push(`${open} still undecided.`);
+  return parts.join(" ");
+}
+function copyText(txt, btn, said){
+  const done = () => { const prev = btn.textContent; btn.textContent = said; setTimeout(() => { btn.textContent = prev; }, 1500); };
+  if(navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(done, () => window.prompt("", txt)); else window.prompt("", txt);
+}
+/* The reply to the sender (house rule 5 of the desk): thanks, what was
+   updated, and only the questions the rows leave open. A finished thread
+   gets one closing email with no questions. Never sent from here. */
+function draftReply(){
+  const accepted = items.filter(i => decisions[i.domain] === "accept");
+  const asks = items.filter(i => decisions[i.domain] === "ask");
+  if(!accepted.length && !asks.length) return { text: "", questions: 0 };
+  const lt = lastParsed ? listTermsOf(lastParsed) : { adminComments: [], priceValidity: "" };
+  const listText = (lastParsed ? lastParsed.skipped.map(x => x.text).join(" ") : "") + " " + items.map(i => i.terms || "").join(" ");
+  const saysUnlicensed = /unlicen[cs]ed|non[- ]?gamstop|licen[cs]ed (casinos?|gambling|operators?) only|only (properly |duly )?licen[cs]ed|gambling \(legal\)|illegal gambling/i.test(listText) || items.some(i => i.prices.unlicensedCasino);
+  const saysValidity = !!lt.priceValidity || /valid (until|till|for)|validity|fixed price|festpreis|not fixed|negotiable/i.test(listText);
+  const lines = [];
+  lines.push("Hello,");
+  lines.push("");
+  lines.push("Thank you for the list.");
+  if(accepted.length) lines.push(`We have updated ${accepted.length === 1 ? "the site" : accepted.length + " sites"} in our database${asks.length ? " and have a few questions about the rest" : ""}.`);
+  let q = 0;
+  if(asks.length){
+    lines.push("");
+    for(const i of asks){
+      const f = termsOf(i); const want = [];
+      const priced = NICHES.filter(n => i.prices[n]);
+      if(!priced.length) want.push("your price for an article with a dofollow link");
+      else {
+        if(!i.prices.casino) want.push("whether you accept casino or betting links, and at what price");
+        if(!i.prices.crypto && !i.prices.forex) want.push("whether you accept crypto or forex links, and at what price");
+      }
+      if(!f.linkType) want.push("whether the link is dofollow");
+      if(!f.placement) want.push("whether the article stays permanently");
+      if(f.sponsorTag === "" && !/sponsored|marked|tag/i.test(i.terms || "")) want.push("whether the article is marked as sponsored");
+      if(!want.length) want.push("could you confirm the price and conditions");
+      lines.push(`- ${i.domain}: ${want.join("; ")}.`);
+      q += want.length;
+    }
+  }
+  const general = [];
+  if(!saysUnlicensed) general.push("Do you accept unlicensed casinos, and at what price?");
+  if(!saysValidity) general.push("How long will these prices stay valid for us?");
+  if(general.length && (asks.length || accepted.length)){
+    lines.push("");
+    general.forEach(g => { lines.push(g); q++; });
+  }
+  lines.push("");
+  lines.push(q ? "Thank you in advance." : "Thank you again, everything is noted.");
+  lines.push("");
+  lines.push("Best regards,");
+  return { text: lines.join("\n"), questions: q };
+}
+function renderDraft(){
+  const d = draftReply();
+  $("ask").hidden = !d.text;
+  if(d.text){ $("ask-t").textContent = t().askT(d.questions); $("ask-txt").value = d.text; }
+}
+$("ask-copy").addEventListener("click", () => copyText($("ask-txt").value, $("ask-copy"), t().copied));
+$("ask-h").addEventListener("click", () => { const open = $("ask-body").hidden; $("ask-body").hidden = !open; $("ask-h").setAttribute("aria-expanded", String(open)); });
 function copyFrom(id, note){
   const el = $(id); const txt = el.value;
   const done = () => { $(note).textContent = t().copied; setTimeout(() => { $(note).textContent = ""; }, 1500); };
