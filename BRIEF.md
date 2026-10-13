@@ -59,10 +59,14 @@ or confirm a price the publisher never wrote. Those stay with the person.
 
 1. What does "offer" mean here: the publisher's price offer (what Reply
    already captures), or an offer we make to a client? **Answered by Tim,
-   13/10:** the two files behind his request were a publisher's price list
-   as PDF (drivar.de) and one as Excel (librawebcorp), both already among
-   the test cases. "Offers" = a publisher's price list; the page reads it
-   like any other list.
+   13/10:** "offers we send to clients, that is now done manually". So an
+   offer is the selection of sites we propose to a client, with metrics
+   and prices, built from the database. It is NOT a publisher's price list
+   (those are site lists, done). Nothing of it is built; the only example
+   on Drive is Tim's 2024 sheet "LJC - Igaming.com" (tab SITES REQUEST:
+   Domain, IP, DR, RD, OT, Price, Comments, Topicality, one tab per
+   person). The current manual process and a recent example are to be
+   asked of Tim and Senad before anything is designed.
 2. Source of truth: the Sheet, the desk, or both? If the Sheet, does the
    page write to it or export rows for somebody to paste?
 3. Matching rule: by domain only? What happens when the same domain comes
