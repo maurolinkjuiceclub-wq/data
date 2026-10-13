@@ -47,7 +47,7 @@ async function checkRemote(force){
     /* The desk's Worker reads the sheet in the background (13/10): while it
        says loading, ask again in a few seconds and match once it is done. */
     clearTimeout(remotePoll);
-    if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading && items.length) run(); }).catch(() => {}), 4000);
+    if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(() => {}), 4000);
   }catch(e){ remote = null; remoteWhy = String(e && e.message || e); }
   describeDb();
 }

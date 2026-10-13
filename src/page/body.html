@@ -124,6 +124,7 @@
     <select id="of-lang"><option value="" data-i18n="fLang">Language: all</option></select>
     <label class="chk"><span data-i18n="ofMinDr">min DR</span> <input type="number" id="of-min-dr" class="ofmin" min="0" step="1" inputmode="numeric"></label>
     <label class="chk"><span data-i18n="ofMinTraffic">min traffic</span> <input type="number" id="of-min-traffic" class="ofmin" min="0" step="100" inputmode="numeric"></label>
+    <input type="search" id="of-topic" class="dbq oftopic" autocomplete="off" spellcheck="false">
     <select id="of-sort"><option value="dr" data-i18n="sortDr">DR, highest first</option><option value="traffic" data-i18n="sortTraffic">Traffic, highest first</option><option value="rd" data-i18n="sortRd">Referring domains, highest first</option><option value="price" data-i18n="sortPriceUp">Cheapest first</option><option value="" data-i18n="sortDbOrder">Sheet order</option></select>
     <span class="said" id="of-count"></span>
   </div>
@@ -136,6 +137,7 @@
       <div class="basket-h">
         <div class="par"><div><label for="of-client" data-i18n="ofClient">Client</label><input type="text" id="of-client" autocomplete="off"></div><div><label for="of-label" data-i18n="ofLabel">Offer name</label><input type="text" id="of-label" autocomplete="off"></div></div>
         <select id="of-hist" hidden aria-label="Previous offers"></select>
+        <details class="plegable oflinked"><summary><span class="caret" aria-hidden="true">▾</span><span data-i18n="ofLinked">Already linking to the client</span> <span class="n" id="of-linked-n"></span></summary><div class="in"><textarea id="of-linked" spellcheck="false" rows="4"></textarea><p class="hint" data-i18n="ofLinkedHint"></p></div></details>
         <p class="hint" data-i18n="ofHint"></p>
       </div>
       <div id="of-items"></div>

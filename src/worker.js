@@ -215,7 +215,7 @@ export default {
       const q = url.searchParams;
       const source = q.get("removed") === "1" ? db.removedList : db.list;
       const filters = { q: q.get("q") || "", type: q.get("type") || "", country: q.get("country") || "", lang: q.get("lang") || "", niche: q.get("niche") || "",
-        minDr: q.get("minDr") || "", minTraffic: q.get("minTraffic") || "" };
+        minDr: q.get("minDr") || "", minTraffic: q.get("minTraffic") || "", topic: q.get("topic") || "" };
       const hit = sortRows(source.filter(r => rowMatchesFilters(r, filters)), q.get("sort") || "");
       const offset = Math.max(0, parseInt(q.get("offset") || "0", 10) || 0);
       const limit = Math.min(500, Math.max(1, parseInt(q.get("limit") || "300", 10) || 300));

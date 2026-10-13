@@ -668,6 +668,9 @@ export function rowMatchesFilters(r, f){
   }
   const q = String(f.q || "").trim().toLowerCase();
   if(q && !(r._q != null ? r._q : searchText(r)).includes(q)) return false;
+  /* Senad's offer process (13/10): the last step is topicality. */
+  const topic = String(f.topic || "").trim().toLowerCase();
+  if(topic && !String(r["Website Topic"] || "").toLowerCase().includes(topic)) return false;
   return true;
 }
 
@@ -693,16 +696,24 @@ export function sortRows(rows, sort){
    Igaming.com: domain, metrics, price, comments). The price is the
    publisher's price for the niche as recorded, unless the person typed
    another one; a margin rule is not applied until the team gives one. */
-export const OFFER_COLUMNS = ["Domain", "Country", "Language", "DR", "RD", "Traffic", "Topic", "Price", "Comments"];
+export const OFFER_COLUMNS = ["Domain", "Country", "Language", "DR", "RD", "Traffic", "Topic", "Price", "Casino", "Crypto", "CBD", "General", "Sponsor Tag", "Link Type", "Placement", "Comments"];
 export function offerPrice(row, niche){
   const p = parsePrice(row[BUYING_COLUMN[niche]]);
   return p ? p.amount : null;
 }
+/* The yes/no per niche, the sponsor tag and the terms are the columns of
+   the 2024 Latam mastersheet the team builds offers from by hand (read
+   13/10): "Casino Yes No", "Sponsor Tag Yes No", "Article Comments". */
 export function rowForOffer(row, o){
   const n = c => { const v = numberOf(row[c]); return v == null ? "" : v; };
+  const yes = niche => String(row[BUYING_COLUMN[niche]] ?? "").trim() ? "Yes" : "No";
+  const tag = String(row["Sponsor Tag Type"] || "").trim();
   return { Domain: String(row.Domain || ""), Country: String(row["Main Country"] || ""), Language: String(row["Domain Language"] || ""),
     DR: n("Ahrefs Domain Rating"), RD: n("Ahrefs Referring Domains"), Traffic: n("Ahrefs Organic Traffic"), Topic: String(row["Website Topic"] || ""),
-    Price: o && o.price != null && o.price !== "" ? Number(o.price) : (offerPrice(row, o && o.niche) ?? ""), Comments: String((o && o.comment) || "") };
+    Price: o && o.price != null && o.price !== "" ? Number(o.price) : (offerPrice(row, o && o.niche) ?? ""),
+    Casino: yes("casino"), Crypto: yes("crypto"), CBD: yes("cbd"), General: yes("general"),
+    "Sponsor Tag": tag ? tag : "No", "Link Type": String(row["Link Type"] || ""), Placement: String(row["Placement"] || ""),
+    Comments: String((o && o.comment) || "") };
 }
 
 /* Countries and languages present, most frequent first. */

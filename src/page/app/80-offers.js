@@ -7,20 +7,31 @@
    download the sheet. Nothing here writes anywhere. The price starts as
    the publisher's price for the niche; the margin rule is the team's to
    give (BRIEF, open question 1). Offers are kept in this browser by name. */
-const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0 };
+const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", topic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0 };
 const OF_COLS = [["pick", 40], ["Domain", 220], ["Country", 110], ["Language", 90], ["DR", 64], ["RD", 84], ["Traffic", 94], ["Topic", 170], ["Price", 84], ["Terms", 220]];
 const OFFERS_KEY = "ljc-offers";
-let offer = { client: "", label: "", niche: "casino", items: [] };   /* items: {domain, row, price, comment} */
+let offer = { client: "", label: "", niche: "casino", items: [], linked: "" };   /* items: {domain, row, price, comment}; linked: the pasted domains that already link to the client */
 const inOffer = () => new Set(offer.items.map(i => i.domain));
+/* Senad's offer process (13/10): the client sheet's used domains and the
+   target URL's referring domains are not offered again. Parsed once per
+   change of the box. */
+let linkedSet = new Set();
+function parseLinked(text){
+  const out = new Set();
+  String(text || "").split(/[\s,;]+/).forEach(tok => { const d = normaliseDomain(tok); if(d) out.add(d.domain); });
+  return out;
+}
 
 function ofSourceRows(){ return dbRows; }
+/* "price" on the select is the niche's price column. */
+function ofSort(){ return ofState.sort === "price" ? "price:" + ofState.niche : ofState.sort; }
 function ofRefresh(){
   if(remote){ ofState.remotePages.clear(); ofRemoteFetch(0, true); return; }
   const rows = ofSourceRows();
   const f = dbFacetsFor(rows);
   ofState.country = fillSelect("of-country", f.countries, ofState.country);
   ofState.lang = fillSelect("of-lang", f.languages, ofState.lang);
-  ofState.list = sortRows(rows.filter(r => rowMatchesFilters(r, ofState)), ofState.sort);
+  ofState.list = sortRows(rows.filter(r => rowMatchesFilters(r, ofState)), ofSort());
   ofState.total = rows.length;
   ofDraw();
 }
@@ -50,8 +61,8 @@ function ofDraw(){
   for(let i = first; i < last; i++){
     const r = remote ? ofRemoteRow(i) : ofState.list[i];
     if(!r){ out.push(`<div class="dbr dbloading"><div class="d">${t().dbLoading}</div></div>`); continue; }
-    const d = normaliseDomain(r.Domain); const picked = !!(d && have.has(d.domain));
-    out.push(`<div class="dbr ${picked ? "sel" : ""}" data-i="${i}">${OF_COLS.map(([c]) => ofCell(r, c, picked)).join("")}</div>`);
+    const d = normaliseDomain(r.Domain); const picked = !!(d && have.has(d.domain)); const linked = !!(d && linkedSet.has(d.domain));
+    out.push(`<div class="dbr ${picked ? "sel" : ""} ${linked ? "linked" : ""}" data-i="${i}">${OF_COLS.map(([c]) => ofCell(r, c, picked)).join("")}</div>`);
   }
   $("of-rows").innerHTML = out.join("");
 }
@@ -83,7 +94,7 @@ function offersStore(){ try{ return JSON.parse(localStorage.getItem(OFFERS_KEY) 
 function saveOffer(){
   const key = (offer.label || "").trim(); if(!key) return;
   const all = offersStore();
-  all[key] = { client: offer.client, niche: offer.niche, at: Date.now(), items: offer.items.map(it => ({ domain: it.domain, price: it.price, typed: !!it.typed, comment: it.comment, row: it.row })) };
+  all[key] = { client: offer.client, niche: offer.niche, linked: offer.linked || "", at: Date.now(), items: offer.items.map(it => ({ domain: it.domain, price: it.price, typed: !!it.typed, comment: it.comment, row: it.row })) };
   try{ localStorage.setItem(OFFERS_KEY, JSON.stringify(all)); localStorage.setItem(OFFERS_KEY + ":current", key); }catch(e){}
   fillOfferHist();
 }
@@ -95,14 +106,15 @@ function fillOfferHist(){
 }
 function openOffer(name){
   const rec = offersStore()[name]; if(!rec) return;
-  offer = { client: rec.client || "", label: name, niche: rec.niche || "casino", items: (rec.items || []).map(it => ({ domain: it.domain, row: it.row || { Domain: it.domain }, price: it.price, typed: !!it.typed, comment: it.comment || "" })) };
+  offer = { client: rec.client || "", label: name, niche: rec.niche || "casino", linked: rec.linked || "", items: (rec.items || []).map(it => ({ domain: it.domain, row: it.row || { Domain: it.domain }, price: it.price, typed: !!it.typed, comment: it.comment || "" })) };
   $("of-client").value = offer.client; $("of-label").value = offer.label; $("of-niche").value = offer.niche; ofState.niche = offer.niche; $("of-hist").value = name;
+  $("of-linked").value = offer.linked; linkedSet = parseLinked(offer.linked); $("of-linked-n").textContent = linkedSet.size ? t().ofLinkedN(linkedSet.size) : "";
   try{ localStorage.setItem(OFFERS_KEY + ":current", name); }catch(e){}
   renderBasket(); if(mode === "offer") ofRefresh();
 }
 function newOffer(){
-  offer = { client: "", label: "", niche: ofState.niche, items: [] };
-  $("of-client").value = ""; $("of-label").value = ""; $("of-hist").value = "";
+  offer = { client: "", label: "", niche: ofState.niche, items: [], linked: "" };
+  $("of-client").value = ""; $("of-label").value = ""; $("of-hist").value = ""; $("of-linked").value = ""; linkedSet = new Set(); $("of-linked-n").textContent = "";
   try{ localStorage.removeItem(OFFERS_KEY + ":current"); }catch(e){}
   renderBasket(); ofDraw();
 }
@@ -115,7 +127,8 @@ function ofRemoteRow(i){
 }
 function ofRemoteQuery(offset){
   const p = new URLSearchParams({ offset: String(offset), limit: String(PAGE) });
-  for(const k of ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"]){ const v = String(ofState[k] || "").trim(); if(v) p.set(k, v); }
+  for(const k of ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "topic"]){ const v = String(ofState[k] || "").trim(); if(v) p.set(k, v); }
+  if(ofSort()) p.set("sort", ofSort());
   return p.toString();
 }
 async function ofRemoteFetch(offset, first){
@@ -132,19 +145,19 @@ async function ofRemoteFetch(offset, first){
   }catch(e){ ofState.remoteTotal = 0; ofDraw(); }
 }
 let ofTimer = null;
-const OF_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"];
+const OF_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "topic", "sort"];
 function ofSaveFilters(){ try{ localStorage.setItem("ljc-lists-offilters", JSON.stringify(Object.fromEntries(OF_FILTER_KEYS.map(k => [k, ofState[k]])))); }catch(e){} }
 function ofRestoreFilters(){
   try{
     const f = JSON.parse(localStorage.getItem("ljc-lists-offilters") || "{}");
     OF_FILTER_KEYS.forEach(k => { if(f[k] != null) ofState[k] = f[k]; });
-    $("of-q").value = ofState.q; $("of-type").value = ofState.type; $("of-niche").value = ofState.niche || "casino"; $("of-min-dr").value = ofState.minDr; $("of-min-traffic").value = ofState.minTraffic; $("of-sort").value = ofState.sort || "dr";
+    $("of-q").value = ofState.q; $("of-type").value = ofState.type; $("of-niche").value = ofState.niche || "casino"; $("of-min-dr").value = ofState.minDr; $("of-min-traffic").value = ofState.minTraffic; $("of-topic").value = ofState.topic || ""; $("of-sort").value = ofState.sort || "dr";
     offer.niche = ofState.niche;
   }catch(e){}
 }
 function ofOnChange(){
   ofState.q = $("of-q").value; ofState.type = $("of-type").value; ofState.country = $("of-country").value; ofState.lang = $("of-lang").value;
-  ofState.niche = $("of-niche").value || "casino"; ofState.minDr = $("of-min-dr").value; ofState.minTraffic = $("of-min-traffic").value; ofState.sort = $("of-sort").value;
+  ofState.niche = $("of-niche").value || "casino"; ofState.minDr = $("of-min-dr").value; ofState.minTraffic = $("of-min-traffic").value; ofState.topic = $("of-topic").value; ofState.sort = $("of-sort").value;
   /* The niche is the offer's: the prices in the basket follow it only for
      sites whose price was not typed by hand. */
   if(offer.niche !== ofState.niche){ offer.niche = ofState.niche; offer.items.forEach(it => { if(!it.typed) it.price = offerPrice(it.row, offer.niche); }); saveOffer(); renderBasket(); }
@@ -154,7 +167,8 @@ function ofOnChange(){
 }
 bootStep("offers screen", () => {
   $("mode-offer").addEventListener("click", () => setMode("offer"));
-  ["of-q", "of-type", "of-country", "of-lang", "of-niche", "of-min-dr", "of-min-traffic", "of-sort"].forEach(id => $(id).addEventListener("input", ofOnChange));
+  ["of-q", "of-type", "of-country", "of-lang", "of-niche", "of-min-dr", "of-min-traffic", "of-topic", "of-sort"].forEach(id => $(id).addEventListener("input", ofOnChange));
+  $("of-linked").addEventListener("input", () => { offer.linked = $("of-linked").value; linkedSet = parseLinked(offer.linked); $("of-linked-n").textContent = linkedSet.size ? t().ofLinkedN(linkedSet.size) : ""; saveOffer(); ofDraw(); });
   $("of-grid").addEventListener("scroll", () => { if(mode === "offer") ofDraw(); });
   $("of-rows").addEventListener("click", ev => { const row = ev.target.closest(".dbr"); if(!row || row.dataset.i == null) return; const i = Number(row.dataset.i); const r = remote ? ofRemoteRow(i) : ofState.list[i]; if(r) ofToggle(r); });
   $("of-items").addEventListener("input", ev => {
@@ -174,7 +188,7 @@ bootStep("offers screen", () => {
   $("of-copy").addEventListener("click", () => copyFrom("of-tsv", "of-note"));
   $("of-csv").addEventListener("click", () => downloadCsv(outputs.offer));
   $("of-xlsx").addEventListener("click", () => downloadXlsx(outputs.offer, "of-note"));
-  $("of-q").placeholder = t().dbSearch;
+  $("of-q").placeholder = t().dbSearch; $("of-topic").placeholder = t().ofTopic;
   ofRestoreFilters(); fillOfferHist(); renderBasket();
   /* The offer that was open last time, back with its rows. */
   let cur = ""; try{ cur = localStorage.getItem(OFFERS_KEY + ":current") || ""; }catch(e){}

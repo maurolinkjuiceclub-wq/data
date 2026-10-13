@@ -731,6 +731,27 @@ the open one comes back after a reload. The Worker's `/rows` takes `minDr`,
 Worker. Measured against the real copy through the desk's Worker: casino
 sites with DR 50+ and traffic 20k+ ordered by traffic answered 1,381 rows.
 
+The two files Tim pointed at (confirmed by Mauro, 13/10, evening) were
+Gary's "Copy of Import Database 2026", the sheet Lists reads, and Gary's
+"Latam Overview Mastersheet 2024": 330 broker-sourced Latam sites with DR,
+referring domains, traffic, price and currency, Casino/Finance/CBD/Adult/
+General yes or no, sponsor tag, niche prices, terms, contact, date, country.
+Read as the sheet offers are built from by hand, so the offer export took
+its columns: yes/no per niche, Sponsor Tag, Link Type, Placement.
+
+**Senad's "Offer process" (Google Doc, read 13/10, evening, link from
+Mauro):** copy the database, keep only the market (country); from the
+client sheet take the domains marked Live Link, Ordered or Sent for
+Publication; from Ahrefs take the referring domains of the target URL; the
+market's sites minus those two sets are the candidates, "as these sites
+don't link to our Client"; refresh the metrics (traffic) so a site that
+rose is not missed; last, topicality, with Claude and by eye (no adult,
+children, animals…). Added to the screen the same evening: a box "Already
+linking to the client" per offer (paste both lists; those sites stay in the
+table greyed and marked "linked") and a "Topic contains" filter, served by
+the Worker too. Not done, and stays by hand: the metrics refresh (no
+Ahrefs access from the desk) and the visit to each site.
+
 **Assumptions to confirm with Tim and Senad**, visible in the screen's hint:
 no margin is added (the client price is the publisher's price until the
 rule is given); the export columns are the 2024 ones; one niche per offer;

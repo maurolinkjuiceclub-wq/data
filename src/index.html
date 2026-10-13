@@ -309,6 +309,13 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
 .basket-f .actions{flex-wrap:wrap}
 .dbr .pick{text-align:center;font-weight:700;color:var(--accent-ink)}
 .ofmin{width:76px;padding:5px 6px;border-radius:6px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px}
+.oftopic{flex:0 1 180px}
+.oflinked{margin-top:8px}
+.oflinked textarea{width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font-family:var(--mono);font-size:11.5px;resize:vertical}
+.oflinked .n{font-family:var(--mono);font-size:10px;background:var(--surface-3);color:var(--ink-2);border-radius:20px;padding:0 6px;text-transform:none;letter-spacing:0}
+.oflinked .n:empty{display:none}
+.dbr.linked{opacity:.55}
+.dbr.linked .d::after{content:"linked";font-family:var(--sans);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;font-weight:700;border:1px solid var(--wait-line);color:var(--wait-ink);border-radius:4px;padding:0 4px;margin-left:8px;vertical-align:middle}
 @media (max-width:899px){.ofmain{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,45%)}.basket{border-left:0;border-top:1px solid var(--line-strong)}}
 
 /* ---------- export, folded ---------- */
@@ -448,6 +455,7 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
     <select id="of-lang"><option value="" data-i18n="fLang">Language: all</option></select>
     <label class="chk"><span data-i18n="ofMinDr">min DR</span> <input type="number" id="of-min-dr" class="ofmin" min="0" step="1" inputmode="numeric"></label>
     <label class="chk"><span data-i18n="ofMinTraffic">min traffic</span> <input type="number" id="of-min-traffic" class="ofmin" min="0" step="100" inputmode="numeric"></label>
+    <input type="search" id="of-topic" class="dbq oftopic" autocomplete="off" spellcheck="false">
     <select id="of-sort"><option value="dr" data-i18n="sortDr">DR, highest first</option><option value="traffic" data-i18n="sortTraffic">Traffic, highest first</option><option value="rd" data-i18n="sortRd">Referring domains, highest first</option><option value="price" data-i18n="sortPriceUp">Cheapest first</option><option value="" data-i18n="sortDbOrder">Sheet order</option></select>
     <span class="said" id="of-count"></span>
   </div>
@@ -460,6 +468,7 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
       <div class="basket-h">
         <div class="par"><div><label for="of-client" data-i18n="ofClient">Client</label><input type="text" id="of-client" autocomplete="off"></div><div><label for="of-label" data-i18n="ofLabel">Offer name</label><input type="text" id="of-label" autocomplete="off"></div></div>
         <select id="of-hist" hidden aria-label="Previous offers"></select>
+        <details class="plegable oflinked"><summary><span class="caret" aria-hidden="true">▾</span><span data-i18n="ofLinked">Already linking to the client</span> <span class="n" id="of-linked-n"></span></summary><div class="in"><textarea id="of-linked" spellcheck="false" rows="4"></textarea><p class="hint" data-i18n="ofLinkedHint"></p></div></details>
         <p class="hint" data-i18n="ofHint"></p>
       </div>
       <div id="of-items"></div>
@@ -1143,6 +1152,9 @@ function rowMatchesFilters(r, f){
   }
   const q = String(f.q || "").trim().toLowerCase();
   if(q && !(r._q != null ? r._q : searchText(r)).includes(q)) return false;
+  /* Senad's offer process (13/10): the last step is topicality. */
+  const topic = String(f.topic || "").trim().toLowerCase();
+  if(topic && !String(r["Website Topic"] || "").toLowerCase().includes(topic)) return false;
   return true;
 }
 
@@ -1168,16 +1180,24 @@ function sortRows(rows, sort){
    Igaming.com: domain, metrics, price, comments). The price is the
    publisher's price for the niche as recorded, unless the person typed
    another one; a margin rule is not applied until the team gives one. */
-const OFFER_COLUMNS = ["Domain", "Country", "Language", "DR", "RD", "Traffic", "Topic", "Price", "Comments"];
+const OFFER_COLUMNS = ["Domain", "Country", "Language", "DR", "RD", "Traffic", "Topic", "Price", "Casino", "Crypto", "CBD", "General", "Sponsor Tag", "Link Type", "Placement", "Comments"];
 function offerPrice(row, niche){
   const p = parsePrice(row[BUYING_COLUMN[niche]]);
   return p ? p.amount : null;
 }
+/* The yes/no per niche, the sponsor tag and the terms are the columns of
+   the 2024 Latam mastersheet the team builds offers from by hand (read
+   13/10): "Casino Yes No", "Sponsor Tag Yes No", "Article Comments". */
 function rowForOffer(row, o){
   const n = c => { const v = numberOf(row[c]); return v == null ? "" : v; };
+  const yes = niche => String(row[BUYING_COLUMN[niche]] ?? "").trim() ? "Yes" : "No";
+  const tag = String(row["Sponsor Tag Type"] || "").trim();
   return { Domain: String(row.Domain || ""), Country: String(row["Main Country"] || ""), Language: String(row["Domain Language"] || ""),
     DR: n("Ahrefs Domain Rating"), RD: n("Ahrefs Referring Domains"), Traffic: n("Ahrefs Organic Traffic"), Topic: String(row["Website Topic"] || ""),
-    Price: o && o.price != null && o.price !== "" ? Number(o.price) : (offerPrice(row, o && o.niche) ?? ""), Comments: String((o && o.comment) || "") };
+    Price: o && o.price != null && o.price !== "" ? Number(o.price) : (offerPrice(row, o && o.niche) ?? ""),
+    Casino: yes("casino"), Crypto: yes("crypto"), CBD: yes("cbd"), General: yes("general"),
+    "Sponsor Tag": tag ? tag : "No", "Link Type": String(row["Link Type"] || ""), Placement: String(row["Placement"] || ""),
+    Comments: String((o && o.comment) || "") };
 }
 
 /* Countries and languages present, most frequent first. */
@@ -1466,7 +1486,7 @@ async function checkRemote(force){
     /* The desk's Worker reads the sheet in the background (13/10): while it
        says loading, ask again in a few seconds and match once it is done. */
     clearTimeout(remotePoll);
-    if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading && items.length) run(); }).catch(() => {}), 4000);
+    if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(() => {}), 4000);
   }catch(e){ remote = null; remoteWhy = String(e && e.message || e); }
   describeDb();
 }
@@ -1497,7 +1517,7 @@ const T = {
     dbhint:"Sample rows until a copy of the sheet is loaded. Export the sheet as .xlsx (both tabs) or .csv and load it here: it stays in this browser, also after closing it, until it is replaced or forgotten.", dbfileL:"Copy of the sheet · .xlsx (both tabs) or .csv", rmfileL:"removed sites · .csv, when the copy is a CSV", dbnever:"This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.", dbLoaded:(name, when)=>`${name} · loaded ${when}`, gsheetHint:"A Google Sheets link cannot be read from here: open it, File → Download → .xlsx, and load that file above.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
     sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, sheetLoading:(n, have)=>`sheet: reading… ${n.toLocaleString("en")} rows so far${have ? " · " + have.toLocaleString("en") + " in use meanwhile" : ""}`, refresh:"Refresh sheet", refreshing:"Reading the sheet…", sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
     temaAuto:"Theme: auto", temaOscuro:"Theme: dark", temaClaro:"Theme: light", whoamiLbl:"Signed in as", appInicio:"Start page",
-    modeList:"List", modeDb:"Database", modeOffer:"Offers", ofClient:"Client", ofLabel:"Offer name", ofMinDr:"min DR", ofMinTraffic:"min traffic", sortDr:"DR, highest first", sortTraffic:"Traffic, highest first", sortRd:"Referring domains, highest first", sortDbOrder:"Sheet order", ofPrev:"Previous offers…", ofNew:"New offer", ofComment:"comment", ofEmpty:"Click a row on the left to add the site to the offer.", ofTotal:(n, sum)=>`${n} site${n === 1 ? "" : "s"} · ${sum.toLocaleString("en")} EUR`, ofHint:"Price = the publisher's price for the niche chosen above, as recorded. Change it per site before sending; no margin is added until the team gives the rule. The offer stays in this browser under its name.", ofCols:{Domain:"Domain", Country:"Country", Language:"Language", DR:"DR", RD:"RD", Traffic:"Traffic", Topic:"Topic", Price:"Price", Terms:"Terms"},
+    modeList:"List", modeDb:"Database", modeOffer:"Offers", ofClient:"Client", ofLabel:"Offer name", ofMinDr:"min DR", ofMinTraffic:"min traffic", sortDr:"DR, highest first", sortTraffic:"Traffic, highest first", sortRd:"Referring domains, highest first", sortDbOrder:"Sheet order", ofPrev:"Previous offers…", ofNew:"New offer", ofComment:"comment", ofEmpty:"Click a row on the left to add the site to the offer.", ofTotal:(n, sum)=>`${n} site${n === 1 ? "" : "s"} · ${sum.toLocaleString("en")} EUR`, ofHint:"Price = the publisher's price for the niche chosen above, as recorded. Change it per site before sending; no margin is added until the team gives the rule. The offer stays in this browser under its name.", ofCols:{Domain:"Domain", Country:"Country", Language:"Language", DR:"DR", RD:"RD", Traffic:"Traffic", Topic:"Topic", Price:"Price", Terms:"Terms"}, ofTopic:"Topic contains…", ofLinked:"Already linking to the client", ofLinkedHint:"Paste the domains from the client sheet (Live Link, Ordered, Sent for Publication) and the referring domains of the target URL from Ahrefs. They stay in the table, greyed and marked, so the offer is built from the rest (Senad's offer process).", ofLinkedN:(n)=>`${n} domains`,
     fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
     dbSearch:"Search domain, contact or name", dbCount:(n, total)=>`${n.toLocaleString("en")} of ${total.toLocaleString("en")} rows`, dbEmpty:"No row matches.", dbLoading:"Loading…", dbRemovedTab:"removed sites", dbCols:{Domain:"Domain", Type:"Type", Contact:"Contact", Country:"Country", Language:"Language", Updated:"Updated", Terms:"Terms"},
     openInDb:"Open its record in the database", backToList:"Back to the list",
@@ -1520,7 +1540,7 @@ const T = {
     dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
     sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, sheetLoading:(n, have)=>`hoja: leyendo… ${n.toLocaleString("es")} filas de momento${have ? " · " + have.toLocaleString("es") + " en uso mientras tanto" : ""}`, refresh:"Actualizar hoja", refreshing:"Leyendo la hoja…", sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
     temaAuto:"Tema: auto", temaOscuro:"Tema: oscuro", temaClaro:"Tema: claro", whoamiLbl:"Sesión de", appInicio:"Inicio",
-    modeList:"Lista", modeDb:"Base de datos", modeOffer:"Ofertas", ofClient:"Cliente", ofLabel:"Nombre de la oferta", ofMinDr:"DR mín.", ofMinTraffic:"tráfico mín.", sortDr:"DR, de mayor a menor", sortTraffic:"Tráfico, de mayor a menor", sortRd:"Dominios de referencia, de mayor a menor", sortDbOrder:"Orden de la hoja", ofPrev:"Ofertas anteriores…", ofNew:"Nueva oferta", ofComment:"comentario", ofEmpty:"Haz clic en una fila de la izquierda para añadir el medio a la oferta.", ofTotal:(n, sum)=>`${n} medio${n === 1 ? "" : "s"} · ${sum.toLocaleString("es")} EUR`, ofHint:"Precio = el precio del publisher para el nicho elegido arriba, tal como está registrado. Cámbialo por medio antes de enviar; no se añade margen hasta que el equipo dé la regla. La oferta se queda en este navegador con su nombre.", ofCols:{Domain:"Dominio", Country:"País", Language:"Idioma", DR:"DR", RD:"RD", Traffic:"Tráfico", Topic:"Tema", Price:"Precio", Terms:"Condiciones"},
+    modeList:"Lista", modeDb:"Base de datos", modeOffer:"Ofertas", ofClient:"Cliente", ofLabel:"Nombre de la oferta", ofMinDr:"DR mín.", ofMinTraffic:"tráfico mín.", sortDr:"DR, de mayor a menor", sortTraffic:"Tráfico, de mayor a menor", sortRd:"Dominios de referencia, de mayor a menor", sortDbOrder:"Orden de la hoja", ofPrev:"Ofertas anteriores…", ofNew:"Nueva oferta", ofComment:"comentario", ofEmpty:"Haz clic en una fila de la izquierda para añadir el medio a la oferta.", ofTotal:(n, sum)=>`${n} medio${n === 1 ? "" : "s"} · ${sum.toLocaleString("es")} EUR`, ofHint:"Precio = el precio del publisher para el nicho elegido arriba, tal como está registrado. Cámbialo por medio antes de enviar; no se añade margen hasta que el equipo dé la regla. La oferta se queda en este navegador con su nombre.", ofCols:{Domain:"Dominio", Country:"País", Language:"Idioma", DR:"DR", RD:"RD", Traffic:"Tráfico", Topic:"Tema", Price:"Precio", Terms:"Condiciones"}, ofTopic:"Tema contiene…", ofLinked:"Ya enlazan al cliente", ofLinkedHint:"Pega los dominios de la hoja del cliente (Live Link, Ordered, Sent for Publication) y los dominios de referencia de la URL objetivo según Ahrefs. Se quedan en la tabla, en gris y marcados, y la oferta se hace con el resto (proceso de ofertas de Senad).", ofLinkedN:(n)=>`${n} dominios`,
     fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
     dbSearch:"Buscar dominio, contacto o nombre", dbCount:(n, total)=>`${n.toLocaleString("es")} de ${total.toLocaleString("es")} filas`, dbEmpty:"Ninguna fila coincide.", dbLoading:"Cargando…", dbRemovedTab:"removed sites", dbCols:{Domain:"Dominio", Type:"Tipo", Contact:"Contacto", Country:"País", Language:"Idioma", Updated:"Actualizado", Terms:"Condiciones"},
     openInDb:"Abrir su ficha en la base", backToList:"Volver a la lista",
@@ -1559,7 +1579,7 @@ function applyLang(){
   try{ pintarTema(); }catch(e){}
   describeDb();
   if(groups) { noteParse(); render(); }
-  try{ $("db-q").placeholder = t().dbSearch; $("of-q").placeholder = t().dbSearch; if(mode === "db") dbDraw(); if(mode === "offer"){ ofDraw(); renderBasket(); } }catch(e){}
+  try{ $("db-q").placeholder = t().dbSearch; $("of-q").placeholder = t().dbSearch; $("of-topic").placeholder = t().ofTopic; if(mode === "db") dbDraw(); if(mode === "offer"){ ofDraw(); renderBasket(); } }catch(e){}
 }
 $("lang-en").addEventListener("click", () => { setLang("en"); $("idioma").open = false; });
 $("lang-es").addEventListener("click", () => { setLang("es"); $("idioma").open = false; });
@@ -2526,20 +2546,31 @@ window.addEventListener("error", ev => {
    download the sheet. Nothing here writes anywhere. The price starts as
    the publisher's price for the niche; the margin rule is the team's to
    give (BRIEF, open question 1). Offers are kept in this browser by name. */
-const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0 };
+const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", topic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0 };
 const OF_COLS = [["pick", 40], ["Domain", 220], ["Country", 110], ["Language", 90], ["DR", 64], ["RD", 84], ["Traffic", 94], ["Topic", 170], ["Price", 84], ["Terms", 220]];
 const OFFERS_KEY = "ljc-offers";
-let offer = { client: "", label: "", niche: "casino", items: [] };   /* items: {domain, row, price, comment} */
+let offer = { client: "", label: "", niche: "casino", items: [], linked: "" };   /* items: {domain, row, price, comment}; linked: the pasted domains that already link to the client */
 const inOffer = () => new Set(offer.items.map(i => i.domain));
+/* Senad's offer process (13/10): the client sheet's used domains and the
+   target URL's referring domains are not offered again. Parsed once per
+   change of the box. */
+let linkedSet = new Set();
+function parseLinked(text){
+  const out = new Set();
+  String(text || "").split(/[\s,;]+/).forEach(tok => { const d = normaliseDomain(tok); if(d) out.add(d.domain); });
+  return out;
+}
 
 function ofSourceRows(){ return dbRows; }
+/* "price" on the select is the niche's price column. */
+function ofSort(){ return ofState.sort === "price" ? "price:" + ofState.niche : ofState.sort; }
 function ofRefresh(){
   if(remote){ ofState.remotePages.clear(); ofRemoteFetch(0, true); return; }
   const rows = ofSourceRows();
   const f = dbFacetsFor(rows);
   ofState.country = fillSelect("of-country", f.countries, ofState.country);
   ofState.lang = fillSelect("of-lang", f.languages, ofState.lang);
-  ofState.list = sortRows(rows.filter(r => rowMatchesFilters(r, ofState)), ofState.sort);
+  ofState.list = sortRows(rows.filter(r => rowMatchesFilters(r, ofState)), ofSort());
   ofState.total = rows.length;
   ofDraw();
 }
@@ -2569,8 +2600,8 @@ function ofDraw(){
   for(let i = first; i < last; i++){
     const r = remote ? ofRemoteRow(i) : ofState.list[i];
     if(!r){ out.push(`<div class="dbr dbloading"><div class="d">${t().dbLoading}</div></div>`); continue; }
-    const d = normaliseDomain(r.Domain); const picked = !!(d && have.has(d.domain));
-    out.push(`<div class="dbr ${picked ? "sel" : ""}" data-i="${i}">${OF_COLS.map(([c]) => ofCell(r, c, picked)).join("")}</div>`);
+    const d = normaliseDomain(r.Domain); const picked = !!(d && have.has(d.domain)); const linked = !!(d && linkedSet.has(d.domain));
+    out.push(`<div class="dbr ${picked ? "sel" : ""} ${linked ? "linked" : ""}" data-i="${i}">${OF_COLS.map(([c]) => ofCell(r, c, picked)).join("")}</div>`);
   }
   $("of-rows").innerHTML = out.join("");
 }
@@ -2602,7 +2633,7 @@ function offersStore(){ try{ return JSON.parse(localStorage.getItem(OFFERS_KEY) 
 function saveOffer(){
   const key = (offer.label || "").trim(); if(!key) return;
   const all = offersStore();
-  all[key] = { client: offer.client, niche: offer.niche, at: Date.now(), items: offer.items.map(it => ({ domain: it.domain, price: it.price, typed: !!it.typed, comment: it.comment, row: it.row })) };
+  all[key] = { client: offer.client, niche: offer.niche, linked: offer.linked || "", at: Date.now(), items: offer.items.map(it => ({ domain: it.domain, price: it.price, typed: !!it.typed, comment: it.comment, row: it.row })) };
   try{ localStorage.setItem(OFFERS_KEY, JSON.stringify(all)); localStorage.setItem(OFFERS_KEY + ":current", key); }catch(e){}
   fillOfferHist();
 }
@@ -2614,14 +2645,15 @@ function fillOfferHist(){
 }
 function openOffer(name){
   const rec = offersStore()[name]; if(!rec) return;
-  offer = { client: rec.client || "", label: name, niche: rec.niche || "casino", items: (rec.items || []).map(it => ({ domain: it.domain, row: it.row || { Domain: it.domain }, price: it.price, typed: !!it.typed, comment: it.comment || "" })) };
+  offer = { client: rec.client || "", label: name, niche: rec.niche || "casino", linked: rec.linked || "", items: (rec.items || []).map(it => ({ domain: it.domain, row: it.row || { Domain: it.domain }, price: it.price, typed: !!it.typed, comment: it.comment || "" })) };
   $("of-client").value = offer.client; $("of-label").value = offer.label; $("of-niche").value = offer.niche; ofState.niche = offer.niche; $("of-hist").value = name;
+  $("of-linked").value = offer.linked; linkedSet = parseLinked(offer.linked); $("of-linked-n").textContent = linkedSet.size ? t().ofLinkedN(linkedSet.size) : "";
   try{ localStorage.setItem(OFFERS_KEY + ":current", name); }catch(e){}
   renderBasket(); if(mode === "offer") ofRefresh();
 }
 function newOffer(){
-  offer = { client: "", label: "", niche: ofState.niche, items: [] };
-  $("of-client").value = ""; $("of-label").value = ""; $("of-hist").value = "";
+  offer = { client: "", label: "", niche: ofState.niche, items: [], linked: "" };
+  $("of-client").value = ""; $("of-label").value = ""; $("of-hist").value = ""; $("of-linked").value = ""; linkedSet = new Set(); $("of-linked-n").textContent = "";
   try{ localStorage.removeItem(OFFERS_KEY + ":current"); }catch(e){}
   renderBasket(); ofDraw();
 }
@@ -2634,7 +2666,8 @@ function ofRemoteRow(i){
 }
 function ofRemoteQuery(offset){
   const p = new URLSearchParams({ offset: String(offset), limit: String(PAGE) });
-  for(const k of ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"]){ const v = String(ofState[k] || "").trim(); if(v) p.set(k, v); }
+  for(const k of ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "topic"]){ const v = String(ofState[k] || "").trim(); if(v) p.set(k, v); }
+  if(ofSort()) p.set("sort", ofSort());
   return p.toString();
 }
 async function ofRemoteFetch(offset, first){
@@ -2651,19 +2684,19 @@ async function ofRemoteFetch(offset, first){
   }catch(e){ ofState.remoteTotal = 0; ofDraw(); }
 }
 let ofTimer = null;
-const OF_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"];
+const OF_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "topic", "sort"];
 function ofSaveFilters(){ try{ localStorage.setItem("ljc-lists-offilters", JSON.stringify(Object.fromEntries(OF_FILTER_KEYS.map(k => [k, ofState[k]])))); }catch(e){} }
 function ofRestoreFilters(){
   try{
     const f = JSON.parse(localStorage.getItem("ljc-lists-offilters") || "{}");
     OF_FILTER_KEYS.forEach(k => { if(f[k] != null) ofState[k] = f[k]; });
-    $("of-q").value = ofState.q; $("of-type").value = ofState.type; $("of-niche").value = ofState.niche || "casino"; $("of-min-dr").value = ofState.minDr; $("of-min-traffic").value = ofState.minTraffic; $("of-sort").value = ofState.sort || "dr";
+    $("of-q").value = ofState.q; $("of-type").value = ofState.type; $("of-niche").value = ofState.niche || "casino"; $("of-min-dr").value = ofState.minDr; $("of-min-traffic").value = ofState.minTraffic; $("of-topic").value = ofState.topic || ""; $("of-sort").value = ofState.sort || "dr";
     offer.niche = ofState.niche;
   }catch(e){}
 }
 function ofOnChange(){
   ofState.q = $("of-q").value; ofState.type = $("of-type").value; ofState.country = $("of-country").value; ofState.lang = $("of-lang").value;
-  ofState.niche = $("of-niche").value || "casino"; ofState.minDr = $("of-min-dr").value; ofState.minTraffic = $("of-min-traffic").value; ofState.sort = $("of-sort").value;
+  ofState.niche = $("of-niche").value || "casino"; ofState.minDr = $("of-min-dr").value; ofState.minTraffic = $("of-min-traffic").value; ofState.topic = $("of-topic").value; ofState.sort = $("of-sort").value;
   /* The niche is the offer's: the prices in the basket follow it only for
      sites whose price was not typed by hand. */
   if(offer.niche !== ofState.niche){ offer.niche = ofState.niche; offer.items.forEach(it => { if(!it.typed) it.price = offerPrice(it.row, offer.niche); }); saveOffer(); renderBasket(); }
@@ -2673,7 +2706,8 @@ function ofOnChange(){
 }
 bootStep("offers screen", () => {
   $("mode-offer").addEventListener("click", () => setMode("offer"));
-  ["of-q", "of-type", "of-country", "of-lang", "of-niche", "of-min-dr", "of-min-traffic", "of-sort"].forEach(id => $(id).addEventListener("input", ofOnChange));
+  ["of-q", "of-type", "of-country", "of-lang", "of-niche", "of-min-dr", "of-min-traffic", "of-topic", "of-sort"].forEach(id => $(id).addEventListener("input", ofOnChange));
+  $("of-linked").addEventListener("input", () => { offer.linked = $("of-linked").value; linkedSet = parseLinked(offer.linked); $("of-linked-n").textContent = linkedSet.size ? t().ofLinkedN(linkedSet.size) : ""; saveOffer(); ofDraw(); });
   $("of-grid").addEventListener("scroll", () => { if(mode === "offer") ofDraw(); });
   $("of-rows").addEventListener("click", ev => { const row = ev.target.closest(".dbr"); if(!row || row.dataset.i == null) return; const i = Number(row.dataset.i); const r = remote ? ofRemoteRow(i) : ofState.list[i]; if(r) ofToggle(r); });
   $("of-items").addEventListener("input", ev => {
@@ -2693,7 +2727,7 @@ bootStep("offers screen", () => {
   $("of-copy").addEventListener("click", () => copyFrom("of-tsv", "of-note"));
   $("of-csv").addEventListener("click", () => downloadCsv(outputs.offer));
   $("of-xlsx").addEventListener("click", () => downloadXlsx(outputs.offer, "of-note"));
-  $("of-q").placeholder = t().dbSearch;
+  $("of-q").placeholder = t().dbSearch; $("of-topic").placeholder = t().ofTopic;
   ofRestoreFilters(); fillOfferHist(); renderBasket();
   /* The offer that was open last time, back with its rows. */
   let cur = ""; try{ cur = localStorage.getItem(OFFERS_KEY + ":current") || ""; }catch(e){}
@@ -2779,7 +2813,9 @@ bootStep("stored database", () => {
 });
 /* The Worker, if there is one next to the page; the sample result stays
    until it answers. */
-checkRemote().then(() => { if(remote) run(); }).catch(e => console.error("worker check:", e));
+/* When it answers, whichever screen is open is redrawn from it: the
+   Database and Offers screens may have drawn the local rows meanwhile. */
+checkRemote().then(() => { if(remote){ run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(e => console.error("worker check:", e));
 
 </script>
 </body></html>

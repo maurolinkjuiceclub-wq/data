@@ -457,12 +457,15 @@ function csvToObjects(text){
   caso("min traffic reads the k suffix", JSON.stringify(hit({ minTraffic: 10000 })) === JSON.stringify(["a.com", "d.com"]), hit({ minTraffic: 10000 }));
   caso("an empty minimum is no filter", hit({ minDr: "", minTraffic: null }).length === 4);
   caso("minimum plus niche: priced for casino with DR 40+", JSON.stringify(hit({ minDr: 40, niche: "casino" })) === JSON.stringify(["a.com"]), hit({ minDr: 40, niche: "casino" }));
+  const topical = [prepareRow({ Domain: "t1.com", "Website Topic": "Sports news" }), prepareRow({ Domain: "t2.com", "Website Topic": "Finance" }), prepareRow({ Domain: "t3.com" })];
+  caso("topic filter: substring of Website Topic, case-insensitive, unset topics out", JSON.stringify(topical.filter(r => rowMatchesFilters(r, { topic: "sport" })).map(r => r.Domain)) === JSON.stringify(["t1.com"]) && topical.filter(r => rowMatchesFilters(r, { topic: "" })).length === 3);
   caso("sortRows dr: highest first, unmeasured last, source order kept otherwise", JSON.stringify(sortRows(rows, "dr").map(r => r.Domain)) === JSON.stringify(["d.com", "a.com", "b.com", "c.com"]), sortRows(rows, "dr").map(r => r.Domain));
   caso("sortRows price:casino: cheapest first, unpriced last", JSON.stringify(sortRows(rows, "price:casino").map(r => r.Domain)) === JSON.stringify(["c.com", "b.com", "a.com", "d.com"]), sortRows(rows, "price:casino").map(r => r.Domain));
   caso("sortRows with an unknown key keeps the order and copies the array", JSON.stringify(sortRows(rows, "x").map(r => r.Domain)) === JSON.stringify(rows.map(r => r.Domain)) && sortRows(rows, "") !== rows);
   caso("offerPrice: the niche's price as a number, null when none", offerPrice(rows[2], "casino") === 150 && offerPrice(rows[2], "general") === null);
   const o = rowForOffer(rows[0], { niche: "casino", comment: "homepage" });
   caso("rowForOffer: the offer's columns, metrics as numbers, the niche's price", JSON.stringify(Object.keys(o)) === JSON.stringify(OFFER_COLUMNS) && o.DR === 44 && o.Traffic === 12000 && o.Price === 400 && o.Comments === "homepage" && o.RD === "", o);
+  caso("rowForOffer: yes/no per niche, sponsor tag and terms as the 2024 mastersheet", o.Casino === "Yes" && o.General === "Yes" && o.Crypto === "No" && o["Sponsor Tag"] === "No" && rowForOffer(prepareRow({ Domain: "e.com", "Sponsor Tag Type": "rel=sponsored", "Link Type": "Do follow", Placement: "permanent" }), {})["Sponsor Tag"] === "rel=sponsored" && rowForOffer(prepareRow({ Domain: "e.com", "Link Type": "Do follow", Placement: "permanent" }), {}).Placement === "permanent", o);
   caso("rowForOffer: a typed price wins over the sheet's", rowForOffer(rows[0], { niche: "casino", price: "350" }).Price === 350 && rowForOffer(rows[0], { niche: "casino", price: 0 }).Price === 0);
   caso("rowForOffer: no price for the niche leaves the cell empty", rowForOffer(rows[3], { niche: "casino" }).Price === "");
 }
