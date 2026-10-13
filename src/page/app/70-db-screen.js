@@ -4,7 +4,9 @@
    when the Worker is there, from /api/rows page by page. Only the rows on
    screen are drawn, so 103k rows cost nothing. */
 let mode = "list";
-const ROW_H = 34;
+/* 34px of row plus its 1px border: the spacers above and below the drawn
+   rows must add up to exactly what the rows take, or the scroll drifts. */
+const ROW_H = 35;
 const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, remotePages: new Map(), remoteTotal: 0 };
 const NARROW = [
   ["Domain", 220], ["Type", 110], ["Contact", 230], ["Country", 120], ["Language", 100],
