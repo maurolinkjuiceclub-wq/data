@@ -127,6 +127,8 @@ table.outreach tbody tr.cur td{background:var(--accent-wash)}
 td.dec .decsel{display:none}
 .decsel{padding:5px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px;max-width:160px}
 .decsel.on-accept{background:var(--ok-bg);color:var(--ok-ink)} .decsel.on-reject{background:var(--bad-bg);color:var(--bad-ink)} .decsel.on-ask,.decsel.on-remove{background:var(--wait-bg);color:var(--wait-ink)} .decsel.on-webmaster{background:var(--accent-wash);color:var(--accent-ink)}
+/* Served by the desk's Worker at /listas/: a way back to the start page. */
+.bar .home{text-decoration:none;color:var(--accent-ink);font-weight:800;font-size:13px;width:26px;height:26px;border-radius:50%;background:var(--accent-wash);display:inline-flex;align-items:center;justify-content:center;margin-right:8px;flex:none}
 /* Embedded in the desk: its bar carries the name and the language. */
 body.embed .bar .marca,body.embed .bar .lang{display:none}
 .helpsteps{margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.5;color:var(--ink-2);max-width:780px}
@@ -280,6 +282,7 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
 </style>
 </head><body>
 <header class="bar">
+  <a class="home" id="home" href="/" hidden aria-label="Start page">LJC</a>
   <h1 class="marca" data-i18n="title">Site lists</h1>
   <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button><button type="button" id="mode-offer" role="tab" aria-selected="false" data-i18n="modeOffer">Offers</button></span>
   <div class="estado">
@@ -2648,6 +2651,7 @@ bootStep("sender type", () => setStype(stype));
 bootStep("embedded", () => {
   const q = new URLSearchParams(location.search);
   if(q.get("embed") === "1") document.body.classList.add("embed");
+  if(/^\/listas(\/|$)/.test(location.pathname)) $("home").hidden = false;
   if(q.get("lang") === "es" || q.get("lang") === "en"){ lang = q.get("lang"); try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} }
   if(q.get("theme") === "dark" || q.get("theme") === "light") document.documentElement.setAttribute("data-theme", q.get("theme"));
 });

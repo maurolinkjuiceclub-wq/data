@@ -39,6 +39,7 @@ bootStep("sender type", () => setStype(stype));
 bootStep("embedded", () => {
   const q = new URLSearchParams(location.search);
   if(q.get("embed") === "1") document.body.classList.add("embed");
+  if(/^\/listas(\/|$)/.test(location.pathname)) $("home").hidden = false;
   if(q.get("lang") === "es" || q.get("lang") === "en"){ lang = q.get("lang"); try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} }
   if(q.get("theme") === "dark" || q.get("theme") === "light") document.documentElement.setAttribute("data-theme", q.get("theme"));
 });
