@@ -39,7 +39,7 @@ bootStep("sender type", () => setStype(stype));
 bootStep("embedded", () => {
   const q = new URLSearchParams(location.search);
   if(q.get("embed") === "1") document.body.classList.add("embed");
-  if(/^\/listas(\/|$)/.test(location.pathname)) $("home").hidden = false;
+  if(EN_MESA) $("apps").hidden = false;
   if(q.get("lang") === "es" || q.get("lang") === "en"){ lang = q.get("lang"); try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} }
   if(q.get("theme") === "dark" || q.get("theme") === "light"){ temaElegido = q.get("theme"); aplicarTema(); }
 });

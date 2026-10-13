@@ -152,8 +152,19 @@ td.dec .decsel{display:none}
 .decsel{padding:5px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px;max-width:160px}
 .decsel.on-accept{background:var(--ok-bg);color:var(--ok-ink)} .decsel.on-reject{background:var(--bad-bg);color:var(--bad-ink)} .decsel.on-ask,.decsel.on-remove{background:var(--wait-bg);color:var(--wait-ink)} .decsel.on-webmaster{background:var(--accent-wash);color:var(--accent-ink)}
 /* Served by the desk's Worker at /listas/: a way back to the start page. */
-.bar .home{text-decoration:none;color:#fff;font-weight:800;font-size:13px;width:26px;height:26px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;margin-right:-10px;flex:none}
-.bar .home:hover{filter:brightness(1.1)}
+/* The app switch (13/10): the logo opens a menu with the other page and
+   the start page, the same menu as the language's. */
+.apps{margin-right:-10px}
+.apps > summary{height:auto;padding:0;border:0;background:none;border-radius:50%}
+.apps > summary:hover,.apps[open] > summary{background:none;border:0}
+.apps .logo{width:26px;height:26px;border-radius:50%;background:var(--accent);color:#fff;font-weight:800;font-size:13px;display:inline-flex;align-items:center;justify-content:center}
+.apps > summary:hover .logo{filter:brightness(1.1)}
+.apps .idioma-menu{left:0;right:auto;transform-origin:top left}
+.apps .idioma-menu a{display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:34px;padding:0 10px;border-radius:8px;color:var(--ink);text-decoration:none;font-size:13px}
+.apps .idioma-menu a:hover{background:var(--surface-2)}
+.apps .idioma-menu a svg{visibility:hidden;color:var(--accent-ink)}
+.apps .idioma-menu a[aria-current]{font-weight:600}
+.apps .idioma-menu a[aria-current] svg{visibility:visible}
 /* Embedded in the desk: its bar carries the name and the language. */
 body.embed .bar .marca,body.embed .bar .idioma,body.embed #tema,body.embed #whoami{display:none}
 .helpsteps{margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.5;color:var(--ink-2);max-width:780px}

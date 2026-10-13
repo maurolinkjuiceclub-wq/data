@@ -1,5 +1,12 @@
 <header class="bar">
-  <a class="home" id="home" href="/" hidden aria-label="Start page" title="LJC">L</a>
+  <details class="idioma apps" id="apps" hidden>
+    <summary aria-label="Switch to" title="LJC"><span class="logo">L</span></summary>
+    <div class="idioma-menu" role="group" aria-label="Switch to">
+      <a href="/mesa/"><span>LJC Outreach</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></a>
+      <a href="/listas/" aria-current="page"><span data-i18n="title">Site lists</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></a>
+      <a href="/"><span data-i18n="appInicio">Start page</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></a>
+    </div>
+  </details>
   <h1 class="marca" data-i18n="title">Site lists</h1>
   <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button><button type="button" id="mode-offer" role="tab" aria-selected="false" data-i18n="modeOffer">Offers</button></span>
   <div class="estado">
