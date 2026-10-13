@@ -33,6 +33,23 @@ bootStep("database screen", () => {
 });
 bootStep("remembered screen", () => { let m = "list"; try{ m = localStorage.getItem("ljc-lists-mode") === "db" ? "db" : "list"; }catch(e){} if(m === "db") setMode("db"); });
 bootStep("sender type", () => setStype(stype));
+/* Inside the desk (iframe at /listas/?embed=1&lang=es&theme=dark): the
+   desk's bar is above, so the title and the language switch go; the
+   language and theme follow the desk's. */
+bootStep("embedded", () => {
+  const q = new URLSearchParams(location.search);
+  if(q.get("embed") === "1") document.body.classList.add("embed");
+  if(q.get("lang") === "es" || q.get("lang") === "en"){ lang = q.get("lang"); try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} }
+  if(q.get("theme") === "dark" || q.get("theme") === "light") document.documentElement.setAttribute("data-theme", q.get("theme"));
+});
+/* And afterwards, when the desk switches language or theme, it says so by
+   message (montarListas in the desk's mesa.html). */
+window.addEventListener("message", e => {
+  if(e.origin !== location.origin || !e.data || e.data.tipo !== "mesa-listas") return;
+  if(e.data.lang === "es" || e.data.lang === "en"){ lang = e.data.lang; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(err){} applyLang(); }
+  if(e.data.theme === "dark" || e.data.theme === "light") document.documentElement.setAttribute("data-theme", e.data.theme);
+  else document.documentElement.removeAttribute("data-theme");
+});
 bootStep("language", () => applyLang());
 bootStep("match", () => run());
 /* The copy loaded on an earlier visit, if any: read again from the browser. */

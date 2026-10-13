@@ -6,6 +6,17 @@ Cloudflare as it will be separate." This is the plan for that second step,
 written before it starts so the day it starts is a day of work, not a week.
 Nothing here is done yet; nothing here touches the desk until Gary says so.
 
+**Done on 13/10**, after Gary sent the service account's key and the sheet id
+("Please proceed with this today"): steps 1, 2 and 4 as planned; step 3 as a
+frame rather than a paste (the page is served by the desk's Worker at
+`/listas/` and shown in the Lists tab, with `?embed=1&lang=&theme=` and a
+message from the desk when either changes); step 6 in the desk's README and
+HANDOVER. Changed from the plan: **Accept does not write** on the desk
+(`LISTS_WRITE` "0", Gary's "no live override" of 09/10), the sheet is the copy
+Gary shared, and this repository stays the place the page is built
+(`scripts/build-page.mjs` → copy `src/index.html` to `proto2/src/listas/index.html`).
+Still open: step 5 (the Reply bridge) and the row-format decision.
+
 ## What moves, and where
 
 | Piece of this project | Goes to | How |

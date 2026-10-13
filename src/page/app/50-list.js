@@ -26,7 +26,7 @@ function run(){
 async function matchRemote(){
   const sender = $("sender").value.trim();
   try{
-    const r = await fetch("/api/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: items.map(i => i.domain), sender }) });
+    const r = await fetch(API + "/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: items.map(i => i.domain), sender }) });
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     lastMatch = j;
@@ -268,7 +268,7 @@ function decideShown(dec){
     if(!dec) delete decisions[d];
     else if(!decisionKeys(d).includes(dec)) return;
     /* With the sheet connected an Accept is a write: one per row, as a click. */
-    else if(remote && dec === "accept"){ if(decisions[d] !== "accept") decide(d, "accept"); }
+    else if(remote && remote.write && dec === "accept"){ if(decisions[d] !== "accept") decide(d, "accept"); }
     else decisions[d] = dec;
   });
   saveDecisions(); renderTable();
@@ -283,7 +283,7 @@ function setCurRow(d, scroll){
 }
 function decide(d, dec){
   if(written[d]) return;
-  if(remote && dec === "accept" && decisions[d] !== "accept"){ const b = $("results").querySelector(`button[data-dom="${CSS.escape(d)}"][data-dec="accept"]`); if(b) acceptRemote(d, b); return; }
+  if(remote && remote.write && dec === "accept" && decisions[d] !== "accept"){ const b = $("results").querySelector(`button[data-dom="${CSS.escape(d)}"][data-dec="accept"]`); if(b) acceptRemote(d, b); return; }
   if(!dec || decisions[d] === dec) delete decisions[d]; else if(decisionKeys(d).includes(dec)) decisions[d] = dec; else return;
   saveDecisions(); refreshRow(d);
 }
@@ -342,7 +342,7 @@ $("results").addEventListener("click", e => {
   if(!b.dataset.dec) return;
   const dom = b.dataset.dom, dec = b.dataset.dec;
   if(written[dom]) return;   /* already in the sheet: no undo from here */
-  if(remote && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
+  if(remote && remote.write && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
   if(decisions[dom] === dec) delete decisions[dom]; else decisions[dom] = dec;
   saveDecisions(); refreshRow(dom);
 });
@@ -379,7 +379,7 @@ async function acceptRemote(dom, btn){
   const requestId = (acceptIds[dom] = acceptIds[dom] || (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
   btn.disabled = true; btn.textContent = t().writing;
   try{
-    const r = await fetch("/api/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row, requestId, restore: !!flags.restored }) });
+    const r = await fetch(API + "/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row, requestId, restore: !!flags.restored }) });
     const j = await r.json().catch(() => ({}));
     if(!r.ok || !j.ok) throw new Error(j.error || String(r.status));
     written[dom] = j.updatedRange || "ok";

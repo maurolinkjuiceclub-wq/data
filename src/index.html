@@ -127,6 +127,8 @@ table.outreach tbody tr.cur td{background:var(--accent-wash)}
 td.dec .decsel{display:none}
 .decsel{padding:5px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px;max-width:160px}
 .decsel.on-accept{background:var(--ok-bg);color:var(--ok-ink)} .decsel.on-reject{background:var(--bad-bg);color:var(--bad-ink)} .decsel.on-ask,.decsel.on-remove{background:var(--wait-bg);color:var(--wait-ink)} .decsel.on-webmaster{background:var(--accent-wash);color:var(--accent-ink)}
+/* Embedded in the desk: its bar carries the name and the language. */
+body.embed .bar .marca,body.embed .bar .lang{display:none}
 .helpsteps{margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.5;color:var(--ink-2);max-width:780px}
 .helpsteps li{margin:4px 0}
 #help{padding:3px 9px;font-size:12px;margin-right:8px}
@@ -1258,16 +1260,21 @@ let index = indexDatabase(dbRows, rmRows);
 let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
 /* The Worker, when the page is served next to it. In the claude.ai copy
    there is no Worker: the fetch fails and the page stays on sample rows. */
-let remote = null;      /* { rows, readAt } when /api/status says connected */
+/* Where the Worker answers: /api when the page is on its own, /api/lists
+   when it is served inside the desk under /listas/ (13/10). */
+const API = /^\/listas(\/|$)/.test(location.pathname) ? "/api/lists" : "/api";
+let remote = null;      /* { rows, readAt, write } when the status route says connected */
 let lastMatch = null;   /* the Worker's answer for the current list */
 const written = {};     /* domain -> updatedRange, rows the Worker appended */
 const acceptIds = {};   /* domain -> request id, kept across retries */
 async function checkRemote(){
   try{
-    const r = await fetch("/api/status", { headers: { accept: "application/json" } });
+    const r = await fetch(API + "/status", { headers: { accept: "application/json" } });
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who } : null;
+    /* write: the Worker says whether Accept may append to the sheet (the
+       desk keeps it off unless Gary switches LISTS_WRITE on). */
+    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true } : null;
     remoteWhy = j.connected ? "" : (j.reason || "");
   }catch(e){ remote = null; remoteWhy = ""; }
   describeDb();
@@ -1495,7 +1502,7 @@ function run(){
 async function matchRemote(){
   const sender = $("sender").value.trim();
   try{
-    const r = await fetch("/api/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: items.map(i => i.domain), sender }) });
+    const r = await fetch(API + "/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: items.map(i => i.domain), sender }) });
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     lastMatch = j;
@@ -1737,7 +1744,7 @@ function decideShown(dec){
     if(!dec) delete decisions[d];
     else if(!decisionKeys(d).includes(dec)) return;
     /* With the sheet connected an Accept is a write: one per row, as a click. */
-    else if(remote && dec === "accept"){ if(decisions[d] !== "accept") decide(d, "accept"); }
+    else if(remote && remote.write && dec === "accept"){ if(decisions[d] !== "accept") decide(d, "accept"); }
     else decisions[d] = dec;
   });
   saveDecisions(); renderTable();
@@ -1752,7 +1759,7 @@ function setCurRow(d, scroll){
 }
 function decide(d, dec){
   if(written[d]) return;
-  if(remote && dec === "accept" && decisions[d] !== "accept"){ const b = $("results").querySelector(`button[data-dom="${CSS.escape(d)}"][data-dec="accept"]`); if(b) acceptRemote(d, b); return; }
+  if(remote && remote.write && dec === "accept" && decisions[d] !== "accept"){ const b = $("results").querySelector(`button[data-dom="${CSS.escape(d)}"][data-dec="accept"]`); if(b) acceptRemote(d, b); return; }
   if(!dec || decisions[d] === dec) delete decisions[d]; else if(decisionKeys(d).includes(dec)) decisions[d] = dec; else return;
   saveDecisions(); refreshRow(d);
 }
@@ -1811,7 +1818,7 @@ $("results").addEventListener("click", e => {
   if(!b.dataset.dec) return;
   const dom = b.dataset.dom, dec = b.dataset.dec;
   if(written[dom]) return;   /* already in the sheet: no undo from here */
-  if(remote && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
+  if(remote && remote.write && dec === "accept" && decisions[dom] !== "accept"){ acceptRemote(dom, b); return; }
   if(decisions[dom] === dec) delete decisions[dom]; else decisions[dom] = dec;
   saveDecisions(); refreshRow(dom);
 });
@@ -1848,7 +1855,7 @@ async function acceptRemote(dom, btn){
   const requestId = (acceptIds[dom] = acceptIds[dom] || (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
   btn.disabled = true; btn.textContent = t().writing;
   try{
-    const r = await fetch("/api/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row, requestId, restore: !!flags.restored }) });
+    const r = await fetch(API + "/accept", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ row, requestId, restore: !!flags.restored }) });
     const j = await r.json().catch(() => ({}));
     if(!r.ok || !j.ok) throw new Error(j.error || String(r.status));
     written[dom] = j.updatedRange || "ok";
@@ -2252,7 +2259,7 @@ function dbRemoteQuery(offset){
 async function dbRemoteFetch(offset, first){
   const key = dbRemoteQuery(offset);
   try{
-    const r = await fetch("/api/rows?" + key);
+    const r = await fetch(API + "/rows?" + key);
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     if(dbRemoteQuery(offset) !== key) return;   /* filters changed meanwhile */
@@ -2328,6 +2335,23 @@ bootStep("database screen", () => {
 });
 bootStep("remembered screen", () => { let m = "list"; try{ m = localStorage.getItem("ljc-lists-mode") === "db" ? "db" : "list"; }catch(e){} if(m === "db") setMode("db"); });
 bootStep("sender type", () => setStype(stype));
+/* Inside the desk (iframe at /listas/?embed=1&lang=es&theme=dark): the
+   desk's bar is above, so the title and the language switch go; the
+   language and theme follow the desk's. */
+bootStep("embedded", () => {
+  const q = new URLSearchParams(location.search);
+  if(q.get("embed") === "1") document.body.classList.add("embed");
+  if(q.get("lang") === "es" || q.get("lang") === "en"){ lang = q.get("lang"); try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} }
+  if(q.get("theme") === "dark" || q.get("theme") === "light") document.documentElement.setAttribute("data-theme", q.get("theme"));
+});
+/* And afterwards, when the desk switches language or theme, it says so by
+   message (montarListas in the desk's mesa.html). */
+window.addEventListener("message", e => {
+  if(e.origin !== location.origin || !e.data || e.data.tipo !== "mesa-listas") return;
+  if(e.data.lang === "es" || e.data.lang === "en"){ lang = e.data.lang; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(err){} applyLang(); }
+  if(e.data.theme === "dark" || e.data.theme === "light") document.documentElement.setAttribute("data-theme", e.data.theme);
+  else document.documentElement.removeAttribute("data-theme");
+});
 bootStep("language", () => applyLang());
 bootStep("match", () => run());
 /* The copy loaded on an earlier visit, if any: read again from the browser. */

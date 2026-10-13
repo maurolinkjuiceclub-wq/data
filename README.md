@@ -7,6 +7,12 @@ Database" sheet), decide every row, and let Accept write the accepted row.
 Separate project from the outreach desk (`proto2`), decided 07/10/2026.
 It shares the desk's look (tokens, type) but none of its code or deploy.
 
+
+> **13/10:** this page now also lives inside the desk (`maurolinkjuiceclub-wq/proto2`,
+> the Lists tab) with the live sheet behind it. This repository is still where
+> it is built and tested: change it here, `node scripts/build-page.mjs`, copy
+> `src/index.html` to the desk's `src/listas/index.html`. See `INTEGRATION.md`.
+
 ## What is here
 
 - `src/index.html`: the screen, EN/ES, **generated** by

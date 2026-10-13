@@ -9,16 +9,21 @@ let index = indexDatabase(dbRows, rmRows);
 let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
 /* The Worker, when the page is served next to it. In the claude.ai copy
    there is no Worker: the fetch fails and the page stays on sample rows. */
-let remote = null;      /* { rows, readAt } when /api/status says connected */
+/* Where the Worker answers: /api when the page is on its own, /api/lists
+   when it is served inside the desk under /listas/ (13/10). */
+const API = /^\/listas(\/|$)/.test(location.pathname) ? "/api/lists" : "/api";
+let remote = null;      /* { rows, readAt, write } when the status route says connected */
 let lastMatch = null;   /* the Worker's answer for the current list */
 const written = {};     /* domain -> updatedRange, rows the Worker appended */
 const acceptIds = {};   /* domain -> request id, kept across retries */
 async function checkRemote(){
   try{
-    const r = await fetch("/api/status", { headers: { accept: "application/json" } });
+    const r = await fetch(API + "/status", { headers: { accept: "application/json" } });
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
-    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who } : null;
+    /* write: the Worker says whether Accept may append to the sheet (the
+       desk keeps it off unless Gary switches LISTS_WRITE on). */
+    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true } : null;
     remoteWhy = j.connected ? "" : (j.reason || "");
   }catch(e){ remote = null; remoteWhy = ""; }
   describeDb();

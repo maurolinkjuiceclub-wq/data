@@ -125,7 +125,7 @@ function dbRemoteQuery(offset){
 async function dbRemoteFetch(offset, first){
   const key = dbRemoteQuery(offset);
   try{
-    const r = await fetch("/api/rows?" + key);
+    const r = await fetch(API + "/rows?" + key);
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     if(dbRemoteQuery(offset) !== key) return;   /* filters changed meanwhile */
