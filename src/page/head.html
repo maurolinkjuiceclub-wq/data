@@ -1,7 +1,7 @@
 <title>LJC Site Lists</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
 /* Same system as the desk (src/mesa.html): dark by default in neutral greys, a surface scale instead of borders, one blue accent; green and amber mean state, never decoration. Layout: the desk's bar on top, then a full-width work screen like "Our outreach". */
 :root{
@@ -13,7 +13,7 @@
   --bad:#e0645b; --bad-ink:#f08a82; --bad-bg:#3a1f1d; --bad-line:#6e3531;
   --shadow:0 1px 2px rgba(0,0,0,.45),0 8px 24px -16px rgba(0,0,0,.9);
   --radio:8px;
-  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --sans:"Geist",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
   --mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
   color-scheme:dark;
 }
@@ -43,9 +43,38 @@ button{font-family:inherit;font-size:inherit;color:inherit}
 .bar{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;display:flex;align-items:center;gap:22px;flex-wrap:wrap;padding:0 16px;min-height:46px;background:var(--surface);border-bottom:1px solid var(--line)}
 .marca{font-weight:600;font-size:14px;letter-spacing:-.01em;color:var(--ink);white-space:nowrap;margin:0}
 .estado{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:7px 0;font-size:12px;color:var(--muted)}
-.lang{display:inline-flex;border:1px solid var(--line-strong);border-radius:6px;overflow:hidden}
-.lang button{background:var(--surface);border:0;padding:3px 8px;cursor:pointer;font-size:10.5px;letter-spacing:.05em;font-weight:600;color:var(--muted)}
-.lang button[aria-pressed="true"]{background:var(--accent);color:var(--surface)}
+/* The desk's header pieces (13/10, "like the other part"): the signed-in
+   person in a blue bubble, one theme button with an icon, the language as a
+   menu. Same measures as src/mesa.html. */
+#whoami{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px 0 4px;border:0;border-radius:999px;background:linear-gradient(135deg,#2e6bff 0%,#5b8cff 55%,#7aa8ff 100%);color:#fff;font-weight:600;font-size:12.5px;box-shadow:0 1px 2px rgba(20,60,160,.25),inset 0 1px 0 rgba(255,255,255,.25);white-space:nowrap}
+.whoami-av{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.22);font-size:12px;font-weight:700}
+#tema{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s,background-color .15s,transform .1s ease-out}
+#tema:hover{border-color:var(--line-strong);background:var(--surface-2);color:var(--ink)}
+#tema:active{transform:scale(.94)}
+#tema svg,.idioma svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.idioma{position:relative}
+.idioma > summary{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer;list-style:none;user-select:none;font-size:13px;transition:border-color .15s,color .15s,background-color .15s}
+.idioma > summary::-webkit-details-marker{display:none}
+.idioma > summary:hover,.idioma[open] > summary{border-color:var(--line-strong);background:var(--surface-2);color:var(--ink)}
+.idioma-v{width:14px!important;height:14px!important;opacity:.7;transition:transform .15s ease-out}
+.idioma[open] .idioma-v{transform:rotate(180deg)}
+.idioma-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:40;display:grid;gap:2px;min-width:168px;padding:6px;border:1px solid var(--line);border-radius:12px;background:var(--surface);box-shadow:0 12px 32px rgba(0,0,0,.18),0 2px 6px rgba(0,0,0,.08);transform-origin:top right;animation:idioma-entra .14s ease-out}
+@keyframes idioma-entra{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
+.idioma-menu button{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:34px;padding:0 10px;border:0;border-radius:8px;background:none;color:var(--ink);text-align:left;cursor:pointer;font-size:13px}
+.idioma-menu button:hover{background:var(--surface-2)}
+.idioma-menu button svg{visibility:hidden;color:var(--accent-ink)}
+.idioma-menu button[aria-pressed="true"]{font-weight:600}
+.idioma-menu button[aria-pressed="true"] svg{visibility:visible}
+@media (prefers-reduced-motion:reduce){.idioma-menu{animation:none}.idioma-v,#tema{transition:none}}
+/* Rail blocks that fold (13/10): the metrics minimums and the file input
+   open only when wanted; the caret says which. */
+details.plegable > summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:6px;font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:600;user-select:none}
+details.plegable > summary::-webkit-details-marker{display:none}
+details.plegable > summary .caret{font-size:9px;transition:transform .15s}
+details.plegable:not([open]) > summary .caret{transform:rotate(-90deg)}
+details.plegable > summary:hover{color:var(--ink)}
+details.plegable > .in{padding-top:6px;display:grid;gap:6px}
+@media (max-width:719px){.bar{gap:10px}.sello{white-space:normal;text-align:left}.estado{flex-wrap:wrap}#whoami .txt{display:none}#whoami{padding:0 4px}}
 .sello{font-family:var(--mono);font-size:11px;color:var(--muted);background:none;border:1px solid transparent;border-radius:6px;padding:3px 7px;white-space:nowrap}
 
 /* ---------- database panel, behind its seal ---------- */
@@ -123,9 +152,10 @@ td.dec .decsel{display:none}
 .decsel{padding:5px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px;max-width:160px}
 .decsel.on-accept{background:var(--ok-bg);color:var(--ok-ink)} .decsel.on-reject{background:var(--bad-bg);color:var(--bad-ink)} .decsel.on-ask,.decsel.on-remove{background:var(--wait-bg);color:var(--wait-ink)} .decsel.on-webmaster{background:var(--accent-wash);color:var(--accent-ink)}
 /* Served by the desk's Worker at /listas/: a way back to the start page. */
-.bar .home{text-decoration:none;color:var(--accent-ink);font-weight:800;font-size:13px;width:26px;height:26px;border-radius:50%;background:var(--accent-wash);display:inline-flex;align-items:center;justify-content:center;margin-right:8px;flex:none}
+.bar .home{text-decoration:none;color:#fff;font-weight:800;font-size:13px;width:26px;height:26px;border-radius:50%;background:var(--accent);display:inline-flex;align-items:center;justify-content:center;margin-right:-10px;flex:none}
+.bar .home:hover{filter:brightness(1.1)}
 /* Embedded in the desk: its bar carries the name and the language. */
-body.embed .bar .marca,body.embed .bar .lang{display:none}
+body.embed .bar .marca,body.embed .bar .idioma,body.embed #tema,body.embed #whoami{display:none}
 .helpsteps{margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.5;color:var(--ink-2);max-width:780px}
 .helpsteps li{margin:4px 0}
 #help{padding:3px 9px;font-size:12px;margin-right:8px}

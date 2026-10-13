@@ -13,6 +13,22 @@ let groups = null, items = [], lastParsed = null, view = "changed", stype = "Pub
    when it is served inside the desk under /listas/ (13/10). */
 const API = /^\/listas(\/|$)/.test(location.pathname) ? "/api/lists" : "/api";
 let remote = null;      /* { rows, readAt, write } when the status route says connected */
+const TEMA_KEY = "mesa-cotejo-tema";   /* the desk's key: one choice for both pages */
+let temaElegido = ""; try{ temaElegido = localStorage.getItem(TEMA_KEY) || ""; }catch(e){}
+function aplicarTema(){
+  const r = document.documentElement;
+  if(temaElegido === "dark" || temaElegido === "light") r.setAttribute("data-theme", temaElegido); else r.removeAttribute("data-theme");
+  pintarTema();
+}
+function pintarTema(){
+  const b = $("tema"); if(!b) return;
+  const d = temaElegido === "dark" ? "M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"
+    : temaElegido === "light" ? "M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zM12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"
+    : "M3 4h18v12H3zM8 20h8M12 16v4";
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  const nombre = typeof t === "function" ? (temaElegido === "dark" ? t().temaOscuro : temaElegido === "light" ? t().temaClaro : t().temaAuto) : "";
+  b.title = nombre; b.setAttribute("aria-label", nombre);
+}
 let lastMatch = null;   /* the Worker's answer for the current list */
 const written = {};     /* domain -> updatedRange, rows the Worker appended */
 const acceptIds = {};   /* domain -> request id, kept across retries */
@@ -21,13 +37,13 @@ const acceptIds = {};   /* domain -> request id, kept across retries */
 async function checkRemote(force){
   try{
     const r = await fetch(API + "/status" + (force ? "?refresh=1" : ""), { headers: { accept: "application/json" } });
-    if(!r.ok) throw new Error(String(r.status));
+    if(!r.ok){ const j = await r.json().catch(() => null); throw new Error("HTTP " + r.status + (j && j.reason ? ": " + j.reason : "")); }
     const j = await r.json();
     /* write: the Worker says whether Accept may append to the sheet (the
        desk keeps it off unless Gary switches LISTS_WRITE on). */
     remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true } : null;
     remoteWhy = j.connected ? "" : (j.reason || "");
-  }catch(e){ remote = null; remoteWhy = ""; }
+  }catch(e){ remote = null; remoteWhy = String(e && e.message || e); }
   describeDb();
 }
 let remoteWhy = "";

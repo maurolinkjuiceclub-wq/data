@@ -41,15 +41,28 @@ bootStep("embedded", () => {
   if(q.get("embed") === "1") document.body.classList.add("embed");
   if(/^\/listas(\/|$)/.test(location.pathname)) $("home").hidden = false;
   if(q.get("lang") === "es" || q.get("lang") === "en"){ lang = q.get("lang"); try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} }
-  if(q.get("theme") === "dark" || q.get("theme") === "light") document.documentElement.setAttribute("data-theme", q.get("theme"));
+  if(q.get("theme") === "dark" || q.get("theme") === "light"){ temaElegido = q.get("theme"); aplicarTema(); }
 });
 /* And afterwards, when the desk switches language or theme, it says so by
    message (montarListas in the desk's mesa.html). */
 window.addEventListener("message", e => {
   if(e.origin !== location.origin || !e.data || e.data.tipo !== "mesa-listas") return;
   if(e.data.lang === "es" || e.data.lang === "en"){ lang = e.data.lang; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(err){} applyLang(); }
-  if(e.data.theme === "dark" || e.data.theme === "light") document.documentElement.setAttribute("data-theme", e.data.theme);
-  else document.documentElement.removeAttribute("data-theme");
+  temaElegido = e.data.theme === "dark" || e.data.theme === "light" ? e.data.theme : ""; aplicarTema();
+});
+/* The theme, as the desk's: follow the system, dark, light, one button
+   that cycles and says which with its icon. The key is the desk's own when
+   the page is served by it, so both agree. */
+bootStep("theme", () => { aplicarTema(); $("tema").addEventListener("click", () => { temaElegido = temaElegido === "" ? "dark" : temaElegido === "dark" ? "light" : ""; try{ localStorage.setItem(TEMA_KEY, temaElegido); }catch(e){} aplicarTema(); }); });
+/* Who is signed in, from the desk's Worker, in the blue bubble. */
+bootStep("who", () => {
+  if(!EN_MESA) return;
+  fetch("/api/quien", { headers: { accept: "application/json" } }).then(r => r.ok ? r.json() : null).then(j => {
+    if(!j || !j.email) return;
+    const w = $("whoami"); w.textContent = ""; const av = document.createElement("span"); av.className = "whoami-av"; av.setAttribute("aria-hidden", "true"); av.textContent = j.email.charAt(0).toUpperCase();
+    const tx = document.createElement("span"); tx.className = "txt"; tx.textContent = j.email;
+    w.appendChild(av); w.appendChild(tx); w.title = t().whoamiLbl + " " + j.email; w.hidden = false;
+  }).catch(() => {});
 });
 bootStep("language", () => applyLang());
 bootStep("match", () => run());
