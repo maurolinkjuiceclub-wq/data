@@ -13,6 +13,12 @@ It shares the desk's look (tokens, type) but none of its code or deploy.
 > it is built and tested: change it here, `node scripts/build-page.mjs`, copy
 > `src/index.html` to the desk's `src/listas/index.html`. See `INTEGRATION.md`.
 
+>
+> **Offers (13/10):** a third screen builds an offer for a client from the
+> database: the Database filters plus DR and traffic minimums and an order,
+> a basket with a price and a comment per site, Copy, CSV and .xlsx. See
+> `BRIEF.md`, "Offers screen", for what is assumed until the team confirms.
+
 ## What is here
 
 - `src/index.html`: the screen, EN/ES, **generated** by

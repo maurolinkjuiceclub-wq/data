@@ -1,0 +1,182 @@
+/* ---------- the offers screen ----------
+   Tim, 13/10: "offers we send to clients, that is now done manually". An
+   offer is a selection of sites from the database for one client, with
+   metrics and a price per site. The screen is the database with the same
+   filters plus two minimums (DR, traffic), an order, and a basket on the
+   right: click a row to add it, type the price the client gets, copy or
+   download the sheet. Nothing here writes anywhere. The price starts as
+   the publisher's price for the niche; the margin rule is the team's to
+   give (BRIEF, open question 1). Offers are kept in this browser by name. */
+const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0 };
+const OF_COLS = [["pick", 40], ["Domain", 220], ["Country", 110], ["Language", 90], ["DR", 64], ["RD", 84], ["Traffic", 94], ["Topic", 170], ["Price", 84], ["Terms", 220]];
+const OFFERS_KEY = "ljc-offers";
+let offer = { client: "", label: "", niche: "casino", items: [] };   /* items: {domain, row, price, comment} */
+const inOffer = () => new Set(offer.items.map(i => i.domain));
+
+function ofSourceRows(){ return dbRows; }
+function ofRefresh(){
+  if(remote){ ofState.remotePages.clear(); ofRemoteFetch(0, true); return; }
+  const rows = ofSourceRows();
+  const f = dbFacetsFor(rows);
+  ofState.country = fillSelect("of-country", f.countries, ofState.country);
+  ofState.lang = fillSelect("of-lang", f.languages, ofState.lang);
+  ofState.list = sortRows(rows.filter(r => rowMatchesFilters(r, ofState)), ofState.sort);
+  ofState.total = rows.length;
+  ofDraw();
+}
+function ofCell(r, c, picked){
+  if(c === "pick") return `<div class="pick">${picked ? "✓" : "+"}</div>`;
+  if(c === "Domain") return `<div class="d" title="${esc(r.Domain)}">${esc(r.Domain)}</div>`;
+  if(c === "Country") return `<div class="s">${esc(r["Main Country"] || "")}</div>`;
+  if(c === "Language") return `<div class="s">${esc(r["Domain Language"] || "")}</div>`;
+  if(c === "Topic") return `<div class="s" title="${esc(r["Website Topic"] || "")}">${esc(r["Website Topic"] || "")}</div>`;
+  if(c === "DR" || c === "RD" || c === "Traffic"){ const v = numberOf(r[{ DR: "Ahrefs Domain Rating", RD: "Ahrefs Referring Domains", Traffic: "Ahrefs Organic Traffic" }[c]]); return `<div class="num ${v != null ? "has" : ""}">${v != null ? v.toLocaleString("en") : "·"}</div>`; }
+  if(c === "Price"){ const v = offerPrice(r, ofState.niche); return `<div class="num ${v != null ? "has" : ""}">${v != null ? v : "·"}</div>`; }
+  if(c === "Terms"){ const f = [r["Link Type"], r["Placement"], r["Price Validity"], r["Sponsor Tag Type"]].filter(Boolean).join(" · "); return `<div class="s" title="${esc(f)}">${esc(f) || `<span class="mut">—</span>`}</div>`; }
+  return `<div></div>`;
+}
+function ofDraw(){
+  const grid = $("of-grid");
+  grid.style.setProperty("--cols", OF_COLS.map(([, w]) => w + "px").join(" "));
+  $("of-head").innerHTML = OF_COLS.map(([c]) => `<div title="${esc(c)}">${c === "pick" ? "" : esc(t().ofCols[c] || c)}</div>`).join("");
+  const total = remote ? ofState.remoteTotal : ofState.list.length;
+  $("of-count").textContent = t().dbCount(total, remote ? (remote.rows || 0) : ofState.total);
+  if(!total){ $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-rows").innerHTML = `<div class="dbempty">${t().dbEmpty}</div>`; return; }
+  const scroll = grid.scrollTop, h = grid.clientHeight || 600;
+  const first = Math.max(0, Math.floor(scroll / ROW_H) - 10), last = Math.min(total, Math.ceil((scroll + h) / ROW_H) + 10);
+  $("of-top").style.height = (first * ROW_H) + "px";
+  $("of-bottom").style.height = ((total - last) * ROW_H) + "px";
+  const have = inOffer(); const out = [];
+  for(let i = first; i < last; i++){
+    const r = remote ? ofRemoteRow(i) : ofState.list[i];
+    if(!r){ out.push(`<div class="dbr dbloading"><div class="d">${t().dbLoading}</div></div>`); continue; }
+    const d = normaliseDomain(r.Domain); const picked = !!(d && have.has(d.domain));
+    out.push(`<div class="dbr ${picked ? "sel" : ""}" data-i="${i}">${OF_COLS.map(([c]) => ofCell(r, c, picked)).join("")}</div>`);
+  }
+  $("of-rows").innerHTML = out.join("");
+}
+/* Click a row: in or out of the offer. Price from the sheet for the niche. */
+function ofToggle(r){
+  const d = normaliseDomain(r.Domain); if(!d) return;
+  const i = offer.items.findIndex(x => x.domain === d.domain);
+  if(i >= 0) offer.items.splice(i, 1);
+  else offer.items.push({ domain: d.domain, row: r, price: offerPrice(r, offer.niche), comment: "" });
+  saveOffer(); renderBasket(); ofDraw();
+}
+/* --- the basket --- */
+function renderBasket(){
+  const list = $("of-items");
+  if(!offer.items.length){ list.innerHTML = `<div class="dbempty">${esc(t().ofEmpty)}</div>`; }
+  else list.innerHTML = offer.items.map((it, i) => `<div class="ofit" data-i="${i}"><div class="d" title="${esc(it.domain)}">${esc(it.domain)}</div><input type="number" class="ofprice" data-i="${i}" min="0" step="1" value="${it.price == null ? "" : esc(String(it.price))}" aria-label="Price"><input type="text" class="ofcomment" data-i="${i}" value="${esc(it.comment || "")}" placeholder="${esc(t().ofComment)}" aria-label="Comment"><button type="button" class="btn sutil ofx" data-i="${i}" aria-label="Remove">×</button></div>`).join("");
+  const sum = offer.items.reduce((a, it) => a + (Number(it.price) || 0), 0);
+  $("of-total").textContent = t().ofTotal(offer.items.length, sum);
+  const out = offerOutput();
+  $("of-tsv").value = [out.cols.join("\t")].concat(out.rows.map(r => out.cols.map(c => String(r[c] ?? "").replace(/\t/g, " ")).join("\t"))).join("\n");
+  outputs.offer = out;
+}
+function offerOutput(){
+  const rows = offer.items.map(it => rowForOffer(it.row, { niche: offer.niche, price: it.price, comment: it.comment }));
+  const slug = (offer.label || offer.client || "offer").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "offer";
+  return { cols: OFFER_COLUMNS, rows, name: "offer-" + slug, sheet: "Offer" };
+}
+function offersStore(){ try{ return JSON.parse(localStorage.getItem(OFFERS_KEY) || "{}"); }catch(e){ return {}; } }
+function saveOffer(){
+  const key = (offer.label || "").trim(); if(!key) return;
+  const all = offersStore();
+  all[key] = { client: offer.client, niche: offer.niche, at: Date.now(), items: offer.items.map(it => ({ domain: it.domain, price: it.price, typed: !!it.typed, comment: it.comment, row: it.row })) };
+  try{ localStorage.setItem(OFFERS_KEY, JSON.stringify(all)); localStorage.setItem(OFFERS_KEY + ":current", key); }catch(e){}
+  fillOfferHist();
+}
+function fillOfferHist(){
+  const all = offersStore(); const sel = $("of-hist");
+  const names = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+  sel.innerHTML = `<option value="">${esc(t().ofPrev)}</option>` + names.map(n => `<option value="${esc(n)}">${esc(n)} · ${all[n].items.length}</option>`).join("");
+  sel.hidden = !names.length;
+}
+function openOffer(name){
+  const rec = offersStore()[name]; if(!rec) return;
+  offer = { client: rec.client || "", label: name, niche: rec.niche || "casino", items: (rec.items || []).map(it => ({ domain: it.domain, row: it.row || { Domain: it.domain }, price: it.price, typed: !!it.typed, comment: it.comment || "" })) };
+  $("of-client").value = offer.client; $("of-label").value = offer.label; $("of-niche").value = offer.niche; ofState.niche = offer.niche; $("of-hist").value = name;
+  try{ localStorage.setItem(OFFERS_KEY + ":current", name); }catch(e){}
+  renderBasket(); if(mode === "offer") ofRefresh();
+}
+function newOffer(){
+  offer = { client: "", label: "", niche: ofState.niche, items: [] };
+  $("of-client").value = ""; $("of-label").value = ""; $("of-hist").value = "";
+  try{ localStorage.removeItem(OFFERS_KEY + ":current"); }catch(e){}
+  renderBasket(); ofDraw();
+}
+
+/* --- the Worker's pages, as the database screen --- */
+function ofRemoteRow(i){
+  const page = Math.floor(i / PAGE), rows = ofState.remotePages.get(page);
+  if(rows === undefined){ ofRemoteFetch(page * PAGE, false); ofState.remotePages.set(page, null); return null; }
+  return rows ? rows[i - page * PAGE] : null;
+}
+function ofRemoteQuery(offset){
+  const p = new URLSearchParams({ offset: String(offset), limit: String(PAGE) });
+  for(const k of ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"]){ const v = String(ofState[k] || "").trim(); if(v) p.set(k, v); }
+  return p.toString();
+}
+async function ofRemoteFetch(offset, first){
+  const key = ofRemoteQuery(offset);
+  try{
+    const r = await fetch(API + "/rows?" + key);
+    if(!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    if(ofRemoteQuery(offset) !== key) return;
+    ofState.remotePages.set(Math.floor(offset / PAGE), (j.rows || []).map(prepareRow));
+    ofState.remoteTotal = j.total || 0;
+    if(first && j.facets){ ofState.country = fillSelect("of-country", j.facets.countries || [], ofState.country); ofState.lang = fillSelect("of-lang", j.facets.languages || [], ofState.lang); }
+    ofDraw();
+  }catch(e){ ofState.remoteTotal = 0; ofDraw(); }
+}
+let ofTimer = null;
+const OF_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"];
+function ofSaveFilters(){ try{ localStorage.setItem("ljc-lists-offilters", JSON.stringify(Object.fromEntries(OF_FILTER_KEYS.map(k => [k, ofState[k]])))); }catch(e){} }
+function ofRestoreFilters(){
+  try{
+    const f = JSON.parse(localStorage.getItem("ljc-lists-offilters") || "{}");
+    OF_FILTER_KEYS.forEach(k => { if(f[k] != null) ofState[k] = f[k]; });
+    $("of-q").value = ofState.q; $("of-type").value = ofState.type; $("of-niche").value = ofState.niche || "casino"; $("of-min-dr").value = ofState.minDr; $("of-min-traffic").value = ofState.minTraffic; $("of-sort").value = ofState.sort || "dr";
+    offer.niche = ofState.niche;
+  }catch(e){}
+}
+function ofOnChange(){
+  ofState.q = $("of-q").value; ofState.type = $("of-type").value; ofState.country = $("of-country").value; ofState.lang = $("of-lang").value;
+  ofState.niche = $("of-niche").value || "casino"; ofState.minDr = $("of-min-dr").value; ofState.minTraffic = $("of-min-traffic").value; ofState.sort = $("of-sort").value;
+  /* The niche is the offer's: the prices in the basket follow it only for
+     sites whose price was not typed by hand. */
+  if(offer.niche !== ofState.niche){ offer.niche = ofState.niche; offer.items.forEach(it => { if(!it.typed) it.price = offerPrice(it.row, offer.niche); }); saveOffer(); renderBasket(); }
+  ofSaveFilters();
+  $("of-grid").scrollTop = 0;
+  clearTimeout(ofTimer); ofTimer = setTimeout(ofRefresh, remote ? 250 : 0);
+}
+bootStep("offers screen", () => {
+  $("mode-offer").addEventListener("click", () => setMode("offer"));
+  ["of-q", "of-type", "of-country", "of-lang", "of-niche", "of-min-dr", "of-min-traffic", "of-sort"].forEach(id => $(id).addEventListener("input", ofOnChange));
+  $("of-grid").addEventListener("scroll", () => { if(mode === "offer") ofDraw(); });
+  $("of-rows").addEventListener("click", ev => { const row = ev.target.closest(".dbr"); if(!row || row.dataset.i == null) return; const i = Number(row.dataset.i); const r = remote ? ofRemoteRow(i) : ofState.list[i]; if(r) ofToggle(r); });
+  $("of-items").addEventListener("input", ev => {
+    const i = Number(ev.target.dataset.i); const it = offer.items[i]; if(!it) return;
+    if(ev.target.classList.contains("ofprice")){ it.price = ev.target.value === "" ? null : Number(ev.target.value); it.typed = true; }
+    if(ev.target.classList.contains("ofcomment")) it.comment = ev.target.value;
+    const sum = offer.items.reduce((a, x) => a + (Number(x.price) || 0), 0);
+    $("of-total").textContent = t().ofTotal(offer.items.length, sum);
+    outputs.offer = offerOutput(); $("of-tsv").value = [outputs.offer.cols.join("\t")].concat(outputs.offer.rows.map(r => outputs.offer.cols.map(c => String(r[c] ?? "")).join("\t"))).join("\n");
+    saveOffer();
+  });
+  $("of-items").addEventListener("click", ev => { const b = ev.target.closest(".ofx"); if(!b) return; offer.items.splice(Number(b.dataset.i), 1); saveOffer(); renderBasket(); ofDraw(); });
+  $("of-client").addEventListener("input", () => { offer.client = $("of-client").value; saveOffer(); });
+  $("of-label").addEventListener("input", () => { offer.label = $("of-label").value; saveOffer(); });
+  $("of-hist").addEventListener("change", () => { if($("of-hist").value) openOffer($("of-hist").value); });
+  $("of-new").addEventListener("click", newOffer);
+  $("of-copy").addEventListener("click", () => copyFrom("of-tsv", "of-note"));
+  $("of-csv").addEventListener("click", () => downloadCsv(outputs.offer));
+  $("of-xlsx").addEventListener("click", () => downloadXlsx(outputs.offer, "of-note"));
+  $("of-q").placeholder = t().dbSearch;
+  ofRestoreFilters(); fillOfferHist(); renderBasket();
+  /* The offer that was open last time, back with its rows. */
+  let cur = ""; try{ cur = localStorage.getItem(OFFERS_KEY + ":current") || ""; }catch(e){}
+  if(cur) openOffer(cur);
+});

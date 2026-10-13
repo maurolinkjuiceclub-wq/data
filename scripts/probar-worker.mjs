@@ -120,6 +120,10 @@ r = await pedir("/api/rows?q=owner%40beta", "GET", null, "mauro@linkjuiceclub.co
 caso("rows: search by contact", r.json.total === 1 && r.json.rows[0].Domain === "www.Beta.es", r.json.rows);
 r = await pedir("/api/rows?niche=general&offset=1&limit=1", "GET", null, "mauro@linkjuiceclub.com");
 caso("rows: niche filter and paging", r.json.total === 5 && r.json.rows.length === 1 && r.json.offset === 1 && !r.json.facets, r.json);
+r = await pedir("/api/rows?sort=price:casino&niche=casino", "GET", null, "mauro@linkjuiceclub.com");
+caso("rows: sorted by the niche's price, cheapest first (offers screen)", r.json.total === 2 && r.json.rows[0].Domain === "beta.es" && r.json.rows[1].Domain === "alpha.com", r.json.rows && r.json.rows.map(x => x.Domain));
+r = await pedir("/api/rows?minDr=1", "GET", null, "mauro@linkjuiceclub.com");
+caso("rows: a DR minimum drops rows without the metric", r.json.total === 0, r.json.total);
 r = await pedir("/api/rows?removed=1", "GET", null, "mauro@linkjuiceclub.com");
 caso("rows: removed tab", r.json.total === 1 && r.json.rows[0].Domain === "gamma.net", r.json.rows);
 

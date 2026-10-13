@@ -31,7 +31,7 @@ bootStep("database screen", () => {
   $("mode-db-n").textContent = dbRows.length.toLocaleString("en");
   dbRestoreFilters();
 });
-bootStep("remembered screen", () => { let m = "list"; try{ m = localStorage.getItem("ljc-lists-mode") === "db" ? "db" : "list"; }catch(e){} if(m === "db") setMode("db"); });
+bootStep("remembered screen", () => { let m = "list"; try{ const v = localStorage.getItem("ljc-lists-mode"); m = v === "db" || v === "offer" ? v : "list"; }catch(e){} if(m !== "list") setMode(m); });
 bootStep("sender type", () => setStype(stype));
 /* Inside the desk (iframe at /listas/?embed=1&lang=es&theme=dark): the
    desk's bar is above, so the title and the language switch go; the

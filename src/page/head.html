@@ -243,6 +243,25 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
 .dbdetail dd{margin:0;font-family:var(--mono);overflow-wrap:anywhere;white-space:pre-wrap}
 .dbdetail dd.e{color:var(--line-strong)}
 @media (max-width:719px){.dbhead > div,.dbr > div{padding:0 8px}}
+/* ---------- the offers screen ---------- */
+.ofmain{grid-template-columns:minmax(0,1fr) 380px;grid-template-rows:minmax(0,1fr)}
+.basket{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0;background:var(--surface);border-left:1px solid var(--line-strong)}
+.basket-h{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.basket-h label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.basket-h input[type=text]{width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px}
+.basket-h .par{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.basket-h select{margin-top:8px;width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px}
+.basket-h .hint{margin:8px 0 0}
+#of-items{overflow:auto;min-height:0}
+.ofit{display:grid;grid-template-columns:minmax(0,1fr) 72px 110px 28px;gap:6px;align-items:center;padding:5px 10px 5px 14px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px}
+.ofit .d{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ofit input{padding:4px 6px;border-radius:6px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12px;min-width:0}
+.ofit .ofprice{text-align:right;font-family:var(--mono)}
+.basket-f{padding:10px 14px 12px;border-top:1px solid var(--line);display:grid;gap:8px}
+.basket-f .actions{flex-wrap:wrap}
+.dbr .pick{text-align:center;font-weight:700;color:var(--accent-ink)}
+.ofmin{width:76px;padding:5px 6px;border-radius:6px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px}
+@media (max-width:899px){.ofmain{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,45%)}.basket{border-left:0;border-top:1px solid var(--line-strong)}}
 
 /* ---------- export, folded ---------- */
 .export{margin-top:22px;border-top:1px solid var(--line);padding-top:10px}

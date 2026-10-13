@@ -636,17 +636,73 @@ export function prepareRow(raw){
   return r;
 }
 
-/* Filters: {q, type, country, lang, niche}. type "-" means blank Type. The
-   row may be prepared or not; unprepared rows are read field by field. */
+/* A metric cell as a number: 44, "1,250", "18.2k", "1,2M" → 44, 1250,
+   18200, 1200000; null when empty or not a number. */
+export function numberOf(v){
+  if(v == null || v === "") return null;
+  if(typeof v === "number") return Number.isFinite(v) ? v : null;
+  const m = String(v).trim().replace(/\s+/g, "").match(/^([\d.,]+)([kKmM])?$/);
+  if(!m) return null;
+  let n = parseFloat(m[1].replace(/\.(?=\d{3}\b)/g, "").replace(/,(?=\d{3}\b)/g, "").replace(",", "."));
+  if(!Number.isFinite(n)) return null;
+  if(/k/i.test(m[2] || "")) n *= 1000;
+  if(/m/i.test(m[2] || "")) n *= 1000000;
+  return n;
+}
+const METRIC_COLUMN = { dr: "Ahrefs Domain Rating", traffic: "Ahrefs Organic Traffic", rd: "Ahrefs Referring Domains" };
+
+/* Filters: {q, type, country, lang, niche, minDr, minTraffic}. type "-"
+   means blank Type. A minimum leaves out the rows without the metric (an
+   offer should not carry a site nobody measured). The row may be prepared
+   or not; unprepared rows are read field by field. */
 export function rowMatchesFilters(r, f){
   const type = r._type != null ? r._type : String(r.Type || "").trim();
   if(f.type === "-" ? type !== "" : f.type && type !== f.type) return false;
   if(f.country && String(r["Main Country"] || "") !== f.country) return false;
   if(f.lang && String(r["Domain Language"] || "") !== f.lang) return false;
   if(f.niche && BUYING_COLUMN[f.niche] && !String(r[BUYING_COLUMN[f.niche]] ?? "").trim()) return false;
+  for(const [k, col] of [["minDr", METRIC_COLUMN.dr], ["minTraffic", METRIC_COLUMN.traffic]]){
+    if(f[k] == null || f[k] === "") continue;
+    const n = numberOf(r[col]);
+    if(n == null || n < Number(f[k])) return false;
+  }
   const q = String(f.q || "").trim().toLowerCase();
   if(q && !(r._q != null ? r._q : searchText(r)).includes(q)) return false;
   return true;
+}
+
+/* The order the offers screen asks for: "dr", "traffic", "rd" (highest
+   first) or "price:<niche>" (cheapest first); anything else keeps the
+   source order. Rows without the value go last. Returns a new array. */
+export function sortRows(rows, sort){
+  const s = String(sort || "");
+  let key = null, asc = false;
+  if(METRIC_COLUMN[s]){ key = r => numberOf(r[METRIC_COLUMN[s]]); }
+  else if(/^price:/.test(s) && BUYING_COLUMN[s.slice(6)]){ const col = BUYING_COLUMN[s.slice(6)]; key = r => { const p = parsePrice(r[col]); return p ? p.amount : null; }; asc = true; }
+  if(!key) return rows.slice();
+  return rows.map((r, i) => [key(r), i, r]).sort((a, b) => {
+    if(a[0] == null && b[0] == null) return a[1] - b[1];
+    if(a[0] == null) return 1; if(b[0] == null) return -1;
+    return (asc ? a[0] - b[0] : b[0] - a[0]) || a[1] - b[1];
+  }).map(x => x[2]);
+}
+
+/* ---------- offers to clients (Tim, 13/10: "offers we send to clients,
+   that is now done manually") ----------
+   One row per site, in the columns of the 2024 offer sheets (LJC -
+   Igaming.com: domain, metrics, price, comments). The price is the
+   publisher's price for the niche as recorded, unless the person typed
+   another one; a margin rule is not applied until the team gives one. */
+export const OFFER_COLUMNS = ["Domain", "Country", "Language", "DR", "RD", "Traffic", "Topic", "Price", "Comments"];
+export function offerPrice(row, niche){
+  const p = parsePrice(row[BUYING_COLUMN[niche]]);
+  return p ? p.amount : null;
+}
+export function rowForOffer(row, o){
+  const n = c => { const v = numberOf(row[c]); return v == null ? "" : v; };
+  return { Domain: String(row.Domain || ""), Country: String(row["Main Country"] || ""), Language: String(row["Domain Language"] || ""),
+    DR: n("Ahrefs Domain Rating"), RD: n("Ahrefs Referring Domains"), Traffic: n("Ahrefs Organic Traffic"), Topic: String(row["Website Topic"] || ""),
+    Price: o && o.price != null && o.price !== "" ? Number(o.price) : (offerPrice(row, o && o.niche) ?? ""), Comments: String((o && o.comment) || "") };
 }
 
 /* Countries and languages present, most frequent first. */

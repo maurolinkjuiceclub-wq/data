@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, metricsOf, belowThreshold, monthsSince, mergeDuplicates, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, metricsOf, belowThreshold, monthsSince, mergeDuplicates, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText, numberOf, sortRows, rowForOffer, offerPrice, OFFER_COLUMNS } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -441,6 +441,30 @@ function csvToObjects(text){
     cur = [];
   }
   return rows;
+}
+
+/* --- offers to clients (Tim, 13/10) --- */
+{
+  caso("numberOf: plain, thousands, k and M suffixes, empty, text", numberOf(44) === 44 && numberOf("1,250") === 1250 && numberOf("18.2k") === 18200 && numberOf("1,2M") === 1200000 && numberOf("") === null && numberOf("n/a") === null, [numberOf("1,250"), numberOf("18.2k"), numberOf("1,2M")]);
+  const rows = [
+    prepareRow({ Domain: "a.com", "Ahrefs Domain Rating": 44, "Ahrefs Organic Traffic": "12k", "Buying Casino": 400, "Buying General": 300 }),
+    prepareRow({ Domain: "b.com", "Ahrefs Domain Rating": "30", "Ahrefs Organic Traffic": 900, "Buying Casino": 250 }),
+    prepareRow({ Domain: "c.com", "Buying Casino": "150 €" }),
+    prepareRow({ Domain: "d.com", "Ahrefs Domain Rating": 60, "Ahrefs Organic Traffic": 50000, "Buying General": 120 })
+  ];
+  const hit = f => rows.filter(r => rowMatchesFilters(r, f)).map(r => r.Domain);
+  caso("min DR keeps the rows at or above it and drops the unmeasured", JSON.stringify(hit({ minDr: 40 })) === JSON.stringify(["a.com", "d.com"]), hit({ minDr: 40 }));
+  caso("min traffic reads the k suffix", JSON.stringify(hit({ minTraffic: 10000 })) === JSON.stringify(["a.com", "d.com"]), hit({ minTraffic: 10000 }));
+  caso("an empty minimum is no filter", hit({ minDr: "", minTraffic: null }).length === 4);
+  caso("minimum plus niche: priced for casino with DR 40+", JSON.stringify(hit({ minDr: 40, niche: "casino" })) === JSON.stringify(["a.com"]), hit({ minDr: 40, niche: "casino" }));
+  caso("sortRows dr: highest first, unmeasured last, source order kept otherwise", JSON.stringify(sortRows(rows, "dr").map(r => r.Domain)) === JSON.stringify(["d.com", "a.com", "b.com", "c.com"]), sortRows(rows, "dr").map(r => r.Domain));
+  caso("sortRows price:casino: cheapest first, unpriced last", JSON.stringify(sortRows(rows, "price:casino").map(r => r.Domain)) === JSON.stringify(["c.com", "b.com", "a.com", "d.com"]), sortRows(rows, "price:casino").map(r => r.Domain));
+  caso("sortRows with an unknown key keeps the order and copies the array", JSON.stringify(sortRows(rows, "x").map(r => r.Domain)) === JSON.stringify(rows.map(r => r.Domain)) && sortRows(rows, "") !== rows);
+  caso("offerPrice: the niche's price as a number, null when none", offerPrice(rows[2], "casino") === 150 && offerPrice(rows[2], "general") === null);
+  const o = rowForOffer(rows[0], { niche: "casino", comment: "homepage" });
+  caso("rowForOffer: the offer's columns, metrics as numbers, the niche's price", JSON.stringify(Object.keys(o)) === JSON.stringify(OFFER_COLUMNS) && o.DR === 44 && o.Traffic === 12000 && o.Price === 400 && o.Comments === "homepage" && o.RD === "", o);
+  caso("rowForOffer: a typed price wins over the sheet's", rowForOffer(rows[0], { niche: "casino", price: "350" }).Price === 350 && rowForOffer(rows[0], { niche: "casino", price: 0 }).Price === 0);
+  caso("rowForOffer: no price for the niche leaves the cell empty", rowForOffer(rows[3], { niche: "casino" }).Price === "");
 }
 
 console.log(`${casos - fallos} of ${casos} checks passed`);

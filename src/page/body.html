@@ -1,6 +1,6 @@
 <header class="bar">
   <h1 class="marca" data-i18n="title">Site lists</h1>
-  <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button></span>
+  <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button><button type="button" id="mode-offer" role="tab" aria-selected="false" data-i18n="modeOffer">Offers</button></span>
   <div class="estado">
     <button type="button" class="sello" id="state" aria-expanded="false" aria-controls="dbpanel"></button>
     <button type="button" class="btn sutil" id="help" aria-expanded="false" aria-controls="helppanel">Help</button><span class="lang" role="group" aria-label="Language"><button type="button" id="lang-en" aria-pressed="true">EN</button><button type="button" id="lang-es" aria-pressed="false">ES</button></span>
@@ -94,6 +94,39 @@
     <aside class="dbdetail" id="db-detail" hidden>
       <div class="dbdetail-h"><b id="db-detail-dom"></b><button type="button" class="btn sutil" id="db-detail-x" aria-label="Close">×</button></div>
       <dl id="db-detail-body"></dl>
+    </aside>
+  </div>
+</div>
+
+<div class="dbscreen" id="screen-offer" hidden>
+  <div class="dbtools">
+    <input type="search" id="of-q" class="dbq" autocomplete="off" spellcheck="false">
+    <select id="of-niche" aria-label="Offer for"><option value="casino">Casino</option><option value="unlicensedCasino">Unlicensed casino</option><option value="crypto">Crypto</option><option value="forex">Forex</option><option value="cbd">CBD</option><option value="dating">Dating</option><option value="general">General</option></select>
+    <select id="of-type"><option value="" data-i18n="fType">Type: all</option><option value="Publisher">Publisher</option><option value="Broker">Broker</option><option value="-" data-i18n="fTypeBlank">Type: blank</option></select>
+    <select id="of-country"><option value="" data-i18n="fCountry">Country: all</option></select>
+    <select id="of-lang"><option value="" data-i18n="fLang">Language: all</option></select>
+    <label class="chk"><span data-i18n="ofMinDr">min DR</span> <input type="number" id="of-min-dr" class="ofmin" min="0" step="1" inputmode="numeric"></label>
+    <label class="chk"><span data-i18n="ofMinTraffic">min traffic</span> <input type="number" id="of-min-traffic" class="ofmin" min="0" step="100" inputmode="numeric"></label>
+    <select id="of-sort"><option value="dr" data-i18n="sortDr">DR, highest first</option><option value="traffic" data-i18n="sortTraffic">Traffic, highest first</option><option value="rd" data-i18n="sortRd">Referring domains, highest first</option><option value="price" data-i18n="sortPriceUp">Cheapest first</option><option value="" data-i18n="sortDbOrder">Sheet order</option></select>
+    <span class="said" id="of-count"></span>
+  </div>
+  <div class="dbmain ofmain">
+    <div class="dbgrid" id="of-grid">
+      <div class="dbhead" id="of-head"></div>
+      <div class="dbbody"><div class="dbspacer" id="of-top"></div><div id="of-rows"></div><div class="dbspacer" id="of-bottom"></div></div>
+    </div>
+    <aside class="basket" id="of-basket">
+      <div class="basket-h">
+        <div class="par"><div><label for="of-client" data-i18n="ofClient">Client</label><input type="text" id="of-client" autocomplete="off"></div><div><label for="of-label" data-i18n="ofLabel">Offer name</label><input type="text" id="of-label" autocomplete="off"></div></div>
+        <select id="of-hist" hidden aria-label="Previous offers"></select>
+        <p class="hint" data-i18n="ofHint"></p>
+      </div>
+      <div id="of-items"></div>
+      <div class="basket-f">
+        <span class="said" id="of-total"></span>
+        <div class="actions"><button type="button" class="btn" id="of-copy" data-i18n="copy">Copy</button><button type="button" class="btn" id="of-csv" data-i18n="dlCsv">Download CSV</button><button type="button" class="btn" id="of-xlsx" data-i18n="dlXlsx">Download .xlsx</button><button type="button" class="btn sutil" id="of-new" data-i18n="ofNew">New offer</button><span class="said" id="of-note"></span></div>
+        <textarea id="of-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
+      </div>
     </aside>
   </div>
 </div>

@@ -714,6 +714,28 @@ Small things, 08/10 afternoon: the screen (List or Database) and the
 Database filters are remembered in the browser; a domain on the list opens
 its record in the Database screen with one click.
 
+## Offers screen (Tim, 13/10: "offers we send to clients, that is now done manually")
+
+Built the same afternoon, on the user's "use the desk's filters, I suppose
+they are the same". A third screen, **Offers**, next to List and Database:
+the database with the Database screen's filters (search, type, country,
+language, priced for niche) plus two minimums (DR, traffic) and an order
+(DR, traffic, referring domains, cheapest for the niche, sheet order). A
+click on a row puts the site in the offer on the right; the price starts as
+the publisher's price for the niche chosen above and is edited per site; a
+comment per site; client and offer name; Copy, CSV and .xlsx in the columns
+of Tim's 2024 "LJC - Igaming.com" sheet (Domain, Country, Language, DR, RD,
+Traffic, Topic, Price, Comments). Offers are kept in the browser by name and
+the open one comes back after a reload. The Worker's `/rows` takes `minDr`,
+`minTraffic` and `sort` for it; the page filters the same way without a
+Worker. Measured against the real copy through the desk's Worker: casino
+sites with DR 50+ and traffic 20k+ ordered by traffic answered 1,381 rows.
+
+**Assumptions to confirm with Tim and Senad**, visible in the screen's hint:
+no margin is added (the client price is the publisher's price until the
+rule is given); the export columns are the 2024 ones; one niche per offer;
+nothing is sent from the page, the file goes to the client by hand.
+
 ## Not in scope unless asked
 
 Automatic quality checks of a site (traffic, DR), scraping the publisher's

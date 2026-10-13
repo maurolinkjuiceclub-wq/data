@@ -248,6 +248,25 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
 .dbdetail dd{margin:0;font-family:var(--mono);overflow-wrap:anywhere;white-space:pre-wrap}
 .dbdetail dd.e{color:var(--line-strong)}
 @media (max-width:719px){.dbhead > div,.dbr > div{padding:0 8px}}
+/* ---------- the offers screen ---------- */
+.ofmain{grid-template-columns:minmax(0,1fr) 380px;grid-template-rows:minmax(0,1fr)}
+.basket{display:grid;grid-template-rows:auto minmax(0,1fr) auto;min-height:0;background:var(--surface);border-left:1px solid var(--line-strong)}
+.basket-h{padding:12px 14px 8px;border-bottom:1px solid var(--line)}
+.basket-h label{display:block;font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:3px}
+.basket-h input[type=text]{width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px}
+.basket-h .par{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.basket-h select{margin-top:8px;width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--surface);color:var(--ink);font:inherit;font-size:12.5px}
+.basket-h .hint{margin:8px 0 0}
+#of-items{overflow:auto;min-height:0}
+.ofit{display:grid;grid-template-columns:minmax(0,1fr) 72px 110px 28px;gap:6px;align-items:center;padding:5px 10px 5px 14px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px}
+.ofit .d{font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ofit input{padding:4px 6px;border-radius:6px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12px;min-width:0}
+.ofit .ofprice{text-align:right;font-family:var(--mono)}
+.basket-f{padding:10px 14px 12px;border-top:1px solid var(--line);display:grid;gap:8px}
+.basket-f .actions{flex-wrap:wrap}
+.dbr .pick{text-align:center;font-weight:700;color:var(--accent-ink)}
+.ofmin{width:76px;padding:5px 6px;border-radius:6px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12.5px}
+@media (max-width:899px){.ofmain{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr) minmax(0,45%)}.basket{border-left:0;border-top:1px solid var(--line-strong)}}
 
 /* ---------- export, folded ---------- */
 .export{margin-top:22px;border-top:1px solid var(--line);padding-top:10px}
@@ -262,7 +281,7 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
 </head><body>
 <header class="bar">
   <h1 class="marca" data-i18n="title">Site lists</h1>
-  <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button></span>
+  <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button><button type="button" id="mode-offer" role="tab" aria-selected="false" data-i18n="modeOffer">Offers</button></span>
   <div class="estado">
     <button type="button" class="sello" id="state" aria-expanded="false" aria-controls="dbpanel"></button>
     <button type="button" class="btn sutil" id="help" aria-expanded="false" aria-controls="helppanel">Help</button><span class="lang" role="group" aria-label="Language"><button type="button" id="lang-en" aria-pressed="true">EN</button><button type="button" id="lang-es" aria-pressed="false">ES</button></span>
@@ -356,6 +375,39 @@ td.dec .seg.three button:nth-child(3){border-bottom:0}
     <aside class="dbdetail" id="db-detail" hidden>
       <div class="dbdetail-h"><b id="db-detail-dom"></b><button type="button" class="btn sutil" id="db-detail-x" aria-label="Close">×</button></div>
       <dl id="db-detail-body"></dl>
+    </aside>
+  </div>
+</div>
+
+<div class="dbscreen" id="screen-offer" hidden>
+  <div class="dbtools">
+    <input type="search" id="of-q" class="dbq" autocomplete="off" spellcheck="false">
+    <select id="of-niche" aria-label="Offer for"><option value="casino">Casino</option><option value="unlicensedCasino">Unlicensed casino</option><option value="crypto">Crypto</option><option value="forex">Forex</option><option value="cbd">CBD</option><option value="dating">Dating</option><option value="general">General</option></select>
+    <select id="of-type"><option value="" data-i18n="fType">Type: all</option><option value="Publisher">Publisher</option><option value="Broker">Broker</option><option value="-" data-i18n="fTypeBlank">Type: blank</option></select>
+    <select id="of-country"><option value="" data-i18n="fCountry">Country: all</option></select>
+    <select id="of-lang"><option value="" data-i18n="fLang">Language: all</option></select>
+    <label class="chk"><span data-i18n="ofMinDr">min DR</span> <input type="number" id="of-min-dr" class="ofmin" min="0" step="1" inputmode="numeric"></label>
+    <label class="chk"><span data-i18n="ofMinTraffic">min traffic</span> <input type="number" id="of-min-traffic" class="ofmin" min="0" step="100" inputmode="numeric"></label>
+    <select id="of-sort"><option value="dr" data-i18n="sortDr">DR, highest first</option><option value="traffic" data-i18n="sortTraffic">Traffic, highest first</option><option value="rd" data-i18n="sortRd">Referring domains, highest first</option><option value="price" data-i18n="sortPriceUp">Cheapest first</option><option value="" data-i18n="sortDbOrder">Sheet order</option></select>
+    <span class="said" id="of-count"></span>
+  </div>
+  <div class="dbmain ofmain">
+    <div class="dbgrid" id="of-grid">
+      <div class="dbhead" id="of-head"></div>
+      <div class="dbbody"><div class="dbspacer" id="of-top"></div><div id="of-rows"></div><div class="dbspacer" id="of-bottom"></div></div>
+    </div>
+    <aside class="basket" id="of-basket">
+      <div class="basket-h">
+        <div class="par"><div><label for="of-client" data-i18n="ofClient">Client</label><input type="text" id="of-client" autocomplete="off"></div><div><label for="of-label" data-i18n="ofLabel">Offer name</label><input type="text" id="of-label" autocomplete="off"></div></div>
+        <select id="of-hist" hidden aria-label="Previous offers"></select>
+        <p class="hint" data-i18n="ofHint"></p>
+      </div>
+      <div id="of-items"></div>
+      <div class="basket-f">
+        <span class="said" id="of-total"></span>
+        <div class="actions"><button type="button" class="btn" id="of-copy" data-i18n="copy">Copy</button><button type="button" class="btn" id="of-csv" data-i18n="dlCsv">Download CSV</button><button type="button" class="btn" id="of-xlsx" data-i18n="dlXlsx">Download .xlsx</button><button type="button" class="btn sutil" id="of-new" data-i18n="ofNew">New offer</button><span class="said" id="of-note"></span></div>
+        <textarea id="of-tsv" class="inp" readonly spellcheck="false" hidden></textarea>
+      </div>
     </aside>
   </div>
 </div>
@@ -999,17 +1051,73 @@ function prepareRow(raw){
   return r;
 }
 
-/* Filters: {q, type, country, lang, niche}. type "-" means blank Type. The
-   row may be prepared or not; unprepared rows are read field by field. */
+/* A metric cell as a number: 44, "1,250", "18.2k", "1,2M" → 44, 1250,
+   18200, 1200000; null when empty or not a number. */
+function numberOf(v){
+  if(v == null || v === "") return null;
+  if(typeof v === "number") return Number.isFinite(v) ? v : null;
+  const m = String(v).trim().replace(/\s+/g, "").match(/^([\d.,]+)([kKmM])?$/);
+  if(!m) return null;
+  let n = parseFloat(m[1].replace(/\.(?=\d{3}\b)/g, "").replace(/,(?=\d{3}\b)/g, "").replace(",", "."));
+  if(!Number.isFinite(n)) return null;
+  if(/k/i.test(m[2] || "")) n *= 1000;
+  if(/m/i.test(m[2] || "")) n *= 1000000;
+  return n;
+}
+const METRIC_COLUMN = { dr: "Ahrefs Domain Rating", traffic: "Ahrefs Organic Traffic", rd: "Ahrefs Referring Domains" };
+
+/* Filters: {q, type, country, lang, niche, minDr, minTraffic}. type "-"
+   means blank Type. A minimum leaves out the rows without the metric (an
+   offer should not carry a site nobody measured). The row may be prepared
+   or not; unprepared rows are read field by field. */
 function rowMatchesFilters(r, f){
   const type = r._type != null ? r._type : String(r.Type || "").trim();
   if(f.type === "-" ? type !== "" : f.type && type !== f.type) return false;
   if(f.country && String(r["Main Country"] || "") !== f.country) return false;
   if(f.lang && String(r["Domain Language"] || "") !== f.lang) return false;
   if(f.niche && BUYING_COLUMN[f.niche] && !String(r[BUYING_COLUMN[f.niche]] ?? "").trim()) return false;
+  for(const [k, col] of [["minDr", METRIC_COLUMN.dr], ["minTraffic", METRIC_COLUMN.traffic]]){
+    if(f[k] == null || f[k] === "") continue;
+    const n = numberOf(r[col]);
+    if(n == null || n < Number(f[k])) return false;
+  }
   const q = String(f.q || "").trim().toLowerCase();
   if(q && !(r._q != null ? r._q : searchText(r)).includes(q)) return false;
   return true;
+}
+
+/* The order the offers screen asks for: "dr", "traffic", "rd" (highest
+   first) or "price:<niche>" (cheapest first); anything else keeps the
+   source order. Rows without the value go last. Returns a new array. */
+function sortRows(rows, sort){
+  const s = String(sort || "");
+  let key = null, asc = false;
+  if(METRIC_COLUMN[s]){ key = r => numberOf(r[METRIC_COLUMN[s]]); }
+  else if(/^price:/.test(s) && BUYING_COLUMN[s.slice(6)]){ const col = BUYING_COLUMN[s.slice(6)]; key = r => { const p = parsePrice(r[col]); return p ? p.amount : null; }; asc = true; }
+  if(!key) return rows.slice();
+  return rows.map((r, i) => [key(r), i, r]).sort((a, b) => {
+    if(a[0] == null && b[0] == null) return a[1] - b[1];
+    if(a[0] == null) return 1; if(b[0] == null) return -1;
+    return (asc ? a[0] - b[0] : b[0] - a[0]) || a[1] - b[1];
+  }).map(x => x[2]);
+}
+
+/* ---------- offers to clients (Tim, 13/10: "offers we send to clients,
+   that is now done manually") ----------
+   One row per site, in the columns of the 2024 offer sheets (LJC -
+   Igaming.com: domain, metrics, price, comments). The price is the
+   publisher's price for the niche as recorded, unless the person typed
+   another one; a margin rule is not applied until the team gives one. */
+const OFFER_COLUMNS = ["Domain", "Country", "Language", "DR", "RD", "Traffic", "Topic", "Price", "Comments"];
+function offerPrice(row, niche){
+  const p = parsePrice(row[BUYING_COLUMN[niche]]);
+  return p ? p.amount : null;
+}
+function rowForOffer(row, o){
+  const n = c => { const v = numberOf(row[c]); return v == null ? "" : v; };
+  return { Domain: String(row.Domain || ""), Country: String(row["Main Country"] || ""), Language: String(row["Domain Language"] || ""),
+    DR: n("Ahrefs Domain Rating"), RD: n("Ahrefs Referring Domains"), Traffic: n("Ahrefs Organic Traffic"), Topic: String(row["Website Topic"] || ""),
+    Price: o && o.price != null && o.price !== "" ? Number(o.price) : (offerPrice(row, o && o.niche) ?? ""), Comments: String((o && o.comment) || "") };
 }
 
 /* Countries and languages present, most frequent first. */
@@ -1307,7 +1415,8 @@ const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until a copy of the sheet is loaded. Export the sheet as .xlsx (both tabs) or .csv and load it here: it stays in this browser, also after closing it, until it is replaced or forgotten.", dbfileL:"Copy of the sheet · .xlsx (both tabs) or .csv", rmfileL:"removed sites · .csv, when the copy is a CSV", dbnever:"This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.", dbLoaded:(name, when)=>`${name} · loaded ${when}`, gsheetHint:"A Google Sheets link cannot be read from here: open it, File → Download → .xlsx, and load that file above.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
     sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, refresh:"Refresh sheet", refreshing:"Reading the sheet…", sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
-    modeList:"List", modeDb:"Database", fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
+    modeList:"List", modeDb:"Database", modeOffer:"Offers", ofClient:"Client", ofLabel:"Offer name", ofMinDr:"min DR", ofMinTraffic:"min traffic", sortDr:"DR, highest first", sortTraffic:"Traffic, highest first", sortRd:"Referring domains, highest first", sortDbOrder:"Sheet order", ofPrev:"Previous offers…", ofNew:"New offer", ofComment:"comment", ofEmpty:"Click a row on the left to add the site to the offer.", ofTotal:(n, sum)=>`${n} site${n === 1 ? "" : "s"} · ${sum.toLocaleString("en")} EUR`, ofHint:"Price = the publisher's price for the niche chosen above, as recorded. Change it per site before sending; no margin is added until the team gives the rule. The offer stays in this browser under its name.", ofCols:{Domain:"Domain", Country:"Country", Language:"Language", DR:"DR", RD:"RD", Traffic:"Traffic", Topic:"Topic", Price:"Price", Terms:"Terms"},
+    fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
     dbSearch:"Search domain, contact or name", dbCount:(n, total)=>`${n.toLocaleString("en")} of ${total.toLocaleString("en")} rows`, dbEmpty:"No row matches.", dbLoading:"Loading…", dbRemovedTab:"removed sites", dbCols:{Domain:"Domain", Type:"Type", Contact:"Contact", Country:"Country", Language:"Language", Updated:"Updated", Terms:"Terms"},
     openInDb:"Open its record in the database", backToList:"Back to the list",
     orfile:"or load the file they sent", fileRead:(n, s)=>`${n}: ${s} sheet${s === 1 ? "" : "s"} read into the box`, fileText:(n)=>`${n} read into the box`, filePdf:(n, p)=>`${n}: ${p} page${p === 1 ? "" : "s"} read into the box`, fileFail:"Could not read the file. Paste its contents instead.", fileLoading:"Reading…",
@@ -1328,7 +1437,8 @@ const T = {
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
     sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, refresh:"Actualizar hoja", refreshing:"Leyendo la hoja…", sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
-    modeList:"Lista", modeDb:"Base de datos", fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
+    modeList:"Lista", modeDb:"Base de datos", modeOffer:"Ofertas", ofClient:"Cliente", ofLabel:"Nombre de la oferta", ofMinDr:"DR mín.", ofMinTraffic:"tráfico mín.", sortDr:"DR, de mayor a menor", sortTraffic:"Tráfico, de mayor a menor", sortRd:"Dominios de referencia, de mayor a menor", sortDbOrder:"Orden de la hoja", ofPrev:"Ofertas anteriores…", ofNew:"Nueva oferta", ofComment:"comentario", ofEmpty:"Haz clic en una fila de la izquierda para añadir el medio a la oferta.", ofTotal:(n, sum)=>`${n} medio${n === 1 ? "" : "s"} · ${sum.toLocaleString("es")} EUR`, ofHint:"Precio = el precio del publisher para el nicho elegido arriba, tal como está registrado. Cámbialo por medio antes de enviar; no se añade margen hasta que el equipo dé la regla. La oferta se queda en este navegador con su nombre.", ofCols:{Domain:"Dominio", Country:"País", Language:"Idioma", DR:"DR", RD:"RD", Traffic:"Tráfico", Topic:"Tema", Price:"Precio", Terms:"Condiciones"},
+    fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
     dbSearch:"Buscar dominio, contacto o nombre", dbCount:(n, total)=>`${n.toLocaleString("es")} de ${total.toLocaleString("es")} filas`, dbEmpty:"Ninguna fila coincide.", dbLoading:"Cargando…", dbRemovedTab:"removed sites", dbCols:{Domain:"Dominio", Type:"Tipo", Contact:"Contacto", Country:"País", Language:"Idioma", Updated:"Actualizado", Terms:"Condiciones"},
     openInDb:"Abrir su ficha en la base", backToList:"Volver a la lista",
     orfile:"o carga el archivo que mandaron", fileRead:(n, s)=>`${n}: ${s} hoja${s === 1 ? "" : "s"} volcada${s === 1 ? "" : "s"} al cuadro`, fileText:(n)=>`${n} volcado al cuadro`, filePdf:(n, p)=>`${n}: ${p} página${p === 1 ? "" : "s"} volcada${p === 1 ? "" : "s"} al cuadro`, fileFail:"No se pudo leer el archivo. Pega su contenido.", fileLoading:"Leyendo…",
@@ -1359,7 +1469,7 @@ function applyLang(){
   $("lang-es").setAttribute("aria-pressed", String(lang === "es"));
   describeDb();
   if(groups) { noteParse(); render(); }
-  try{ $("db-q").placeholder = t().dbSearch; if(mode === "db") dbDraw(); }catch(e){}
+  try{ $("db-q").placeholder = t().dbSearch; $("of-q").placeholder = t().dbSearch; if(mode === "db") dbDraw(); if(mode === "offer"){ ofDraw(); renderBasket(); } }catch(e){}
 }
 $("lang-en").addEventListener("click", () => { lang = "en"; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} applyLang(); });
 $("lang-es").addEventListener("click", () => { lang = "es"; try{ localStorage.setItem("ljc-lists-lang", lang); }catch(e){} applyLang(); });
@@ -1415,7 +1525,7 @@ $("state").addEventListener("click", () => { const open = $("dbpanel").hidden; $
 $("refresh").addEventListener("click", async () => {
   const b = $("refresh"); b.disabled = true; b.textContent = t().refreshing;
   try{ await checkRemote(true); } finally { b.disabled = false; b.textContent = t().refresh; }
-  if(remote){ if(items.length) run(); if(mode === "db") dbRefresh(); }
+  if(remote){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }
 });
 $("export-h").addEventListener("click", () => { const open = $("export-body").hidden; $("export-body").hidden = !open; $("export-h").setAttribute("aria-expanded", String(open)); });
 $("wm-h").addEventListener("click", () => { const open = $("wm-body").hidden; $("wm-body").hidden = !open; $("wm-h").setAttribute("aria-expanded", String(open)); });
@@ -1483,7 +1593,7 @@ async function loadRmFile(f){
 $("dbfile").addEventListener("change", () => { const f = $("dbfile").files && $("dbfile").files[0]; if(f) loadDbFile(f, { remember: true }); });
 $("rmfile").addEventListener("change", () => { const f = $("rmfile").files && $("rmfile").files[0]; if(f) loadRmFile(f); });
 $("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = sampleRm; rmFromWorkbook = false; dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
-function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
+function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }
 
 /* ---------- matching: the list against the database ---------- */
 /* A list with nothing changed used to open on an empty "Changed" tab while
@@ -2161,9 +2271,12 @@ function setMode(m){
   mode = m; try{ localStorage.setItem("ljc-lists-mode", m); }catch(e){}
   $("mode-list").setAttribute("aria-selected", String(m === "list"));
   $("mode-db").setAttribute("aria-selected", String(m === "db"));
+  $("mode-offer").setAttribute("aria-selected", String(m === "offer"));
   $("screen-list").hidden = m !== "list";
   $("screen-db").hidden = m !== "db";
+  $("screen-offer").hidden = m !== "offer";
   if(m === "db") dbRefresh();
+  if(m === "offer") ofRefresh();
 }
 function dbSourceRows(){ return dbState.removed ? rmRows : dbRows; }
 /* Facets once per source; the rows themselves are already prepared. */
@@ -2311,6 +2424,189 @@ window.addEventListener("error", ev => {
   }catch(e){}
 });
 
+/* ---------- the offers screen ----------
+   Tim, 13/10: "offers we send to clients, that is now done manually". An
+   offer is a selection of sites from the database for one client, with
+   metrics and a price per site. The screen is the database with the same
+   filters plus two minimums (DR, traffic), an order, and a basket on the
+   right: click a row to add it, type the price the client gets, copy or
+   download the sheet. Nothing here writes anywhere. The price starts as
+   the publisher's price for the niche; the margin rule is the team's to
+   give (BRIEF, open question 1). Offers are kept in this browser by name. */
+const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0 };
+const OF_COLS = [["pick", 40], ["Domain", 220], ["Country", 110], ["Language", 90], ["DR", 64], ["RD", 84], ["Traffic", 94], ["Topic", 170], ["Price", 84], ["Terms", 220]];
+const OFFERS_KEY = "ljc-offers";
+let offer = { client: "", label: "", niche: "casino", items: [] };   /* items: {domain, row, price, comment} */
+const inOffer = () => new Set(offer.items.map(i => i.domain));
+
+function ofSourceRows(){ return dbRows; }
+function ofRefresh(){
+  if(remote){ ofState.remotePages.clear(); ofRemoteFetch(0, true); return; }
+  const rows = ofSourceRows();
+  const f = dbFacetsFor(rows);
+  ofState.country = fillSelect("of-country", f.countries, ofState.country);
+  ofState.lang = fillSelect("of-lang", f.languages, ofState.lang);
+  ofState.list = sortRows(rows.filter(r => rowMatchesFilters(r, ofState)), ofState.sort);
+  ofState.total = rows.length;
+  ofDraw();
+}
+function ofCell(r, c, picked){
+  if(c === "pick") return `<div class="pick">${picked ? "✓" : "+"}</div>`;
+  if(c === "Domain") return `<div class="d" title="${esc(r.Domain)}">${esc(r.Domain)}</div>`;
+  if(c === "Country") return `<div class="s">${esc(r["Main Country"] || "")}</div>`;
+  if(c === "Language") return `<div class="s">${esc(r["Domain Language"] || "")}</div>`;
+  if(c === "Topic") return `<div class="s" title="${esc(r["Website Topic"] || "")}">${esc(r["Website Topic"] || "")}</div>`;
+  if(c === "DR" || c === "RD" || c === "Traffic"){ const v = numberOf(r[{ DR: "Ahrefs Domain Rating", RD: "Ahrefs Referring Domains", Traffic: "Ahrefs Organic Traffic" }[c]]); return `<div class="num ${v != null ? "has" : ""}">${v != null ? v.toLocaleString("en") : "·"}</div>`; }
+  if(c === "Price"){ const v = offerPrice(r, ofState.niche); return `<div class="num ${v != null ? "has" : ""}">${v != null ? v : "·"}</div>`; }
+  if(c === "Terms"){ const f = [r["Link Type"], r["Placement"], r["Price Validity"], r["Sponsor Tag Type"]].filter(Boolean).join(" · "); return `<div class="s" title="${esc(f)}">${esc(f) || `<span class="mut">—</span>`}</div>`; }
+  return `<div></div>`;
+}
+function ofDraw(){
+  const grid = $("of-grid");
+  grid.style.setProperty("--cols", OF_COLS.map(([, w]) => w + "px").join(" "));
+  $("of-head").innerHTML = OF_COLS.map(([c]) => `<div title="${esc(c)}">${c === "pick" ? "" : esc(t().ofCols[c] || c)}</div>`).join("");
+  const total = remote ? ofState.remoteTotal : ofState.list.length;
+  $("of-count").textContent = t().dbCount(total, remote ? (remote.rows || 0) : ofState.total);
+  if(!total){ $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-rows").innerHTML = `<div class="dbempty">${t().dbEmpty}</div>`; return; }
+  const scroll = grid.scrollTop, h = grid.clientHeight || 600;
+  const first = Math.max(0, Math.floor(scroll / ROW_H) - 10), last = Math.min(total, Math.ceil((scroll + h) / ROW_H) + 10);
+  $("of-top").style.height = (first * ROW_H) + "px";
+  $("of-bottom").style.height = ((total - last) * ROW_H) + "px";
+  const have = inOffer(); const out = [];
+  for(let i = first; i < last; i++){
+    const r = remote ? ofRemoteRow(i) : ofState.list[i];
+    if(!r){ out.push(`<div class="dbr dbloading"><div class="d">${t().dbLoading}</div></div>`); continue; }
+    const d = normaliseDomain(r.Domain); const picked = !!(d && have.has(d.domain));
+    out.push(`<div class="dbr ${picked ? "sel" : ""}" data-i="${i}">${OF_COLS.map(([c]) => ofCell(r, c, picked)).join("")}</div>`);
+  }
+  $("of-rows").innerHTML = out.join("");
+}
+/* Click a row: in or out of the offer. Price from the sheet for the niche. */
+function ofToggle(r){
+  const d = normaliseDomain(r.Domain); if(!d) return;
+  const i = offer.items.findIndex(x => x.domain === d.domain);
+  if(i >= 0) offer.items.splice(i, 1);
+  else offer.items.push({ domain: d.domain, row: r, price: offerPrice(r, offer.niche), comment: "" });
+  saveOffer(); renderBasket(); ofDraw();
+}
+/* --- the basket --- */
+function renderBasket(){
+  const list = $("of-items");
+  if(!offer.items.length){ list.innerHTML = `<div class="dbempty">${esc(t().ofEmpty)}</div>`; }
+  else list.innerHTML = offer.items.map((it, i) => `<div class="ofit" data-i="${i}"><div class="d" title="${esc(it.domain)}">${esc(it.domain)}</div><input type="number" class="ofprice" data-i="${i}" min="0" step="1" value="${it.price == null ? "" : esc(String(it.price))}" aria-label="Price"><input type="text" class="ofcomment" data-i="${i}" value="${esc(it.comment || "")}" placeholder="${esc(t().ofComment)}" aria-label="Comment"><button type="button" class="btn sutil ofx" data-i="${i}" aria-label="Remove">×</button></div>`).join("");
+  const sum = offer.items.reduce((a, it) => a + (Number(it.price) || 0), 0);
+  $("of-total").textContent = t().ofTotal(offer.items.length, sum);
+  const out = offerOutput();
+  $("of-tsv").value = [out.cols.join("\t")].concat(out.rows.map(r => out.cols.map(c => String(r[c] ?? "").replace(/\t/g, " ")).join("\t"))).join("\n");
+  outputs.offer = out;
+}
+function offerOutput(){
+  const rows = offer.items.map(it => rowForOffer(it.row, { niche: offer.niche, price: it.price, comment: it.comment }));
+  const slug = (offer.label || offer.client || "offer").trim().toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "offer";
+  return { cols: OFFER_COLUMNS, rows, name: "offer-" + slug, sheet: "Offer" };
+}
+function offersStore(){ try{ return JSON.parse(localStorage.getItem(OFFERS_KEY) || "{}"); }catch(e){ return {}; } }
+function saveOffer(){
+  const key = (offer.label || "").trim(); if(!key) return;
+  const all = offersStore();
+  all[key] = { client: offer.client, niche: offer.niche, at: Date.now(), items: offer.items.map(it => ({ domain: it.domain, price: it.price, typed: !!it.typed, comment: it.comment, row: it.row })) };
+  try{ localStorage.setItem(OFFERS_KEY, JSON.stringify(all)); localStorage.setItem(OFFERS_KEY + ":current", key); }catch(e){}
+  fillOfferHist();
+}
+function fillOfferHist(){
+  const all = offersStore(); const sel = $("of-hist");
+  const names = Object.keys(all).sort((a, b) => (all[b].at || 0) - (all[a].at || 0));
+  sel.innerHTML = `<option value="">${esc(t().ofPrev)}</option>` + names.map(n => `<option value="${esc(n)}">${esc(n)} · ${all[n].items.length}</option>`).join("");
+  sel.hidden = !names.length;
+}
+function openOffer(name){
+  const rec = offersStore()[name]; if(!rec) return;
+  offer = { client: rec.client || "", label: name, niche: rec.niche || "casino", items: (rec.items || []).map(it => ({ domain: it.domain, row: it.row || { Domain: it.domain }, price: it.price, typed: !!it.typed, comment: it.comment || "" })) };
+  $("of-client").value = offer.client; $("of-label").value = offer.label; $("of-niche").value = offer.niche; ofState.niche = offer.niche; $("of-hist").value = name;
+  try{ localStorage.setItem(OFFERS_KEY + ":current", name); }catch(e){}
+  renderBasket(); if(mode === "offer") ofRefresh();
+}
+function newOffer(){
+  offer = { client: "", label: "", niche: ofState.niche, items: [] };
+  $("of-client").value = ""; $("of-label").value = ""; $("of-hist").value = "";
+  try{ localStorage.removeItem(OFFERS_KEY + ":current"); }catch(e){}
+  renderBasket(); ofDraw();
+}
+
+/* --- the Worker's pages, as the database screen --- */
+function ofRemoteRow(i){
+  const page = Math.floor(i / PAGE), rows = ofState.remotePages.get(page);
+  if(rows === undefined){ ofRemoteFetch(page * PAGE, false); ofState.remotePages.set(page, null); return null; }
+  return rows ? rows[i - page * PAGE] : null;
+}
+function ofRemoteQuery(offset){
+  const p = new URLSearchParams({ offset: String(offset), limit: String(PAGE) });
+  for(const k of ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"]){ const v = String(ofState[k] || "").trim(); if(v) p.set(k, v); }
+  return p.toString();
+}
+async function ofRemoteFetch(offset, first){
+  const key = ofRemoteQuery(offset);
+  try{
+    const r = await fetch(API + "/rows?" + key);
+    if(!r.ok) throw new Error(String(r.status));
+    const j = await r.json();
+    if(ofRemoteQuery(offset) !== key) return;
+    ofState.remotePages.set(Math.floor(offset / PAGE), (j.rows || []).map(prepareRow));
+    ofState.remoteTotal = j.total || 0;
+    if(first && j.facets){ ofState.country = fillSelect("of-country", j.facets.countries || [], ofState.country); ofState.lang = fillSelect("of-lang", j.facets.languages || [], ofState.lang); }
+    ofDraw();
+  }catch(e){ ofState.remoteTotal = 0; ofDraw(); }
+}
+let ofTimer = null;
+const OF_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "sort"];
+function ofSaveFilters(){ try{ localStorage.setItem("ljc-lists-offilters", JSON.stringify(Object.fromEntries(OF_FILTER_KEYS.map(k => [k, ofState[k]])))); }catch(e){} }
+function ofRestoreFilters(){
+  try{
+    const f = JSON.parse(localStorage.getItem("ljc-lists-offilters") || "{}");
+    OF_FILTER_KEYS.forEach(k => { if(f[k] != null) ofState[k] = f[k]; });
+    $("of-q").value = ofState.q; $("of-type").value = ofState.type; $("of-niche").value = ofState.niche || "casino"; $("of-min-dr").value = ofState.minDr; $("of-min-traffic").value = ofState.minTraffic; $("of-sort").value = ofState.sort || "dr";
+    offer.niche = ofState.niche;
+  }catch(e){}
+}
+function ofOnChange(){
+  ofState.q = $("of-q").value; ofState.type = $("of-type").value; ofState.country = $("of-country").value; ofState.lang = $("of-lang").value;
+  ofState.niche = $("of-niche").value || "casino"; ofState.minDr = $("of-min-dr").value; ofState.minTraffic = $("of-min-traffic").value; ofState.sort = $("of-sort").value;
+  /* The niche is the offer's: the prices in the basket follow it only for
+     sites whose price was not typed by hand. */
+  if(offer.niche !== ofState.niche){ offer.niche = ofState.niche; offer.items.forEach(it => { if(!it.typed) it.price = offerPrice(it.row, offer.niche); }); saveOffer(); renderBasket(); }
+  ofSaveFilters();
+  $("of-grid").scrollTop = 0;
+  clearTimeout(ofTimer); ofTimer = setTimeout(ofRefresh, remote ? 250 : 0);
+}
+bootStep("offers screen", () => {
+  $("mode-offer").addEventListener("click", () => setMode("offer"));
+  ["of-q", "of-type", "of-country", "of-lang", "of-niche", "of-min-dr", "of-min-traffic", "of-sort"].forEach(id => $(id).addEventListener("input", ofOnChange));
+  $("of-grid").addEventListener("scroll", () => { if(mode === "offer") ofDraw(); });
+  $("of-rows").addEventListener("click", ev => { const row = ev.target.closest(".dbr"); if(!row || row.dataset.i == null) return; const i = Number(row.dataset.i); const r = remote ? ofRemoteRow(i) : ofState.list[i]; if(r) ofToggle(r); });
+  $("of-items").addEventListener("input", ev => {
+    const i = Number(ev.target.dataset.i); const it = offer.items[i]; if(!it) return;
+    if(ev.target.classList.contains("ofprice")){ it.price = ev.target.value === "" ? null : Number(ev.target.value); it.typed = true; }
+    if(ev.target.classList.contains("ofcomment")) it.comment = ev.target.value;
+    const sum = offer.items.reduce((a, x) => a + (Number(x.price) || 0), 0);
+    $("of-total").textContent = t().ofTotal(offer.items.length, sum);
+    outputs.offer = offerOutput(); $("of-tsv").value = [outputs.offer.cols.join("\t")].concat(outputs.offer.rows.map(r => outputs.offer.cols.map(c => String(r[c] ?? "")).join("\t"))).join("\n");
+    saveOffer();
+  });
+  $("of-items").addEventListener("click", ev => { const b = ev.target.closest(".ofx"); if(!b) return; offer.items.splice(Number(b.dataset.i), 1); saveOffer(); renderBasket(); ofDraw(); });
+  $("of-client").addEventListener("input", () => { offer.client = $("of-client").value; saveOffer(); });
+  $("of-label").addEventListener("input", () => { offer.label = $("of-label").value; saveOffer(); });
+  $("of-hist").addEventListener("change", () => { if($("of-hist").value) openOffer($("of-hist").value); });
+  $("of-new").addEventListener("click", newOffer);
+  $("of-copy").addEventListener("click", () => copyFrom("of-tsv", "of-note"));
+  $("of-csv").addEventListener("click", () => downloadCsv(outputs.offer));
+  $("of-xlsx").addEventListener("click", () => downloadXlsx(outputs.offer, "of-note"));
+  $("of-q").placeholder = t().dbSearch;
+  ofRestoreFilters(); fillOfferHist(); renderBasket();
+  /* The offer that was open last time, back with its rows. */
+  let cur = ""; try{ cur = localStorage.getItem(OFFERS_KEY + ":current") || ""; }catch(e){}
+  if(cur) openOffer(cur);
+});
+
 /* ---------- boot ----------
    Each step on its own, so one that fails in some browser does not leave
    the page blank: the list and the sample result come first, the Worker
@@ -2344,7 +2640,7 @@ bootStep("database screen", () => {
   $("mode-db-n").textContent = dbRows.length.toLocaleString("en");
   dbRestoreFilters();
 });
-bootStep("remembered screen", () => { let m = "list"; try{ m = localStorage.getItem("ljc-lists-mode") === "db" ? "db" : "list"; }catch(e){} if(m === "db") setMode("db"); });
+bootStep("remembered screen", () => { let m = "list"; try{ const v = localStorage.getItem("ljc-lists-mode"); m = v === "db" || v === "offer" ? v : "list"; }catch(e){} if(m !== "list") setMode(m); });
 bootStep("sender type", () => setStype(stype));
 /* Inside the desk (iframe at /listas/?embed=1&lang=es&theme=dark): the
    desk's bar is above, so the title and the language switch go; the

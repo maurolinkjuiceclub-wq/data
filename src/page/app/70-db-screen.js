@@ -16,9 +16,12 @@ function setMode(m){
   mode = m; try{ localStorage.setItem("ljc-lists-mode", m); }catch(e){}
   $("mode-list").setAttribute("aria-selected", String(m === "list"));
   $("mode-db").setAttribute("aria-selected", String(m === "db"));
+  $("mode-offer").setAttribute("aria-selected", String(m === "offer"));
   $("screen-list").hidden = m !== "list";
   $("screen-db").hidden = m !== "db";
+  $("screen-offer").hidden = m !== "offer";
   if(m === "db") dbRefresh();
+  if(m === "offer") ofRefresh();
 }
 function dbSourceRows(){ return dbState.removed ? rmRows : dbRows; }
 /* Facets once per source; the rows themselves are already prepared. */

@@ -18,7 +18,7 @@
 
    Tested by scripts/probar-worker.mjs with Google replaced by a stand-in.
    No email is sent from here. */
-import { normaliseDomain, prepareRow, rowMatchesFilters, facetsOf, indexDatabase, headerKey, DB_COLUMNS, senderOf } from "./site-lists.js";
+import { normaliseDomain, prepareRow, rowMatchesFilters, facetsOf, indexDatabase, headerKey, DB_COLUMNS, senderOf, sortRows } from "./site-lists.js";
 
 const TAB_DB = "Import Database";
 const TAB_REMOVED = "removed sites";
@@ -214,8 +214,9 @@ export default {
       let db; try { db = await database(env, false, ctx); } catch(e){ return json({ error: String(e.message || e) }, 502); }
       const q = url.searchParams;
       const source = q.get("removed") === "1" ? db.removedList : db.list;
-      const filters = { q: q.get("q") || "", type: q.get("type") || "", country: q.get("country") || "", lang: q.get("lang") || "", niche: q.get("niche") || "" };
-      const hit = source.filter(r => rowMatchesFilters(r, filters));
+      const filters = { q: q.get("q") || "", type: q.get("type") || "", country: q.get("country") || "", lang: q.get("lang") || "", niche: q.get("niche") || "",
+        minDr: q.get("minDr") || "", minTraffic: q.get("minTraffic") || "" };
+      const hit = sortRows(source.filter(r => rowMatchesFilters(r, filters)), q.get("sort") || "");
       const offset = Math.max(0, parseInt(q.get("offset") || "0", 10) || 0);
       const limit = Math.min(500, Math.max(1, parseInt(q.get("limit") || "300", 10) || 300));
       const out = { total: hit.length, all: source.length, offset, rows: hit.slice(offset, offset + limit).map(publicRow) };

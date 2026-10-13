@@ -22,7 +22,7 @@ $("state").addEventListener("click", () => { const open = $("dbpanel").hidden; $
 $("refresh").addEventListener("click", async () => {
   const b = $("refresh"); b.disabled = true; b.textContent = t().refreshing;
   try{ await checkRemote(true); } finally { b.disabled = false; b.textContent = t().refresh; }
-  if(remote){ if(items.length) run(); if(mode === "db") dbRefresh(); }
+  if(remote){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }
 });
 $("export-h").addEventListener("click", () => { const open = $("export-body").hidden; $("export-body").hidden = !open; $("export-h").setAttribute("aria-expanded", String(open)); });
 $("wm-h").addEventListener("click", () => { const open = $("wm-body").hidden; $("wm-body").hidden = !open; $("wm-h").setAttribute("aria-expanded", String(open)); });
@@ -90,4 +90,4 @@ async function loadRmFile(f){
 $("dbfile").addEventListener("change", () => { const f = $("dbfile").files && $("dbfile").files[0]; if(f) loadDbFile(f, { remember: true }); });
 $("rmfile").addEventListener("change", () => { const f = $("rmfile").files && $("rmfile").files[0]; if(f) loadRmFile(f); });
 $("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = sampleRm; rmFromWorkbook = false; dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
-function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); }
+function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }
