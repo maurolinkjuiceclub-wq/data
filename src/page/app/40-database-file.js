@@ -17,6 +17,13 @@ function csvToObjects(text){
   return rows;
 }
 $("state").addEventListener("click", () => { const open = $("dbpanel").hidden; $("dbpanel").hidden = !open; $("state").setAttribute("aria-expanded", String(open)); });
+/* Refresh sheet: the Worker reads the sheet again, then the open list is
+   matched again and the Database screen redrawn from the fresh rows. */
+$("refresh").addEventListener("click", async () => {
+  const b = $("refresh"); b.disabled = true; b.textContent = t().refreshing;
+  try{ await checkRemote(true); } finally { b.disabled = false; b.textContent = t().refresh; }
+  if(remote){ if(items.length) run(); if(mode === "db") dbRefresh(); }
+});
 $("export-h").addEventListener("click", () => { const open = $("export-body").hidden; $("export-body").hidden = !open; $("export-h").setAttribute("aria-expanded", String(open)); });
 $("wm-h").addEventListener("click", () => { const open = $("wm-body").hidden; $("wm-body").hidden = !open; $("wm-h").setAttribute("aria-expanded", String(open)); });
 /* The copy of the sheet (Gary, 09/10: "the team can upload CSV/Excel to

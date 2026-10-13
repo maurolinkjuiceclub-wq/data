@@ -16,9 +16,11 @@ let remote = null;      /* { rows, readAt, write } when the status route says co
 let lastMatch = null;   /* the Worker's answer for the current list */
 const written = {};     /* domain -> updatedRange, rows the Worker appended */
 const acceptIds = {};   /* domain -> request id, kept across retries */
-async function checkRemote(){
+/* force: Gary's refresh button (09/10, "live Google sheet with refresh
+   button"): the Worker re-reads the sheet instead of serving its cache. */
+async function checkRemote(force){
   try{
-    const r = await fetch(API + "/status", { headers: { accept: "application/json" } });
+    const r = await fetch(API + "/status" + (force ? "?refresh=1" : ""), { headers: { accept: "application/json" } });
     if(!r.ok) throw new Error(String(r.status));
     const j = await r.json();
     /* write: the Worker says whether Accept may append to the sheet (the
