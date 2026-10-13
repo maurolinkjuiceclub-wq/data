@@ -169,6 +169,33 @@ bootStep("offers screen", () => {
   $("mode-offer").addEventListener("click", () => setMode("offer"));
   ["of-q", "of-type", "of-country", "of-lang", "of-niche", "of-min-dr", "of-min-traffic", "of-topic", "of-sort"].forEach(id => $(id).addEventListener("input", ofOnChange));
   $("of-linked").addEventListener("input", () => { offer.linked = $("of-linked").value; linkedSet = parseLinked(offer.linked); $("of-linked-n").textContent = linkedSet.size ? t().ofLinkedN(linkedSet.size) : ""; saveOffer(); ofDraw(); });
+  /* The export as it comes: Ahrefs' Referring domains (CSV in UTF-8 or
+     UTF-16, or Excel) or the client sheet. Every cell that is a domain or
+     a URL counts; the rest (numbers, words) is left alone. */
+  $("of-linked-file").addEventListener("change", async () => {
+    const f = $("of-linked-file").files && $("of-linked-file").files[0]; if(!f) return;
+    $("of-linked-note").textContent = t().fileLoading;
+    try{
+      let cells = [];
+      if(/\.(xlsx|xls|xlsm|ods)$/i.test(f.name)){
+        const XLSX = await loadSheetJS();
+        const wb = XLSX.read(await f.arrayBuffer(), { type: "array" });
+        wb.SheetNames.forEach(n => XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, raw: true, defval: "" }).forEach(r => r.forEach(c => cells.push(String(c)))));
+      }else{
+        const buf = new Uint8Array(await f.arrayBuffer());
+        const utf16 = (buf[0] === 0xFF && buf[1] === 0xFE) || (buf.length > 3 && buf[1] === 0 && buf[3] === 0);
+        const text = new TextDecoder(utf16 ? "utf-16le" : "utf-8").decode(buf);
+        cells = text.split(/[\r\n]+/).flatMap(l => l.split(/[\t,;]/)).map(c => c.replace(/^"|"$/g, "").trim());
+      }
+      const found = new Set();
+      cells.forEach(c => { const d = normaliseDomain(c); if(d && /^[a-z0-9-]+(\.[a-z0-9-]+)*\.[a-z]{2,}$/.test(d.domain)) found.add(d.domain); });
+      const had = parseLinked($("of-linked").value);
+      const fresh = [...found].filter(d => !had.has(d));
+      if(fresh.length){ $("of-linked").value = ($("of-linked").value.trim() ? $("of-linked").value.trim() + "\n" : "") + fresh.join("\n"); $("of-linked").dispatchEvent(new Event("input")); }
+      $("of-linked-note").textContent = found.size ? t().ofLinkedRead(fresh.length, f.name) : t().ofLinkedNone(f.name);
+    }catch(e){ $("of-linked-note").textContent = t().fileFail; }
+    $("of-linked-file").value = "";
+  });
   $("of-grid").addEventListener("scroll", () => { if(mode === "offer") ofDraw(); });
   $("of-rows").addEventListener("click", ev => { const row = ev.target.closest(".dbr"); if(!row || row.dataset.i == null) return; const i = Number(row.dataset.i); const r = remote ? ofRemoteRow(i) : ofState.list[i]; if(r) ofToggle(r); });
   $("of-items").addEventListener("input", ev => {
