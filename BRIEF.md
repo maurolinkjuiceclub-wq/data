@@ -58,7 +58,11 @@ or confirm a price the publisher never wrote. Those stay with the person.
 ## Open questions (answer these and the brief is done)
 
 1. What does "offer" mean here: the publisher's price offer (what Reply
-   already captures), or an offer we make to a client?
+   already captures), or an offer we make to a client? **Answered by Tim,
+   13/10:** the two files behind his request were a publisher's price list
+   as PDF (drivar.de) and one as Excel (librawebcorp), both already among
+   the test cases. "Offers" = a publisher's price list; the page reads it
+   like any other list.
 2. Source of truth: the Sheet, the desk, or both? If the Sheet, does the
    page write to it or export rows for somebody to paste?
 3. Matching rule: by domain only? What happens when the same domain comes
