@@ -12,7 +12,8 @@ let groups = null, items = [], lastParsed = null, view = "changed", stype = "Pub
 /* Where the Worker answers: /api when the page is on its own, /api/lists
    when it is served inside the desk under /listas/ (13/10). */
 const API = /^\/listas(\/|$)/.test(location.pathname) ? "/api/lists" : "/api";
-let remote = null;      /* { rows, readAt, write } when the status route says connected */
+let remote = null;      /* { rows, readAt, write, loading } when the status route says connected */
+let remotePoll = null;
 const TEMA_KEY = "mesa-cotejo-tema";   /* the desk's key: one choice for both pages */
 let temaElegido = ""; try{ temaElegido = localStorage.getItem(TEMA_KEY) || ""; }catch(e){}
 function aplicarTema(){
@@ -41,8 +42,12 @@ async function checkRemote(force){
     const j = await r.json();
     /* write: the Worker says whether Accept may append to the sheet (the
        desk keeps it off unless Gary switches LISTS_WRITE on). */
-    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true } : null;
+    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true, loading: j.loading || null } : null;
     remoteWhy = j.connected ? "" : (j.reason || "");
+    /* The desk's Worker reads the sheet in the background (13/10): while it
+       says loading, ask again in a few seconds and match once it is done. */
+    clearTimeout(remotePoll);
+    if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading && items.length) run(); }).catch(() => {}), 4000);
   }catch(e){ remote = null; remoteWhy = String(e && e.message || e); }
   describeDb();
 }

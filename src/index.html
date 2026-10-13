@@ -1431,7 +1431,8 @@ let groups = null, items = [], lastParsed = null, view = "changed", stype = "Pub
 /* Where the Worker answers: /api when the page is on its own, /api/lists
    when it is served inside the desk under /listas/ (13/10). */
 const API = /^\/listas(\/|$)/.test(location.pathname) ? "/api/lists" : "/api";
-let remote = null;      /* { rows, readAt, write } when the status route says connected */
+let remote = null;      /* { rows, readAt, write, loading } when the status route says connected */
+let remotePoll = null;
 const TEMA_KEY = "mesa-cotejo-tema";   /* the desk's key: one choice for both pages */
 let temaElegido = ""; try{ temaElegido = localStorage.getItem(TEMA_KEY) || ""; }catch(e){}
 function aplicarTema(){
@@ -1460,8 +1461,12 @@ async function checkRemote(force){
     const j = await r.json();
     /* write: the Worker says whether Accept may append to the sheet (the
        desk keeps it off unless Gary switches LISTS_WRITE on). */
-    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true } : null;
+    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true, loading: j.loading || null } : null;
     remoteWhy = j.connected ? "" : (j.reason || "");
+    /* The desk's Worker reads the sheet in the background (13/10): while it
+       says loading, ask again in a few seconds and match once it is done. */
+    clearTimeout(remotePoll);
+    if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading && items.length) run(); }).catch(() => {}), 4000);
   }catch(e){ remote = null; remoteWhy = String(e && e.message || e); }
   describeDb();
 }
@@ -1490,7 +1495,7 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;
 const T = {
   en: { title:"Site lists", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until a copy of the sheet is loaded. Export the sheet as .xlsx (both tabs) or .csv and load it here: it stays in this browser, also after closing it, until it is replaced or forgotten.", dbfileL:"Copy of the sheet · .xlsx (both tabs) or .csv", rmfileL:"removed sites · .csv, when the copy is a CSV", dbnever:"This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.", dbLoaded:(name, when)=>`${name} · loaded ${when}`, gsheetHint:"A Google Sheets link cannot be read from here: open it, File → Download → .xlsx, and load that file above.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
-    sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, refresh:"Refresh sheet", refreshing:"Reading the sheet…", sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
+    sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, sheetLoading:(n, have)=>`sheet: reading… ${n.toLocaleString("en")} rows so far${have ? " · " + have.toLocaleString("en") + " in use meanwhile" : ""}`, refresh:"Refresh sheet", refreshing:"Reading the sheet…", sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
     temaAuto:"Theme: auto", temaOscuro:"Theme: dark", temaClaro:"Theme: light", whoamiLbl:"Signed in as", appInicio:"Start page",
     modeList:"List", modeDb:"Database", modeOffer:"Offers", ofClient:"Client", ofLabel:"Offer name", ofMinDr:"min DR", ofMinTraffic:"min traffic", sortDr:"DR, highest first", sortTraffic:"Traffic, highest first", sortRd:"Referring domains, highest first", sortDbOrder:"Sheet order", ofPrev:"Previous offers…", ofNew:"New offer", ofComment:"comment", ofEmpty:"Click a row on the left to add the site to the offer.", ofTotal:(n, sum)=>`${n} site${n === 1 ? "" : "s"} · ${sum.toLocaleString("en")} EUR`, ofHint:"Price = the publisher's price for the niche chosen above, as recorded. Change it per site before sending; no margin is added until the team gives the rule. The offer stays in this browser under its name.", ofCols:{Domain:"Domain", Country:"Country", Language:"Language", DR:"DR", RD:"RD", Traffic:"Traffic", Topic:"Topic", Price:"Price", Terms:"Terms"},
     fType:"Type: all", fTypeBlank:"Type: blank", fCountry:"Country: all", fLang:"Language: all", fNiche:"Priced for: any", fRemoved:"removed sites", fWide:"all 45 columns",
@@ -1513,7 +1518,7 @@ const T = {
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"Listas de sitios", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
-    sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, refresh:"Actualizar hoja", refreshing:"Leyendo la hoja…", sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
+    sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, sheetLoading:(n, have)=>`hoja: leyendo… ${n.toLocaleString("es")} filas de momento${have ? " · " + have.toLocaleString("es") + " en uso mientras tanto" : ""}`, refresh:"Actualizar hoja", refreshing:"Leyendo la hoja…", sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
     temaAuto:"Tema: auto", temaOscuro:"Tema: oscuro", temaClaro:"Tema: claro", whoamiLbl:"Sesión de", appInicio:"Inicio",
     modeList:"Lista", modeDb:"Base de datos", modeOffer:"Ofertas", ofClient:"Cliente", ofLabel:"Nombre de la oferta", ofMinDr:"DR mín.", ofMinTraffic:"tráfico mín.", sortDr:"DR, de mayor a menor", sortTraffic:"Tráfico, de mayor a menor", sortRd:"Dominios de referencia, de mayor a menor", sortDbOrder:"Orden de la hoja", ofPrev:"Ofertas anteriores…", ofNew:"Nueva oferta", ofComment:"comentario", ofEmpty:"Haz clic en una fila de la izquierda para añadir el medio a la oferta.", ofTotal:(n, sum)=>`${n} medio${n === 1 ? "" : "s"} · ${sum.toLocaleString("es")} EUR`, ofHint:"Precio = el precio del publisher para el nicho elegido arriba, tal como está registrado. Cámbialo por medio antes de enviar; no se añade margen hasta que el equipo dé la regla. La oferta se queda en este navegador con su nombre.", ofCols:{Domain:"Dominio", Country:"País", Language:"Idioma", DR:"DR", RD:"RD", Traffic:"Tráfico", Topic:"Tema", Price:"Precio", Terms:"Condiciones"},
     fType:"Tipo: todos", fTypeBlank:"Tipo: vacío", fCountry:"País: todos", fLang:"Idioma: todos", fNiche:"Con precio para: cualquiera", fRemoved:"removed sites", fWide:"las 45 columnas",
@@ -1580,7 +1585,7 @@ function describeDb(){
   $("dbmeta").textContent = (when ? t().dbLoaded(dbSource, when) : dbSource) + ": " + t().meta(dbRows.length, index.size, contacts, index.removed.size);
   if(remote){
     const at = new Date(remote.readAt); const hh = String(at.getHours()).padStart(2, "0") + ":" + String(at.getMinutes()).padStart(2, "0");
-    $("state").textContent = t().sheetState(remote.rows, hh);
+    $("state").textContent = remote.loading ? t().sheetLoading(remote.loading.rows + (remote.loading.removed || 0), remote.rows) : t().sheetState(remote.rows, hh);
     document.querySelector("[data-i18n=dbhint]").textContent = t().dbhintLive;
     $("refresh").hidden = false;
   }else{
