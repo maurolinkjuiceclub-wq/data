@@ -15,7 +15,9 @@ HANDOVER. Changed from the plan: **Accept does not write** on the desk
 (`LISTS_WRITE` "0", Gary's "no live override" of 09/10), the sheet is the copy
 Gary shared, and this repository stays the place the page is built
 (`scripts/build-page.mjs` → copy `src/index.html` to `proto2/src/listas/index.html`).
-Still open: step 5 (the Reply bridge) and the row-format decision.
+Step 5 (the Reply bridge) was done on 14/10: More → "Open as site list" in
+Reply hands the thread's messages and the sender over through the
+browser's storage. Still open: the row-format decision.
 
 ## What moves, and where
 

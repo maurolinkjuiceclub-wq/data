@@ -2790,6 +2790,15 @@ bootStep("buttons", () => {
   ["dr", "traffic"].forEach(k => $("min-" + k).addEventListener("change", () => { mins[k] = $("min-" + k).value; try{ localStorage.setItem("ljc-lists-mins", JSON.stringify(mins)); }catch(e){} if(groups) renderTable(); }));
 });
 bootStep("list", () => { $("list").value = STAR; });
+/* From the desk's Reply, "Open as site list" (14/10): their messages and the
+   sender wait in the browser's storage for a few minutes; the page takes
+   them once and matches. */
+bootStep("from the desk", () => {
+  let h = null; try{ h = JSON.parse(localStorage.getItem("ljc-lists:handoff") || "null"); }catch(e){}
+  if(!h || !h.text || Date.now() - (h.at || 0) > 10 * 60 * 1000) return;
+  try{ localStorage.removeItem("ljc-lists:handoff"); }catch(e){}
+  $("sender").value = h.sender || ""; $("list").value = h.text; $("label").value = h.label || "";
+});
 bootStep("database screen", () => {
   $("mode-list").addEventListener("click", () => setMode("list"));
   $("mode-db").addEventListener("click", () => setMode("db"));
