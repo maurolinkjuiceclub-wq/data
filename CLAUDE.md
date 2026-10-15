@@ -1,4 +1,4 @@
-# House rules — Site lists
+# House rules — LJC Sites ("Site lists" until 15/10)
 
 Separate project from the outreach desk (`proto2`). Same team, same rules
 of evidence; none of the desk's code is shared, only its look.
