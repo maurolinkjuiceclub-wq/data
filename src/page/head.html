@@ -48,10 +48,11 @@ button{font-family:inherit;font-size:inherit;color:inherit}
    menu. Same measures as src/mesa.html. */
 #whoami{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 14px 0 4px;border:0;border-radius:999px;background:linear-gradient(135deg,#2e6bff 0%,#5b8cff 55%,#7aa8ff 100%);color:#fff;font-weight:600;font-size:12.5px;box-shadow:0 1px 2px rgba(20,60,160,.25),inset 0 1px 0 rgba(255,255,255,.25);white-space:nowrap}
 .whoami-av{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.22);font-size:12px;font-weight:700}
-#tema{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s,background-color .15s,transform .1s ease-out}
-#tema:hover{border-color:var(--line-strong);background:var(--surface-2);color:var(--ink)}
-#tema:active{transform:scale(.94)}
-#tema svg,.idioma svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+#tema,#pantalla{display:inline-flex;align-items:center;justify-content:center;width:32px;height:32px;padding:0;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink-2);cursor:pointer;transition:border-color .15s,color .15s,background-color .15s,transform .1s ease-out}
+#tema:hover,#pantalla:hover{border-color:var(--line-strong);background:var(--surface-2);color:var(--ink)}
+#pantalla[hidden]{display:none}
+#tema:active,#pantalla:active{transform:scale(.94)}
+#tema svg,#pantalla svg,.idioma svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .idioma{position:relative}
 .idioma > summary{display:inline-flex;align-items:center;gap:8px;height:32px;padding:0 10px 0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink-2);cursor:pointer;list-style:none;user-select:none;font-size:13px;transition:border-color .15s,color .15s,background-color .15s}
 .idioma > summary::-webkit-details-marker{display:none}
@@ -166,7 +167,7 @@ td.dec .decsel{display:none}
 .apps .idioma-menu a[aria-current]{font-weight:600}
 .apps .idioma-menu a[aria-current] svg{visibility:visible}
 /* Embedded in the desk: its bar carries the name and the language. */
-body.embed .bar .marca,body.embed .bar .idioma,body.embed #tema,body.embed #whoami{display:none}
+body.embed .bar .marca,body.embed .bar .idioma,body.embed #tema,body.embed #pantalla,body.embed #whoami{display:none}
 .helpsteps{margin:0;padding:0 0 0 20px;font-size:13px;line-height:1.5;color:var(--ink-2);max-width:780px}
 .helpsteps li{margin:4px 0}
 #help{padding:3px 9px;font-size:12px;margin-right:8px}
