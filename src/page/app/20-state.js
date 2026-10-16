@@ -31,6 +31,20 @@ function pintarTema(){
   b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
   const nombre = typeof t === "function" ? (temaElegido === "dark" ? t().temaOscuro : temaElegido === "light" ? t().temaClaro : t().temaAuto) : "";
   b.title = nombre; b.setAttribute("aria-label", nombre);
+  pintarPantalla();
+}
+/* Full screen (Simon, 16/10), the same button as the desk's: the browser's
+   Fullscreen API, Esc leaves, the icon follows the browser, hidden where
+   the API does not exist (iPhone). */
+function pintarPantalla(){
+  const b = $("pantalla"); if(!b) return;
+  if(!document.fullscreenEnabled){ b.hidden = true; return; }
+  b.hidden = false;
+  const dentro = !!document.fullscreenElement;
+  const d = dentro ? "M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5" : "M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5";
+  b.innerHTML = `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  const nombre = typeof t === "function" ? (dentro ? t().pantallaOff : t().pantallaOn) : "";
+  b.title = nombre; b.setAttribute("aria-label", nombre);
 }
 let lastMatch = null;   /* the Worker's answer for the current list */
 const written = {};     /* domain -> updatedRange, rows the Worker appended */

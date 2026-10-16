@@ -62,6 +62,12 @@ window.addEventListener("message", e => {
 /* The theme, as the desk's: follow the system, dark, light, one button
    that cycles and says which with its icon. The key is the desk's own when
    the page is served by it, so both agree. */
+bootStep("fullscreen", () => {
+  const b = $("pantalla"); if(!b) return;
+  b.addEventListener("click", () => { const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen(); if(p && p.catch) p.catch(() => {}); });
+  document.addEventListener("fullscreenchange", pintarPantalla);
+  pintarPantalla();
+});
 bootStep("theme", () => { aplicarTema(); $("tema").addEventListener("click", () => { temaElegido = temaElegido === "" ? "dark" : temaElegido === "dark" ? "light" : ""; try{ localStorage.setItem(TEMA_KEY, temaElegido); }catch(e){} aplicarTema(); }); });
 /* Who is signed in, from the desk's Worker, in the blue bubble. */
 bootStep("who", () => {
