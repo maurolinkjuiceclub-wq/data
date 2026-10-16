@@ -89,5 +89,5 @@ async function loadRmFile(f){
 }
 $("dbfile").addEventListener("change", () => { const f = $("dbfile").files && $("dbfile").files[0]; if(f) loadDbFile(f, { remember: true }); });
 $("rmfile").addEventListener("change", () => { const f = $("rmfile").files && $("rmfile").files[0]; if(f) loadRmFile(f); });
-$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = sampleRm; rmFromWorkbook = false; dbSource = "sample rows"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
-function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); $("mode-db-n").textContent = dbRows.length.toLocaleString("en"); if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }
+$("reset").addEventListener("click", () => { dbRows = SAMPLE_DB.map(prepareRow); rmRows = sampleRm; rmFromWorkbook = false; dbSource = "sample"; dbLoadedAt = null; $("dbfile").value = ""; $("rmfile").value = ""; idbDel("db"); rebuild(); });
+function rebuild(){ index = indexDatabase(dbRows, rmRows); describeDb(); facetCache = new WeakMap(); if(!remote){ dbBadge = dbRows.length; paintDbBadge(); } if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }

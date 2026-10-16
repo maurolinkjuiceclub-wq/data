@@ -34,10 +34,10 @@ async function matchRemote(){
     groups = matchList(items, idx, { sender, senderCount: j.senderCount, senderType: stype });
     indexEntries(); pruneDecisions();
     pickView();
-    remote = { ...remote, rows: j.total, readAt: j.readAt };
+    remote = { ...remote, rows: j.total, readAt: j.readAt || remote.readAt };
     describeDb(); render();
   }catch(e){
-    remote = null; remoteWhy = "match failed"; describeDb();
+    remote = null; remoteWhy = "error"; remoteDetail = "match failed"; describeDb();
   }
 }
 $("match").addEventListener("click", run);
@@ -375,7 +375,9 @@ async function acceptRemote(dom, btn){
   /* The Worker writes who accepted from the Access token; the page does
      not. The request id lets a retry after a lost answer not write twice. */
   const flags = acceptFlags(dom);
-  const row = rowForAccept(item, Object.assign({ type: stype, sender: $("sender").value.trim(), who: "", listLabel: $("label").value.trim() }, flags));
+  /* The same row the export shows, note included (review of 16/10: the
+     note reached the copied rows but not the sheet). */
+  const row = rowForAccept(item, Object.assign({ type: stype, sender: $("sender").value.trim(), who: "", listLabel: $("label").value.trim(), note: notes[dom] || "" }, flags));
   const requestId = (acceptIds[dom] = acceptIds[dom] || (Date.now().toString(36) + Math.random().toString(36).slice(2, 10)));
   btn.disabled = true; btn.textContent = t().writing;
   try{

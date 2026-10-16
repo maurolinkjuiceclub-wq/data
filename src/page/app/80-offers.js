@@ -42,7 +42,7 @@ function ofCell(r, c, picked){
   if(c === "Language") return `<div class="s">${esc(r["Domain Language"] || "")}</div>`;
   if(c === "Topic") return `<div class="s" title="${esc(r["Website Topic"] || "")}">${esc(r["Website Topic"] || "")}</div>`;
   if(c === "DR" || c === "RD" || c === "Traffic"){ const v = numberOf(r[{ DR: "Ahrefs Domain Rating", RD: "Ahrefs Referring Domains", Traffic: "Ahrefs Organic Traffic" }[c]]); return `<div class="num ${v != null ? "has" : ""}">${v != null ? v.toLocaleString("en") : "·"}</div>`; }
-  if(c === "Price"){ const v = offerPrice(r, ofState.niche); return `<div class="num ${v != null ? "has" : ""}">${v != null ? v : "·"}</div>`; }
+  if(c === "Price"){ const p = offerPriceOf(r, ofState.niche); return `<div class="num ${p ? "has" : ""}${p && p.source === "buy" ? " cost" : ""}" title="${p ? esc(p.source === "sell" ? t().priceOurs : t().priceCost) : ""}">${p ? p.amount : "·"}</div>`; }
   if(c === "Terms"){ const f = [r["Link Type"], r["Placement"], r["Price Validity"], r["Sponsor Tag Type"]].filter(Boolean).join(" · "); return `<div class="s" title="${esc(f)}">${esc(f) || `<span class="mut">—</span>`}</div>`; }
   return `<div></div>`;
 }
@@ -52,7 +52,7 @@ function ofDraw(){
   $("of-head").innerHTML = OF_COLS.map(([c]) => `<div title="${esc(c)}">${c === "pick" ? "" : esc(t().ofCols[c] || c)}</div>`).join("");
   const total = remote ? ofState.remoteTotal : ofState.list.length;
   $("of-count").textContent = t().dbCount(total, remote ? (remote.rows || 0) : ofState.total);
-  if(!total){ $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-rows").innerHTML = `<div class="dbempty">${t().dbEmpty}</div>`; return; }
+  if(!total){ $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-rows").innerHTML = `<div class="dbempty">${esc(emptyText())}</div>`; return; }
   const scroll = grid.scrollTop, h = grid.clientHeight || 600;
   const first = Math.max(0, Math.floor(scroll / ROW_H) - 10), last = Math.min(total, Math.ceil((scroll + h) / ROW_H) + 10);
   $("of-top").style.height = (first * ROW_H) + "px";
@@ -78,7 +78,13 @@ function ofToggle(r){
 function renderBasket(){
   const list = $("of-items");
   if(!offer.items.length){ list.innerHTML = `<div class="dbempty">${esc(t().ofEmpty)}</div>`; }
-  else list.innerHTML = offer.items.map((it, i) => `<div class="ofit" data-i="${i}"><div class="d" title="${esc(it.domain)}">${esc(it.domain)}</div><input type="number" class="ofprice" data-i="${i}" min="0" step="1" value="${it.price == null ? "" : esc(String(it.price))}" aria-label="Price"><input type="text" class="ofcomment" data-i="${i}" value="${esc(it.comment || "")}" placeholder="${esc(t().ofComment)}" aria-label="Comment"><button type="button" class="btn sutil ofx" data-i="${i}" aria-label="Remove">×</button></div>`).join("");
+  else list.innerHTML = offer.items.map((it, i) => {
+    /* Where the price came from, unless the person typed it: our sell
+       price, or the cost price when the database has no sell price. */
+    const src = it.typed ? null : offerPriceOf(it.row, offer.niche);
+    const tag = src ? `<span class="pricesrc${src.source === "buy" ? " cost" : ""}" title="${esc(src.source === "sell" ? t().priceOurs : t().priceCost)}">${esc(src.source === "sell" ? t().priceOurs : t().priceCost)}</span>` : "";
+    return `<div class="ofit" data-i="${i}"><div class="d" title="${esc(it.domain)}">${esc(it.domain)}</div><input type="number" class="ofprice" data-i="${i}" min="0" step="1" value="${it.price == null ? "" : esc(String(it.price))}" aria-label="Price"><input type="text" class="ofcomment" data-i="${i}" value="${esc(it.comment || "")}" placeholder="${esc(t().ofComment)}" aria-label="Comment"><button type="button" class="btn sutil ofx" data-i="${i}" aria-label="Remove">×</button>${tag}</div>`;
+  }).join("");
   const sum = offer.items.reduce((a, it) => a + (Number(it.price) || 0), 0);
   $("of-total").textContent = t().ofTotal(offer.items.length, sum);
   const out = offerOutput();

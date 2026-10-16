@@ -37,7 +37,7 @@ bootStep("database screen", () => {
   $("db-rows").addEventListener("click", ev => { const row = ev.target.closest(".dbr"); if(!row || row.dataset.i == null) return; const i = Number(row.dataset.i); const r = remote ? dbRemoteRow(i) : dbState.list[i]; if(r) dbShow(r); });
   $("db-detail-x").addEventListener("click", () => { $("db-detail").hidden = true; dbState.sel = null; dbDraw(); });
   $("db-q").placeholder = t().dbSearch;
-  $("mode-db-n").textContent = dbRows.length.toLocaleString("en");
+  dbBadge = dbRows.length; paintDbBadge();
   dbRestoreFilters();
 });
 bootStep("remembered screen", () => { let m = "list"; try{ const v = localStorage.getItem("ljc-lists-mode"); m = v === "db" || v === "offer" ? v : "list"; }catch(e){} if(m !== "list") setMode(m); });
