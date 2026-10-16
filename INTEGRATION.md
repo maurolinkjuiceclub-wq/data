@@ -1,4 +1,4 @@
-# Putting Site lists into the desk
+# Putting LJC Sites (then "Site lists") into the desk
 
 Gary, 08/10: "deploy it fully on GitHub so I can view it. Then we will
 include it with the LJC Outreach (Mesa). Make sure you don't host on

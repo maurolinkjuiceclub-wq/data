@@ -1,4 +1,8 @@
-# Site lists
+# LJC Sites
+
+The page is called **LJC Sites** since 15/10 (Simon); it was "Site lists"
+until then, and the code, the routes (`/listas/`, `/api/lists/`) and the
+older notes keep that name.
 
 A page for the offers that publishers and brokers send as lists of sites
 with prices. Paste the list, match it against the database ("Import

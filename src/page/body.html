@@ -3,11 +3,11 @@
     <summary aria-label="Switch to" title="LJC"><span class="logo">L</span></summary>
     <div class="idioma-menu" role="group" aria-label="Switch to">
       <a href="/mesa/"><span>LJC Outreach</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></a>
-      <a href="/listas/" aria-current="page"><span data-i18n="title">Site lists</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></a>
+      <a href="/listas/" aria-current="page"><span data-i18n="title">LJC Sites</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></a>
       <a href="/"><span data-i18n="appInicio">Start page</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg></a>
     </div>
   </details>
-  <h1 class="marca" data-i18n="title">Site lists</h1>
+  <h1 class="marca" data-i18n="title">LJC Sites</h1>
   <span class="seg modes" role="tablist" aria-label="Screen"><button type="button" id="mode-list" role="tab" aria-selected="true" data-i18n="modeList">List</button><button type="button" id="mode-db" role="tab" aria-selected="false"><span data-i18n="modeDb">Database</span> <span class="n" id="mode-db-n"></span></button><button type="button" id="mode-offer" role="tab" aria-selected="false" data-i18n="modeOffer">Offers</button></span>
   <div class="estado">
     <button type="button" class="sello" id="state" aria-expanded="false" aria-controls="dbpanel"></button>
@@ -32,6 +32,7 @@
       <div><label for="dbfile" data-i18n="dbfileL">Copy of the sheet · .xlsx (both tabs) or .csv</label><input type="file" id="dbfile" accept=".xlsx,.xls,.xlsm,.csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel,text/csv"></div>
       <div><label for="rmfile" data-i18n="rmfileL">removed sites · .csv, when the copy is a CSV</label><input type="file" id="rmfile" accept=".csv,text/csv"></div>
     </div>
+    <p class="hint" id="dbwhy" hidden></p>
     <p class="hint" data-i18n="dbnever">This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.</p>
     <div class="actions"><span class="dbmeta" id="dbmeta"></span><button type="button" class="btn sutil" id="refresh" data-i18n="refresh" hidden></button><button type="button" class="btn sutil" id="reset" data-i18n="reset"></button></div>
   </div>
@@ -95,7 +96,7 @@
 <div class="dbscreen" id="screen-db" hidden>
   <div class="dbtools">
     <input type="search" id="db-q" class="dbq" autocomplete="off" spellcheck="false">
-    <select id="db-type"><option value="" data-i18n="fType">Type: all</option><option value="Publisher">Publisher</option><option value="Broker">Broker</option><option value="-" data-i18n="fTypeBlank">Type: blank</option></select>
+    <select id="db-type"><option value="" data-i18n="fType">Type: all</option><option value="Publisher">Publisher</option><option value="Exclusive">Exclusive</option><option value="Broker">Broker</option><option value="Unsure">Unsure</option><option value="-" data-i18n="fTypeBlank">Type: blank</option></select>
     <select id="db-country"><option value="" data-i18n="fCountry">Country: all</option></select>
     <select id="db-lang"><option value="" data-i18n="fLang">Language: all</option></select>
     <select id="db-niche"><option value="" data-i18n="fNiche">Priced for: any</option><option value="casino">Casino</option><option value="unlicensedCasino">Unlicensed casino</option><option value="crypto">Crypto</option><option value="forex">Forex</option><option value="cbd">CBD</option><option value="dating">Dating</option><option value="general">General</option></select>
@@ -119,7 +120,7 @@
   <div class="dbtools">
     <input type="search" id="of-q" class="dbq" autocomplete="off" spellcheck="false">
     <select id="of-niche" aria-label="Offer for"><option value="casino">Casino</option><option value="unlicensedCasino">Unlicensed casino</option><option value="crypto">Crypto</option><option value="forex">Forex</option><option value="cbd">CBD</option><option value="dating">Dating</option><option value="general">General</option></select>
-    <select id="of-type"><option value="" data-i18n="fType">Type: all</option><option value="Publisher">Publisher</option><option value="Broker">Broker</option><option value="-" data-i18n="fTypeBlank">Type: blank</option></select>
+    <select id="of-type"><option value="" data-i18n="fType">Type: all</option><option value="Publisher">Publisher</option><option value="Exclusive">Exclusive</option><option value="Broker">Broker</option><option value="Unsure">Unsure</option><option value="-" data-i18n="fTypeBlank">Type: blank</option></select>
     <select id="of-country"><option value="" data-i18n="fCountry">Country: all</option></select>
     <select id="of-lang"><option value="" data-i18n="fLang">Language: all</option></select>
     <label class="chk"><span data-i18n="ofMinDr">min DR</span> <input type="number" id="of-min-dr" class="ofmin" min="0" step="1" inputmode="numeric"></label>

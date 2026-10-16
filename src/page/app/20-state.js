@@ -4,7 +4,7 @@
    pages when they arrive. One copy per row, shared by the matcher and the
    Database screen (review of 08/10). */
 const sampleRm = SAMPLE_REMOVED.map(prepareRow);
-let dbRows = SAMPLE_DB.map(prepareRow), rmRows = sampleRm, dbSource = "sample rows", dbLoadedAt = null, rmFromWorkbook = false;
+let dbRows = SAMPLE_DB.map(prepareRow), rmRows = sampleRm, dbSource = "sample", dbLoadedAt = null, rmFromWorkbook = false;   /* dbSource "sample" is translated on screen */
 let index = indexDatabase(dbRows, rmRows);
 let groups = null, items = [], lastParsed = null, view = "changed", stype = "Publisher";
 /* The Worker, when the page is served next to it. In the claude.ai copy
@@ -12,7 +12,9 @@ let groups = null, items = [], lastParsed = null, view = "changed", stype = "Pub
 /* Where the Worker answers: /api when the page is on its own, /api/lists
    when it is served inside the desk under /listas/ (13/10). */
 const API = /^\/listas(\/|$)/.test(location.pathname) ? "/api/lists" : "/api";
-let remote = null;      /* { rows, readAt, write, loading } when the status route says connected */
+let remote = null;      /* { rows, readAt, write, loading, loadError } when the status route says connected */
+let apiAnswered = false; /* the status route answered (connected or not); false when there is no API at all */
+let remoteDetail = "";   /* the reason the API gave, verbatim, for the "other" sentence */
 let remotePoll = null;
 const TEMA_KEY = "mesa-cotejo-tema";   /* the desk's key: one choice for both pages */
 let temaElegido = ""; try{ temaElegido = localStorage.getItem(TEMA_KEY) || ""; }catch(e){}
@@ -38,20 +40,38 @@ const acceptIds = {};   /* domain -> request id, kept across retries */
 async function checkRemote(force){
   try{
     const r = await fetch(API + "/status" + (force ? "?refresh=1" : ""), { headers: { accept: "application/json" } });
-    if(!r.ok){ const j = await r.json().catch(() => null); throw new Error("HTTP " + r.status + (j && j.reason ? ": " + j.reason : "")); }
-    const j = await r.json();
+    /* A 502 with {connected:false, reason} is an answer (a read that
+       failed); anything that is not the route's JSON means there is no API
+       here (GitHub Pages, a file on disk). */
+    const j = await r.json().catch(() => null);
+    if(!j || typeof j.connected !== "boolean") throw new Error("HTTP " + r.status);
+    apiAnswered = true;
     /* write: the Worker says whether Accept may append to the sheet (the
-       desk keeps it off unless Gary switches LISTS_WRITE on). */
-    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true, loading: j.loading || null } : null;
-    remoteWhy = j.connected ? "" : (j.reason || "");
+       desk keeps it off unless Gary switches LISTS_WRITE on). loadError: the
+       last refresh failed and the rows shown are the previous read's. */
+    remote = j.connected ? { rows: j.rows, readAt: j.readAt, who: j.who, write: j.write === true, loading: j.loading || null, loadError: j.loadError || "" } : null;
+    remoteWhy = j.connected ? "" : (/^(paused|no-service-account|no-sheet-id)$/.test(j.reason) ? j.reason : "error");
+    remoteDetail = j.connected ? "" : String(j.reason || "");
     /* The desk's Worker reads the sheet in the background (13/10): while it
        says loading, ask again in a few seconds and match once it is done. */
     clearTimeout(remotePoll);
     if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(() => {}), 4000);
-  }catch(e){ remote = null; remoteWhy = String(e && e.message || e); }
+  }catch(e){ remote = null; apiAnswered = false; remoteWhy = ""; remoteDetail = String(e && e.message || e); }
+  /* The API is there but the sheet is not (paused, no key, a read that
+     failed): the sample rows go, so the Database and Offers screens say so
+     instead of listing invented sites (review of 16/10). They stay only
+     when there is no API at all. */
+  if(apiAnswered && !remote && dbSource === "sample" && dbRows.length){ dbRows = []; rmRows = []; rebuild(); return; }
   describeDb();
 }
+/* "" when connected or when there is no API; else the reason as a key:
+   paused, no-service-account, no-sheet-id, or error (remoteDetail says). */
 let remoteWhy = "";
+function remoteSentence(){
+  if(!remoteWhy) return "";
+  const r = t().reasons;
+  return r[remoteWhy] || r.other(remoteDetail || remoteWhy);
+}
 try{ const sv = localStorage.getItem("ljc-lists-stype"); if(FIXED.type.includes(sv)) stype = sv; }catch(e){}
 function setStype(v){
   stype = v; try{ localStorage.setItem("ljc-lists-stype", v); }catch(e){}

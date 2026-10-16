@@ -10,7 +10,7 @@
    With a CSV path it also indexes that file and prints a summary; the file
    stays where it is, nothing is written. Exit code 1 when a case fails. */
 import fs from "node:fs";
-import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, metricsOf, belowThreshold, monthsSince, mergeDuplicates, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText, numberOf, sortRows, rowForOffer, offerPrice, OFFER_COLUMNS } from "../src/site-lists.js";
+import { normaliseDomain, parsePrice, parseList, nichesOf, pdfTextOf, isReseller, sheetDate, ADMIN_COMMENTS, rowForRemoved, REMOVED_COLUMNS, metricsOf, belowThreshold, monthsSince, mergeDuplicates, indexDatabase, matchList, rowForAccept, nicheOf, DB_COLUMNS, headerKey, normaliseRow, FIXED, termsOf, priceDelta, listTermsOf, withListTerms, findPrice, tableToList, prepareRow, rowMatchesFilters, facetsOf, searchText, numberOf, sortRows, rowForOffer, offerPrice, offerPriceOf, OFFER_COLUMNS, tldOf, bareNotPrice } from "../src/site-lists.js";
 
 let fallos = 0, casos = 0;
 function caso(nombre, ok, detalle){
@@ -468,6 +468,62 @@ function csvToObjects(text){
   caso("rowForOffer: yes/no per niche, sponsor tag and terms as the 2024 mastersheet", o.Casino === "Yes" && o.General === "Yes" && o.Crypto === "No" && o["Sponsor Tag"] === "No" && rowForOffer(prepareRow({ Domain: "e.com", "Sponsor Tag Type": "rel=sponsored", "Link Type": "Do follow", Placement: "permanent" }), {})["Sponsor Tag"] === "rel=sponsored" && rowForOffer(prepareRow({ Domain: "e.com", "Link Type": "Do follow", Placement: "permanent" }), {}).Placement === "permanent", o);
   caso("rowForOffer: a typed price wins over the sheet's", rowForOffer(rows[0], { niche: "casino", price: "350" }).Price === 350 && rowForOffer(rows[0], { niche: "casino", price: 0 }).Price === 0);
   caso("rowForOffer: no price for the niche leaves the cell empty", rowForOffer(rows[3], { niche: "casino" }).Price === "");
+}
+
+/* --- review of 16/10: the shapes that lost sites or invented prices --- */
+{
+  const doms = txt => parseList(txt).items.map(i => i.domain);
+  const gen = txt => parseList(txt).items.map(i => i.prices.general ? i.prices.general.amount : null);
+  caso("numbered list: 1. 2. 3.", eq(doms("1. alpha.com - 300 EUR\n2. beta.com - 250 EUR\n3. gamma.com - 200 EUR"), ["alpha.com", "beta.com", "gamma.com"]) && eq(gen("1. alpha.com - 300 EUR\n2. beta.com - 250 EUR"), [300, 250]), doms("1. alpha.com - 300 EUR\n2. beta.com - 250 EUR"));
+  caso("numbered list: 1) 2)", eq(gen("1) alpha.com 300 EUR\n2) beta.com 250 EUR"), [300, 250]));
+  caso("dash and asterisk bullets", eq(doms("- alpha.com 300 EUR\n* beta.com 250 EUR\n– gamma.com 200 EUR"), ["alpha.com", "beta.com", "gamma.com"]));
+  const bullets = parseList("• alpha.com – 300€ (dofollow, permanent)\n• beta.com – 250€ (nofollow)");
+  caso("bullet points: both sites, each with its own price and terms", eq(bullets.items.map(i => [i.domain, i.prices.general.amount, termsOf(i).linkType]), [["alpha.com", 300, "Do follow"], ["beta.com", 250, "No follow"]]), bullets.items);
+  caso("em dash after the domain", eq(gen("alpha.com — 300 EUR"), [300]));
+  const note = parseList("alpha.com (DR 45) - 300 EUR").items[0];
+  caso("a note in brackets after the domain is kept, and read as a metric", note.domain === "alpha.com" && note.prices.general.amount === 300 && /DR 45/.test(note.terms) && metricsOf(note.terms).dr === 45, note);
+  caso("domain in brackets and in curly quotes", eq(doms("(alpha.com) 300 EUR\n“beta.com” 250 EUR"), ["alpha.com", "beta.com"]));
+  caso("normaliseDomain: markers and quotes", normaliseDomain("1. alpha.com").domain === "alpha.com" && normaliseDomain("• beta.com").domain === "beta.com" && normaliseDomain("«gamma.com»").domain === "gamma.com" && normaliseDomain("(delta.com)").domain === "delta.com" && normaliseDomain("1337.io").domain === "1337.io" && eq(normaliseDomain("rfi.ro (rfi.fr/ro)"), { domain: "rfi.ro", path: "" }));
+  caso("several domains on one line, comma separated", eq(doms("alpha.com, beta.com, gamma.com: 300 EUR each"), ["alpha.com", "beta.com", "gamma.com"]) && eq(gen("alpha.com, beta.com, gamma.com: 300 EUR each"), [300, 300, 300]));
+  /* The price on the domain's own line, not alone in its cell. */
+  const own = s => parseList(s).items[0];
+  caso("150 GBP + VAT", own("site-a.com - 150 GBP + VAT").prices.general.currency === "GBP" && own("site-a.com - 150 GBP + VAT").prices.general.amount === 150 && own("site-a.com - 150 GBP + VAT").terms === "+ VAT");
+  const vat = own("site-b.de 120 EUR + VAT (dofollow, permanent)");
+  caso("120 EUR + VAT (dofollow, permanent): price, and the terms read", vat.prices.general.amount === 120 && termsOf(vat).linkType === "Do follow" && termsOf(vat).placement === "permanent", vat);
+  const two = own("site-c.net – 450 EUR casino / 250 EUR general");
+  caso("450 EUR casino / 250 EUR general", two.prices.casino.amount === 450 && two.prices.general.amount === 250, two);
+  const par = own("site-e.com - 300 EUR (casino 500 EUR)");
+  caso("300 EUR (casino 500 EUR): general and casino", par.prices.general.amount === 300 && par.prices.casino.amount === 500, par);
+  caso("300 EUR casino: casino only", own("site-f.com 300 EUR casino").prices.casino.amount === 300 && !own("site-f.com 300 EUR casino").prices.general);
+  caso("300 € per article is general", own("site-g.com - 300 € per article").prices.general.amount === 300);
+  caso("site | 300 EUR | 500 EUR on one line: general and casino", own("site-h.com | 300 EUR | 500 EUR").prices.general.amount === 300 && own("site-h.com | 300 EUR | 500 EUR").prices.casino.amount === 500);
+  caso("a domain with no price at all still opens a group", eq(doms("site-z.com\n1. Articol SEO - 35 EUR"), ["site-z.com"]) && own("site-z.com\n1. Articol SEO - 35 EUR").prices.general.amount === 35);
+  /* Signatures and phone numbers. */
+  const sig = s => doms(`site-x.com 300 EUR\n${s}\nAnna Berg\nwww.anna-agency.example\nTel +46 70 123 45 67\nMobile: 0049 171 1234567`);
+  for(const s of ["Med vänlig hälsning", "Liebe Grüße", "Mit besten Grüßen", "Cordiali saluti", "Bien cordialement", "Cumprimentos", "All the best", "Sincerely", "Warm regards", "Pozdrawiam", "Vriendelijke groet", "Hälsningar", "Best regards,", "Saludos cordiales"]) caso("sign-off ends the message: " + s, eq(sig(s), ["site-x.com"]), sig(s));
+  caso("a sign-off is a short line: 'Thanks for your interest, here are our sites:' is not one", eq(doms("Thanks for your interest, here are our sites:\nalpha.com 300 EUR"), ["alpha.com"]));
+  const phone = parseList("site-y.com 300 EUR\nour-agency.example\nTel. 0049 171 1234567\nContact: +34 600 123 456");
+  caso("phone numbers are not prices, even without a sign-off", phone.items.every(i => !i.prices.general || i.prices.general.amount === 300), phone.items);
+  caso("bareNotPrice: phone line, long number, leading zero, year; a priced cell is a price", bareNotPrice("123", "Tel +46 70 123 45 67") && bareNotPrice("1234567", "x") && bareNotPrice("0049", "x") && bareNotPrice("2024", "x") && !bareNotPrice("300", "site.com 300") && !bareNotPrice("€ 1,200.00", "x") && !bareNotPrice("1,200.00", "x"));
+  const year = own("site-q.com 2024 300 EUR");
+  caso("a year on the line is not the price", year.prices.general.amount === 300 && /2024/.test(year.terms), year);
+  /* Separator per line: a table and prose in one text. */
+  const mixed = parseList("Domain\tCasino\tGeneral\nalpha.com\t300\t200\nbeta.com\t350\t250\n\nAnd two more:\ngamma.com - 300 EUR\ndelta.com - 250 EUR");
+  caso("tab rows and prose lines in one text: all four sites", eq(mixed.items.map(i => i.domain), ["alpha.com", "beta.com", "gamma.com", "delta.com"]) && mixed.items[0].prices.casino.amount === 300 && mixed.items[2].prices.general.amount === 300, mixed.items);
+  caso("a comma inside brackets or in prose is not a CSV separator", eq(gen("a.com - 300 EUR (dofollow, permanent)\nb.com - 250 EUR (dofollow, permanent)"), [300, 250]));
+  /* Terms. */
+  caso("marked as sponsored: the tag, no Admin Comments entry", termsOf({ terms: "dofollow, permanent, marked as sponsored", prices: {} }).sponsorTag === "rel=sponsored" && termsOf({ terms: "dofollow, permanent, marked as sponsored", prices: {} }).adminComments.length === 0);
+  caso("marked as Werbung still gives Marked by WM and the comment", termsOf({ terms: "marked as Werbung", prices: {} }).sponsorTag === "Marked by WM" && eq(termsOf({ terms: "marked as Werbung", prices: {} }).adminComments, ['Marked as "Werbung"']));
+  /* TLD. */
+  caso("tldOf: registrable suffix", tldOf("blog.example.com") === ".com" && tldOf("example.co.uk") === ".co.uk" && tldOf("news.example.co.uk") === ".co.uk" && tldOf("gamma.net") === ".net" && tldOf("site.com.br") === ".com.br");
+  caso("rowForAccept TLD of a subdomain", rowForAccept({ domain: "blog.example.com", prices: {} }).TLD === ".com");
+  /* Offers: the sell price first. */
+  const sellRow = prepareRow({ Domain: "s.com", "Buying Casino": 400, Casino: 800, "Buying General": 300 });
+  caso("offerPriceOf: our sell price when the database has it, the cost price only as fallback", eq(offerPriceOf(sellRow, "casino"), { amount: 800, source: "sell" }) && eq(offerPriceOf(sellRow, "general"), { amount: 300, source: "buy" }) && offerPriceOf(sellRow, "cbd") === null && offerPrice(sellRow, "casino") === 800);
+  caso("rowForOffer uses the sell price", rowForOffer(sellRow, { niche: "casino" }).Price === 800 && rowForOffer(sellRow, { niche: "general" }).Price === 300);
+  caso("a sell column at 0 or empty falls back to the cost price", offerPriceOf(prepareRow({ Domain: "z.com", "Buying Casino": 400, Casino: 0 }), "casino").source === "buy" && offerPriceOf(prepareRow({ Domain: "z.com", "Buying Casino": 400, Casino: "" }), "casino").amount === 400);
+  /* Our own domain, quoted under theirs, is never a site. */
+  caso("our quoted signature is not a site", eq(doms("site-w.com 300 EUR\nOn 5 Oct 2026 Mauro wrote:\n> Mauro Fernandez\n> linkjuiceclub.com"), ["site-w.com"]));
 }
 
 console.log(`${casos - fallos} of ${casos} checks passed`);
