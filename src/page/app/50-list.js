@@ -26,9 +26,24 @@ function run(){
 async function matchRemote(){
   const sender = $("sender").value.trim();
   try{
-    const r = await fetch(API + "/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: items.map(i => i.domain), sender }) });
-    if(!r.ok) throw new Error(String(r.status));
-    const j = await r.json();
+    /* The Worker matches at most 2,000 domains a request and drops the rest
+       without a word (16/10: a long broker list would have shown its tail as
+       "Unknown"). So the list goes in batches of 1,500, the sender's own
+       rows are asked once, and the answers are put together. */
+    const all = [...new Set(items.map(i => i.domain))];
+    const BATCH = 1500;
+    let j = null;
+    for(let i = 0; i < Math.max(all.length, 1); i += BATCH){
+      const r = await fetch(API + "/match", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ domains: all.slice(i, i + BATCH), sender: i === 0 ? sender : "" }) });
+      if(!r.ok) throw new Error(String(r.status));
+      const part = await r.json();
+      if(!j){ j = part; continue; }
+      Object.keys(part.rows || {}).forEach(d => { if(!j.rows[d]) j.rows[d] = part.rows[d]; });
+      Object.keys(part.removed || {}).forEach(d => { if(!j.removed[d]) j.removed[d] = part.removed[d]; });
+    }
+    /* The sender's rows come with the first batch: leave out the ones another batch matched. */
+    const dn = x => { const n = normaliseDomain(x && (x.Domain || x.domain)); return n ? n.domain : ""; };
+    if(all.length > BATCH) j.senderRows = (j.senderRows || []).filter(x => !j.rows[dn(x)]);
     lastMatch = j;
     const idx = indexDatabase(Object.values(j.rows || {}).flat().concat(j.senderRows || []).map(prepareRow), Object.values(j.removed || {}).flat().map(prepareRow));
     groups = matchList(items, idx, { sender, senderCount: j.senderCount, senderType: stype });
