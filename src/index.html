@@ -178,6 +178,24 @@ body.embed .bar .marca,body.embed .bar .idioma,body.embed #tema,body.embed #pant
 #help{padding:3px 9px;font-size:12px;margin-right:8px}
 /* Narrow screens: each site a card, the column name over each cell. */
 @media (max-width:719px){
+
+  .keys{display:none}
+  .ltools{gap:6px} .ltools .inp{flex-basis:100%} .ltools select{flex:1 1 120px;min-width:0}
+  .gtabs{gap:4px} .sumbtn{margin-left:0;flex-basis:100%}
+  .rail .seg.stype{flex-wrap:wrap}
+}
+/* The list table follows the width of its own box, not the window: the rail
+   and the work area change what is left (19/10: the Decision buttons were
+   cut off at 1300 px). Below 960 px the decision is a dropdown and the
+   columns are tighter; below 900 px each site is a card. */
+#ltable{container-type:inline-size;container-name:lt}
+@container lt (max-width:960px){
+  table.outreach td.dec .seg{display:none} table.outreach td.dec .decsel{display:inline-block}
+  #ltable table.outreach th,#ltable table.outreach td{padding-left:6px;padding-right:6px}
+  #ltable table.outreach td.ancha{min-width:120px}
+  #ltable .sender{max-width:190px}
+}
+@container lt (max-width:899px){
   #ltable .tabla-wrap{overflow:visible;border:0;background:transparent;box-shadow:none}
   #ltable table.outreach,#ltable table.outreach tbody,#ltable table.outreach tr,#ltable table.outreach td{display:block;white-space:normal;width:auto;max-width:none}
   #ltable table.outreach thead{display:none}
@@ -188,12 +206,6 @@ body.embed .bar .marca,body.embed .bar .idioma,body.embed #tema,body.embed #pant
   #ltable table.outreach td.dbc{min-width:0}
   #ltable table.outreach tr.cur td{box-shadow:none}
   #ltable table.outreach tr.cur{box-shadow:inset 3px 0 0 var(--accent)}
-
-  table.outreach td.dec .seg{display:none} table.outreach td.dec .decsel{display:inline-block}
-  .keys{display:none}
-  .ltools{gap:6px} .ltools .inp{flex-basis:100%} .ltools select{flex:1 1 120px;min-width:0}
-  .gtabs{gap:4px} .sumbtn{margin-left:0;flex-basis:100%}
-  .rail .seg.stype{flex-wrap:wrap}
 }
 #hist{margin-top:6px;width:100%;padding:6px 8px;border-radius:7px;border:1px solid var(--line-strong);background:var(--paper);color:var(--ink);font:inherit;font-size:12px}
 .dup{display:inline-block;font-size:11px;color:var(--wait-ink);margin-top:3px;white-space:normal}
