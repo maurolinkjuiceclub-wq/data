@@ -7,7 +7,7 @@ let mode = "list";
 /* 34px of row plus its 1px border: the spacers above and below the drawn
    rows must add up to exactly what the rows take, or the scroll drifts. */
 const ROW_H = 35;
-const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, remotePages: new Map(), remoteTotal: 0 };
+const dbState = { q: "", type: "", country: "", lang: "", niche: "", removed: false, wide: false, list: [], total: 0, sel: null, remotePages: new Map(), remoteTotal: 0, failed: false };
 /* The count on the Database tab: the sheet's rows when the Worker answers,
    the loaded copy's otherwise. Drawn in the current language. */
 let dbBadge = null;
@@ -51,7 +51,7 @@ function fillSelect(id, values, keep){
   return sel.value;
 }
 function dbRefresh(){
-  if(remote){ dbState.remotePages.clear(); dbRemoteFetch(0, true); return; }
+  if(remote){ dbState.remotePages.clear(); dbState.failed = false; dbRemoteFetch(0, true); return; }
   const rows = dbSourceRows();
   const f = dbFacetsFor(rows);
   dbState.country = fillSelect("db-country", f.countries, dbState.country);
@@ -83,7 +83,9 @@ function dbDraw(){
   $("db-head").innerHTML = cols.map(([c]) => `<div title="${esc(c)}">${esc(t().dbCols[c] || SHORT[c] || c)}</div>`).join("");
   const total = remote ? dbState.remoteTotal : dbState.list.length;
   $("db-count").textContent = t().dbCount(total, remote ? (remote.rows || 0) : dbState.total) + (dbState.removed ? " · " + t().dbRemovedTab : "");
-  if(!total){ $("db-top").style.height = "0px"; $("db-bottom").style.height = "0px"; $("db-rows").innerHTML = `<div class="dbempty">${esc(emptyText())}</div>`; return; }
+  if(!total){ $("db-top").style.height = "0px"; $("db-bottom").style.height = "0px"; $("db-rows").innerHTML = (remote && dbState.failed) ? `<div class="dbempty">${esc(t().dbLoadFailed)} <button type="button" class="btn sutil" id="db-retry">${esc(t().dbRetry)}</button></div>` : `<div class="dbempty">${esc(emptyText())}</div>`;
+    const retry = $("db-retry"); if(retry) retry.onclick = () => dbRefresh();
+    return; }
   const scroll = grid.scrollTop, h = grid.clientHeight || 600;
   const first = Math.max(0, Math.floor(scroll / ROW_H) - 10), last = Math.min(total, Math.ceil((scroll + h) / ROW_H) + 10);
   $("db-top").style.height = (first * ROW_H) + "px";
@@ -142,11 +144,15 @@ async function dbRemoteFetch(offset, first){
     const j = await r.json();
     if(dbRemoteQuery(offset) !== key) return;   /* filters changed meanwhile */
     dbState.remotePages.set(Math.floor(offset / PAGE), (j.rows || []).map(prepareRow));
-    dbState.remoteTotal = j.total || 0;
+    dbState.remoteTotal = j.total || 0; dbState.failed = false;
     if(first && j.facets){ dbState.country = fillSelect("db-country", j.facets.countries || [], dbState.country); dbState.lang = fillSelect("db-lang", j.facets.languages || [], dbState.lang); dbBadge = j.all || 0; paintDbBadge(); }
     dbDraw();
   }catch(e){
-    dbState.remoteTotal = 0; dbDraw();
+    /* A failed request is not "no row matches" (19/10): the first page says so
+       with a retry button; a later page only asks again a few seconds on. */
+    if(offset === 0){ dbState.failed = true; dbState.remoteTotal = 0; }
+    else { dbState.remotePages.delete(Math.floor(offset / PAGE)); setTimeout(dbDraw, 3000); }
+    dbDraw();
   }
 }
 let dbTimer = null;

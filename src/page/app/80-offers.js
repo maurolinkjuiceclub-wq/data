@@ -7,7 +7,7 @@
    download the sheet. Nothing here writes anywhere. The price starts as
    the publisher's price for the niche; the margin rule is the team's to
    give (BRIEF, open question 1). Offers are kept in this browser by name. */
-const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", topic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0 };
+const ofState = { q: "", type: "", country: "", lang: "", niche: "casino", minDr: "", minTraffic: "", topic: "", sort: "dr", list: [], total: 0, remotePages: new Map(), remoteTotal: 0, failed: false };
 const OF_COLS = [["pick", 40], ["Domain", 220], ["Country", 110], ["Language", 90], ["DR", 64], ["RD", 84], ["Traffic", 94], ["Topic", 170], ["Price", 84], ["Terms", 220]];
 const OFFERS_KEY = "ljc-offers";
 let offer = { client: "", label: "", niche: "casino", items: [], linked: "" };   /* items: {domain, row, price, comment}; linked: the pasted domains that already link to the client */
@@ -26,7 +26,7 @@ function ofSourceRows(){ return dbRows; }
 /* "price" on the select is the niche's price column. */
 function ofSort(){ return ofState.sort === "price" ? "price:" + ofState.niche : ofState.sort; }
 function ofRefresh(){
-  if(remote){ ofState.remotePages.clear(); ofRemoteFetch(0, true); return; }
+  if(remote){ ofState.remotePages.clear(); ofState.failed = false; ofRemoteFetch(0, true); return; }
   const rows = ofSourceRows();
   const f = dbFacetsFor(rows);
   ofState.country = fillSelect("of-country", f.countries, ofState.country);
@@ -52,7 +52,9 @@ function ofDraw(){
   $("of-head").innerHTML = OF_COLS.map(([c]) => `<div title="${esc(c)}">${c === "pick" ? "" : esc(t().ofCols[c] || c)}</div>`).join("");
   const total = remote ? ofState.remoteTotal : ofState.list.length;
   $("of-count").textContent = t().dbCount(total, remote ? (remote.rows || 0) : ofState.total);
-  if(!total){ $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-rows").innerHTML = `<div class="dbempty">${esc(emptyText())}</div>`; return; }
+  if(!total){ $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-rows").innerHTML = (remote && ofState.failed) ? `<div class="dbempty">${esc(t().dbLoadFailed)} <button type="button" class="btn sutil" id="of-retry">${esc(t().dbRetry)}</button></div>` : `<div class="dbempty">${esc(emptyText())}</div>`;
+    const retry = $("of-retry"); if(retry) retry.onclick = () => ofRefresh();
+    return; }
   const scroll = grid.scrollTop, h = grid.clientHeight || 600;
   const first = Math.max(0, Math.floor(scroll / ROW_H) - 10), last = Math.min(total, Math.ceil((scroll + h) / ROW_H) + 10);
   $("of-top").style.height = (first * ROW_H) + "px";
@@ -145,10 +147,14 @@ async function ofRemoteFetch(offset, first){
     const j = await r.json();
     if(ofRemoteQuery(offset) !== key) return;
     ofState.remotePages.set(Math.floor(offset / PAGE), (j.rows || []).map(prepareRow));
-    ofState.remoteTotal = j.total || 0;
+    ofState.remoteTotal = j.total || 0; ofState.failed = false;
     if(first && j.facets){ ofState.country = fillSelect("of-country", j.facets.countries || [], ofState.country); ofState.lang = fillSelect("of-lang", j.facets.languages || [], ofState.lang); }
     ofDraw();
-  }catch(e){ ofState.remoteTotal = 0; ofDraw(); }
+  }catch(e){
+    if(offset === 0){ ofState.failed = true; ofState.remoteTotal = 0; }
+    else { ofState.remotePages.delete(Math.floor(offset / PAGE)); setTimeout(ofDraw, 3000); }
+    ofDraw();
+  }
 }
 let ofTimer = null;
 const OF_FILTER_KEYS = ["q", "type", "country", "lang", "niche", "minDr", "minTraffic", "topic", "sort"];

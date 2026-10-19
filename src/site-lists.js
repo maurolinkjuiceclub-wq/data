@@ -973,7 +973,10 @@ export function withListTerms(item, listTerms){
 export function priceDelta(diffs){
   return (diffs || []).map(d => {
     const a = d.offered ? d.offered.amount : null, b = d.inDatabase ? d.inDatabase.amount : null;
-    const delta = a != null && b != null ? a - b : null;
+    /* The database is in EUR. A figure in another currency is not compared
+       with it: "100 GBP" against 120 would read as 17% below (19/10). */
+    const foreign = d.offered && d.offered.currency && d.offered.currency !== "EUR";
+    const delta = a != null && b != null && !foreign ? a - b : null;
     return { ...d, delta, pct: delta != null && b ? Math.round(delta / b * 100) : null };
   });
 }

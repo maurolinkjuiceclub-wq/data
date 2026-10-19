@@ -53,6 +53,10 @@ async function matchRemote(){
     describeDb(); render();
   }catch(e){
     remote = null; remoteWhy = "error"; remoteDetail = "match failed"; describeDb();
+    /* One failed match must not leave the Database and Offers screens "not
+       connected" until the page is reloaded (19/10): ask the status route
+       again a few seconds on, and Match again. */
+    setTimeout(() => { checkRemote().then(() => { if(remote) describeDb(); }).catch(() => {}); }, 5000);
   }
 }
 $("match").addEventListener("click", run);
