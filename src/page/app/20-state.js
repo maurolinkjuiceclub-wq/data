@@ -16,6 +16,17 @@ let remote = null;      /* { rows, readAt, write, loading, loadError } when the 
 let apiAnswered = false; /* the status route answered (connected or not); false when there is no API at all */
 let remoteDetail = "";   /* the reason the API gave, verbatim, for the "other" sentence */
 let remotePoll = null;
+/* Whether the status route has been asked and answered for good. A page served
+   from a Worker has an API; GitHub Pages and a file on disk do not. Until the
+   first is settled the page does not match against the invented sample rows:
+   pressed too early, a list was read against sites that do not exist, and with
+   a network that never answered it stayed that way without a word (20/10). */
+let remoteChecked = false, remoteTries = 0, pendingRun = false;
+function apiExpected(){ return location.protocol !== "file:" && !/\.github\.io$/i.test(location.hostname); }
+function waitingForSheet(){ return apiExpected() && !remoteChecked; }
+/* The sheet is not there and there is nothing else to match against: no API
+   answer and still the sample rows. */
+function noSheetToMatch(){ return apiExpected() && remoteChecked && !remote && !apiAnswered && dbSource === "sample"; }
 const TEMA_KEY = "mesa-cotejo-tema";   /* the desk's key: one choice for both pages */
 let temaElegido = ""; try{ temaElegido = localStorage.getItem(TEMA_KEY) || ""; }catch(e){}
 function aplicarTema(){
@@ -52,8 +63,9 @@ const acceptIds = {};   /* domain -> request id, kept across retries */
 /* force: Gary's refresh button (09/10, "live Google sheet with refresh
    button"): the Worker re-reads the sheet instead of serving its cache. */
 async function checkRemote(force){
+  let networkFailure = false;
   try{
-    const r = await fetch(API + "/status" + (force ? "?refresh=1" : ""), { headers: { accept: "application/json" } });
+    const r = await fetch(API + "/status" + (force ? "?refresh=1" : ""), { headers: { accept: "application/json" }, signal: AbortSignal.timeout(12000) }).catch(e => { networkFailure = true; throw e; });
     /* A 502 with {connected:false, reason} is an answer (a read that
        failed); anything that is not the route's JSON means there is no API
        here (GitHub Pages, a file on disk). */
@@ -71,6 +83,13 @@ async function checkRemote(force){
     clearTimeout(remotePoll);
     if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(() => {}), 4000);
   }catch(e){ remote = null; apiAnswered = false; remoteWhy = ""; remoteDetail = String(e && e.message || e); }
+  /* Settled: it answered, or it answered with something that is not the
+     route (no API here), or the network failed three times. A network that
+     fails once is not "no API": it is asked again (3 s, then 6 s). */
+  if(apiAnswered || !networkFailure || !apiExpected() || remoteTries >= 2){ remoteChecked = true; remoteTries = 0; }
+  else { remoteTries++; clearTimeout(remotePoll); remotePoll = setTimeout(() => checkRemote().then(settled).catch(() => {}), 3000 * remoteTries); }
+  if(remoteChecked && pendingRun){ pendingRun = false; run(); }
+  if(remoteChecked && !remote && apiExpected()){ if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }
   /* The API is there but the sheet is not (paused, no key, a read that
      failed): the sample rows go, so the Database and Offers screens say so
      instead of listing invented sites (review of 16/10). They stay only
@@ -80,6 +99,8 @@ async function checkRemote(force){
 }
 /* "" when connected or when there is no API; else the reason as a key:
    paused, no-service-account, no-sheet-id, or error (remoteDetail says). */
+/* What the boot does when the first answer is in; also after a retry. */
+function settled(){ if(remote){ run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }
 let remoteWhy = "";
 function remoteSentence(){
   if(!remoteWhy) return "";

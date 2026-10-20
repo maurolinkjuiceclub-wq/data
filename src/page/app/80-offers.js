@@ -26,6 +26,7 @@ function ofSourceRows(){ return dbRows; }
 /* "price" on the select is the niche's price column. */
 function ofSort(){ return ofState.sort === "price" ? "price:" + ofState.niche : ofState.sort; }
 function ofRefresh(){
+  if(waitingForSheet() || noSheetToMatch()){ $("of-rows").innerHTML = `<div class="dbempty">${esc(waitingForSheet() ? t().sheetConnecting : t().sheetUnreachable)}</div>`; $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-count").textContent = ""; return; }
   if(remote){ ofState.remotePages.clear(); ofState.failed = false; ofRemoteFetch(0, true); return; }
   const rows = ofSourceRows();
   const f = dbFacetsFor(rows);
@@ -89,9 +90,16 @@ function renderBasket(){
   }).join("");
   const sum = offer.items.reduce((a, it) => a + (Number(it.price) || 0), 0);
   $("of-total").textContent = t().ofTotal(offer.items.length, sum);
+  refreshOfferOutput();
+}
+/* The offer's output, rebuilt from what is on screen NOW (20/10): the file
+   name carries the offer's name and the client, and it was only rebuilt when
+   a site or a price changed, so a name typed afterwards gave "offer-offer". */
+function refreshOfferOutput(){
   const out = offerOutput();
   $("of-tsv").value = [out.cols.join("\t")].concat(out.rows.map(r => out.cols.map(c => String(r[c] ?? "").replace(/\t/g, " ")).join("\t"))).join("\n");
   outputs.offer = out;
+  return out;
 }
 function offerOutput(){
   const rows = offer.items.map(it => rowForOffer(it.row, { niche: offer.niche, price: it.price, comment: it.comment }));
@@ -216,17 +224,17 @@ bootStep("offers screen", () => {
     if(ev.target.classList.contains("ofcomment")) it.comment = ev.target.value;
     const sum = offer.items.reduce((a, x) => a + (Number(x.price) || 0), 0);
     $("of-total").textContent = t().ofTotal(offer.items.length, sum);
-    outputs.offer = offerOutput(); $("of-tsv").value = [outputs.offer.cols.join("\t")].concat(outputs.offer.rows.map(r => outputs.offer.cols.map(c => String(r[c] ?? "")).join("\t"))).join("\n");
+    refreshOfferOutput();
     saveOffer();
   });
   $("of-items").addEventListener("click", ev => { const b = ev.target.closest(".ofx"); if(!b) return; offer.items.splice(Number(b.dataset.i), 1); saveOffer(); renderBasket(); ofDraw(); });
-  $("of-client").addEventListener("input", () => { offer.client = $("of-client").value; saveOffer(); });
-  $("of-label").addEventListener("input", () => { offer.label = $("of-label").value; saveOffer(); });
+  $("of-client").addEventListener("input", () => { offer.client = $("of-client").value; saveOffer(); refreshOfferOutput(); });
+  $("of-label").addEventListener("input", () => { offer.label = $("of-label").value; saveOffer(); refreshOfferOutput(); });
   $("of-hist").addEventListener("change", () => { if($("of-hist").value) openOffer($("of-hist").value); });
   $("of-new").addEventListener("click", newOffer);
   $("of-copy").addEventListener("click", () => copyFrom("of-tsv", "of-note"));
-  $("of-csv").addEventListener("click", () => downloadCsv(outputs.offer));
-  $("of-xlsx").addEventListener("click", () => downloadXlsx(outputs.offer, "of-note"));
+  $("of-csv").addEventListener("click", () => downloadCsv(refreshOfferOutput()));
+  $("of-xlsx").addEventListener("click", () => downloadXlsx(refreshOfferOutput(), "of-note"));
   $("of-q").placeholder = t().dbSearch; $("of-topic").placeholder = t().ofTopic;
   ofRestoreFilters(); fillOfferHist(); renderBasket();
   /* The offer that was open last time, back with its rows. */

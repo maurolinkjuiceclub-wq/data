@@ -9,6 +9,10 @@ function pickView(){
 }
 let dupes = [];   /* sites named more than once in this list */
 function run(){
+  /* Not against the sample rows while the sheet has not answered, and not at
+     all when it never did (20/10): the results say what is going on. */
+  if(waitingForSheet()){ pendingRun = true; sheetNotice("connecting"); return; }
+  if(noSheetToMatch()){ sheetNotice("unreachable"); return; }
   const parsed = parseList($("list").value);
   const listTerms = listTermsOf(parsed);
   const merged = mergeDuplicates(parsed.items.map(i => withListTerms(i, listTerms)));
@@ -22,6 +26,13 @@ function run(){
   render();
   rememberList();
   if(remote) matchRemote();
+}
+function sheetNotice(kind){
+  groups = null; items = [];
+  $("results").innerHTML = `<div class="empty ${kind === "unreachable" ? "bad" : ""}" role="status">${esc(kind === "unreachable" ? t().sheetUnreachable : t().sheetConnecting)}${kind === "unreachable" ? ` <button type="button" class="btn sutil" id="sheet-retry">${esc(t().dbRetry)}</button>` : ""}</div>`;
+  const b = $("sheet-retry"); if(b) b.addEventListener("click", () => { remoteChecked = false; remoteTries = 0; describeDb(); checkRemote(true).then(() => { settled(); if(!remote) run(); }); run(); });
+  if($("export")) $("export").hidden = true;
+  describeDb();
 }
 async function matchRemote(){
   const sender = $("sender").value.trim();

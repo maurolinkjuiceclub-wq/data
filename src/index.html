@@ -1594,6 +1594,17 @@ let remote = null;      /* { rows, readAt, write, loading, loadError } when the 
 let apiAnswered = false; /* the status route answered (connected or not); false when there is no API at all */
 let remoteDetail = "";   /* the reason the API gave, verbatim, for the "other" sentence */
 let remotePoll = null;
+/* Whether the status route has been asked and answered for good. A page served
+   from a Worker has an API; GitHub Pages and a file on disk do not. Until the
+   first is settled the page does not match against the invented sample rows:
+   pressed too early, a list was read against sites that do not exist, and with
+   a network that never answered it stayed that way without a word (20/10). */
+let remoteChecked = false, remoteTries = 0, pendingRun = false;
+function apiExpected(){ return location.protocol !== "file:" && !/\.github\.io$/i.test(location.hostname); }
+function waitingForSheet(){ return apiExpected() && !remoteChecked; }
+/* The sheet is not there and there is nothing else to match against: no API
+   answer and still the sample rows. */
+function noSheetToMatch(){ return apiExpected() && remoteChecked && !remote && !apiAnswered && dbSource === "sample"; }
 const TEMA_KEY = "mesa-cotejo-tema";   /* the desk's key: one choice for both pages */
 let temaElegido = ""; try{ temaElegido = localStorage.getItem(TEMA_KEY) || ""; }catch(e){}
 function aplicarTema(){
@@ -1630,8 +1641,9 @@ const acceptIds = {};   /* domain -> request id, kept across retries */
 /* force: Gary's refresh button (09/10, "live Google sheet with refresh
    button"): the Worker re-reads the sheet instead of serving its cache. */
 async function checkRemote(force){
+  let networkFailure = false;
   try{
-    const r = await fetch(API + "/status" + (force ? "?refresh=1" : ""), { headers: { accept: "application/json" } });
+    const r = await fetch(API + "/status" + (force ? "?refresh=1" : ""), { headers: { accept: "application/json" }, signal: AbortSignal.timeout(12000) }).catch(e => { networkFailure = true; throw e; });
     /* A 502 with {connected:false, reason} is an answer (a read that
        failed); anything that is not the route's JSON means there is no API
        here (GitHub Pages, a file on disk). */
@@ -1649,6 +1661,13 @@ async function checkRemote(force){
     clearTimeout(remotePoll);
     if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(() => {}), 4000);
   }catch(e){ remote = null; apiAnswered = false; remoteWhy = ""; remoteDetail = String(e && e.message || e); }
+  /* Settled: it answered, or it answered with something that is not the
+     route (no API here), or the network failed three times. A network that
+     fails once is not "no API": it is asked again (3 s, then 6 s). */
+  if(apiAnswered || !networkFailure || !apiExpected() || remoteTries >= 2){ remoteChecked = true; remoteTries = 0; }
+  else { remoteTries++; clearTimeout(remotePoll); remotePoll = setTimeout(() => checkRemote().then(settled).catch(() => {}), 3000 * remoteTries); }
+  if(remoteChecked && pendingRun){ pendingRun = false; run(); }
+  if(remoteChecked && !remote && apiExpected()){ if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); }
   /* The API is there but the sheet is not (paused, no key, a read that
      failed): the sample rows go, so the Database and Offers screens say so
      instead of listing invented sites (review of 16/10). They stay only
@@ -1658,6 +1677,8 @@ async function checkRemote(force){
 }
 /* "" when connected or when there is no API; else the reason as a key:
    paused, no-service-account, no-sheet-id, or error (remoteDetail says). */
+/* What the boot does when the first answer is in; also after a retry. */
+function settled(){ if(remote){ run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }
 let remoteWhy = "";
 function remoteSentence(){
   if(!remoteWhy) return "";
@@ -1688,6 +1709,7 @@ const esc = s => String(s == null ? "" : s).replace(/[&<>"]/g, c => ({"&":"&amp;
 const T = {
   en: { title:"LJC Sites", sender:"Sender", list:"List", paste:"Paste the list", match:"Match", db:"Database",
     dbhint:"Sample rows until a copy of the sheet is loaded. Export the sheet as .xlsx (both tabs) or .csv and load it here: it stays in this browser, also after closing it, until it is replaced or forgotten.", dbfileL:"Copy of the sheet · .xlsx (both tabs) or .csv", rmfileL:"removed sites · .csv, when the copy is a CSV", dbnever:"This page never writes to the database. Accept builds the rows; a person pastes them into the sheet.", dbLoaded:(name, when)=>`${name} · loaded ${when}`, gsheetHint:"A Google Sheets link cannot be read from here: open it, File → Download → .xlsx, and load that file above.", all:"All", exportT:(n)=>`${n} row${n === 1 ? "" : "s"} Accept will write`,
+    sheetConnecting:"sheet: connecting…", sheetUnreachableShort:"sheet: not reached", sheetUnreachable:"The sheet could not be reached, so nothing was matched: the page would have used invented sample rows. Try again, or load a copy of the database in the panel.",
     sheetState:(n, at)=>`sheet: ${n.toLocaleString("en")} rows · read ${at}`, refreshFailed:(why)=>`last refresh failed: ${why}`, refreshFailedShort:"last refresh failed", sampleRows:"sample rows", notConnected:(why)=>`Not connected. ${why}`,
     reasons:{ paused:"LJC Sites is paused: reading the sheet costs more than the Cloudflare plan allows per day. It comes back when the account is on Workers Paid.", "no-service-account":"The Worker has no service-account key (GOOGLE_SA), so the sheet cannot be read.", "no-sheet-id":"The Worker has no sheet id (SHEET_ID), so it does not know which sheet to read.", other:(why)=>`The sheet could not be read: ${why}.` },
     reasonShort:{ paused:"paused", "no-service-account":"no key", "no-sheet-id":"no sheet id", other:"read failed" }, sheetLoading:(n, have)=>`sheet: reading… ${n.toLocaleString("en")} rows so far${have ? " · " + have.toLocaleString("en") + " in use meanwhile" : ""}`, refresh:"Refresh sheet", refreshing:"Reading the sheet…", sheetOff:(why)=>`sheet not connected${why ? " · " + why : ""}`, writing:"Writing…", written:(range)=>`Written to the sheet${range ? " (" + range + ")" : ""}`, writeFail:"Could not write to the sheet. Nothing was changed.", writtenT:(n)=>`${n} row${n === 1 ? "" : "s"} written to the sheet`, writtenHint:"Appended to Import Database by the Worker, one per Accept. This is the copy.", dbhintLive:"The page reads the sheet live through the Worker. A CSV loaded here is used only if the sheet is not reachable.",
@@ -1713,6 +1735,7 @@ const T = {
     niche:{casino:"Casino",unlicensedCasino:"Unlic. casino",crypto:"Crypto",forex:"Forex",cbd:"CBD",dating:"Dating",general:"General"} },
   es: { title:"LJC Sites", sender:"Remitente", list:"Lista", paste:"Pega la lista", match:"Cotejar", db:"Base de datos",
     dbhint:"Filas de muestra hasta cargar una copia de la hoja. Exporta la hoja como .xlsx (las dos pestañas) o .csv y cárgala aquí: se queda en este navegador, también al cerrarlo, hasta reemplazarla u olvidarla.", dbfileL:"Copia de la hoja · .xlsx (las dos pestañas) o .csv", rmfileL:"removed sites · .csv, si la copia es un CSV", dbnever:"Esta página nunca escribe en la base. Aceptar construye las filas; una persona las pega en la hoja.", dbLoaded:(name, when)=>`${name} · cargado ${when}`, gsheetHint:"Un enlace de Google Sheets no se puede leer desde aquí: ábrelo, Archivo → Descargar → .xlsx, y carga ese archivo arriba.", all:"Todos", exportT:(n)=>`${n} fila${n === 1 ? "" : "s"} que escribirá Aceptar`,
+    sheetConnecting:"hoja: conectando…", sheetUnreachableShort:"hoja: sin conexión", sheetUnreachable:"No se pudo llegar a la hoja, así que no se comparó nada: la página habría usado filas de ejemplo inventadas. Inténtalo otra vez, o carga una copia de la base en el panel.",
     sheetState:(n, at)=>`hoja: ${n.toLocaleString("es")} filas · leída ${at}`, refreshFailed:(why)=>`la última lectura falló: ${why}`, refreshFailedShort:"la última lectura falló", sampleRows:"filas de muestra", notConnected:(why)=>`Sin conexión. ${why}`,
     reasons:{ paused:"LJC Sites está en pausa: leer la hoja cuesta más de lo que el plan de Cloudflare permite al día. Vuelve cuando la cuenta esté en Workers Paid.", "no-service-account":"El Worker no tiene la clave de la cuenta de servicio (GOOGLE_SA), así que no puede leer la hoja.", "no-sheet-id":"El Worker no tiene el id de la hoja (SHEET_ID), así que no sabe qué hoja leer.", other:(why)=>`No se pudo leer la hoja: ${why}.` },
     reasonShort:{ paused:"en pausa", "no-service-account":"sin clave", "no-sheet-id":"sin id de hoja", other:"lectura fallida" }, sheetLoading:(n, have)=>`hoja: leyendo… ${n.toLocaleString("es")} filas de momento${have ? " · " + have.toLocaleString("es") + " en uso mientras tanto" : ""}`, refresh:"Actualizar hoja", refreshing:"Leyendo la hoja…", sheetOff:(why)=>`hoja sin conectar${why ? " · " + why : ""}`, writing:"Escribiendo…", written:(range)=>`Escrita en la hoja${range ? " (" + range + ")" : ""}`, writeFail:"No se pudo escribir en la hoja. No se cambió nada.", writtenT:(n)=>`${n} fila${n === 1 ? "" : "s"} escrita${n === 1 ? "" : "s"} en la hoja`, writtenHint:"Añadidas a Import Database por el Worker, una por cada Aceptar. Esto es la copia.", dbhintLive:"La página lee la hoja en vivo a través del Worker. Un CSV cargado aquí solo se usa si la hoja no responde.",
@@ -1803,7 +1826,7 @@ function describeDb(){
     /* The seal stays short (the bar has to fit); the sentence is in the panel.
        With the API there and no sheet there is no local source to name. */
     const short = remoteWhy ? (t().reasonShort[remoteWhy] || t().reasonShort.other) : "";
-    $("state").textContent = (apiAnswered && dbSource === "sample") ? t().sheetOff(short) : t().state(srcName) + (short ? " · " + short : "");
+    $("state").textContent = waitingForSheet() ? t().sheetConnecting : noSheetToMatch() ? t().sheetUnreachableShort : (apiAnswered && dbSource === "sample") ? t().sheetOff(short) : t().state(srcName) + (short ? " · " + short : "");
     const sentence = remoteSentence();
     if(why){ why.textContent = sentence; why.hidden = !sentence; }
   }
@@ -1914,6 +1937,10 @@ function pickView(){
 }
 let dupes = [];   /* sites named more than once in this list */
 function run(){
+  /* Not against the sample rows while the sheet has not answered, and not at
+     all when it never did (20/10): the results say what is going on. */
+  if(waitingForSheet()){ pendingRun = true; sheetNotice("connecting"); return; }
+  if(noSheetToMatch()){ sheetNotice("unreachable"); return; }
   const parsed = parseList($("list").value);
   const listTerms = listTermsOf(parsed);
   const merged = mergeDuplicates(parsed.items.map(i => withListTerms(i, listTerms)));
@@ -1927,6 +1954,13 @@ function run(){
   render();
   rememberList();
   if(remote) matchRemote();
+}
+function sheetNotice(kind){
+  groups = null; items = [];
+  $("results").innerHTML = `<div class="empty ${kind === "unreachable" ? "bad" : ""}" role="status">${esc(kind === "unreachable" ? t().sheetUnreachable : t().sheetConnecting)}${kind === "unreachable" ? ` <button type="button" class="btn sutil" id="sheet-retry">${esc(t().dbRetry)}</button>` : ""}</div>`;
+  const b = $("sheet-retry"); if(b) b.addEventListener("click", () => { remoteChecked = false; remoteTries = 0; describeDb(); checkRemote(true).then(() => { settled(); if(!remote) run(); }); run(); });
+  if($("export")) $("export").hidden = true;
+  describeDb();
 }
 async function matchRemote(){
   const sender = $("sender").value.trim();
@@ -2635,6 +2669,8 @@ function fillSelect(id, values, keep){
   return sel.value;
 }
 function dbRefresh(){
+  /* Not the invented sample rows while the sheet has not answered, nor when it never did (20/10). */
+  if(waitingForSheet() || noSheetToMatch()){ $("db-rows").innerHTML = `<div class="dbempty">${esc(waitingForSheet() ? t().sheetConnecting : t().sheetUnreachable)}</div>`; $("db-top").style.height = "0px"; $("db-bottom").style.height = "0px"; $("db-count").textContent = ""; return; }
   if(remote){ dbState.remotePages.clear(); dbState.failed = false; dbRemoteFetch(0, true); return; }
   const rows = dbSourceRows();
   const f = dbFacetsFor(rows);
@@ -2796,6 +2832,7 @@ function ofSourceRows(){ return dbRows; }
 /* "price" on the select is the niche's price column. */
 function ofSort(){ return ofState.sort === "price" ? "price:" + ofState.niche : ofState.sort; }
 function ofRefresh(){
+  if(waitingForSheet() || noSheetToMatch()){ $("of-rows").innerHTML = `<div class="dbempty">${esc(waitingForSheet() ? t().sheetConnecting : t().sheetUnreachable)}</div>`; $("of-top").style.height = "0px"; $("of-bottom").style.height = "0px"; $("of-count").textContent = ""; return; }
   if(remote){ ofState.remotePages.clear(); ofState.failed = false; ofRemoteFetch(0, true); return; }
   const rows = ofSourceRows();
   const f = dbFacetsFor(rows);
@@ -2859,9 +2896,16 @@ function renderBasket(){
   }).join("");
   const sum = offer.items.reduce((a, it) => a + (Number(it.price) || 0), 0);
   $("of-total").textContent = t().ofTotal(offer.items.length, sum);
+  refreshOfferOutput();
+}
+/* The offer's output, rebuilt from what is on screen NOW (20/10): the file
+   name carries the offer's name and the client, and it was only rebuilt when
+   a site or a price changed, so a name typed afterwards gave "offer-offer". */
+function refreshOfferOutput(){
   const out = offerOutput();
   $("of-tsv").value = [out.cols.join("\t")].concat(out.rows.map(r => out.cols.map(c => String(r[c] ?? "").replace(/\t/g, " ")).join("\t"))).join("\n");
   outputs.offer = out;
+  return out;
 }
 function offerOutput(){
   const rows = offer.items.map(it => rowForOffer(it.row, { niche: offer.niche, price: it.price, comment: it.comment }));
@@ -2986,17 +3030,17 @@ bootStep("offers screen", () => {
     if(ev.target.classList.contains("ofcomment")) it.comment = ev.target.value;
     const sum = offer.items.reduce((a, x) => a + (Number(x.price) || 0), 0);
     $("of-total").textContent = t().ofTotal(offer.items.length, sum);
-    outputs.offer = offerOutput(); $("of-tsv").value = [outputs.offer.cols.join("\t")].concat(outputs.offer.rows.map(r => outputs.offer.cols.map(c => String(r[c] ?? "")).join("\t"))).join("\n");
+    refreshOfferOutput();
     saveOffer();
   });
   $("of-items").addEventListener("click", ev => { const b = ev.target.closest(".ofx"); if(!b) return; offer.items.splice(Number(b.dataset.i), 1); saveOffer(); renderBasket(); ofDraw(); });
-  $("of-client").addEventListener("input", () => { offer.client = $("of-client").value; saveOffer(); });
-  $("of-label").addEventListener("input", () => { offer.label = $("of-label").value; saveOffer(); });
+  $("of-client").addEventListener("input", () => { offer.client = $("of-client").value; saveOffer(); refreshOfferOutput(); });
+  $("of-label").addEventListener("input", () => { offer.label = $("of-label").value; saveOffer(); refreshOfferOutput(); });
   $("of-hist").addEventListener("change", () => { if($("of-hist").value) openOffer($("of-hist").value); });
   $("of-new").addEventListener("click", newOffer);
   $("of-copy").addEventListener("click", () => copyFrom("of-tsv", "of-note"));
-  $("of-csv").addEventListener("click", () => downloadCsv(outputs.offer));
-  $("of-xlsx").addEventListener("click", () => downloadXlsx(outputs.offer, "of-note"));
+  $("of-csv").addEventListener("click", () => downloadCsv(refreshOfferOutput()));
+  $("of-xlsx").addEventListener("click", () => downloadXlsx(refreshOfferOutput(), "of-note"));
   $("of-q").placeholder = t().dbSearch; $("of-topic").placeholder = t().ofTopic;
   ofRestoreFilters(); fillOfferHist(); renderBasket();
   /* The offer that was open last time, back with its rows. */
@@ -3103,7 +3147,7 @@ bootStep("stored database", () => {
    until it answers. */
 /* When it answers, whichever screen is open is redrawn from it: the
    Database and Offers screens may have drawn the local rows meanwhile. */
-checkRemote().then(() => { if(remote){ run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(e => console.error("worker check:", e));
+checkRemote().then(settled).catch(e => console.error("worker check:", e));
 
 </script>
 </body></html>
