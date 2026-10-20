@@ -51,6 +51,8 @@ function fillSelect(id, values, keep){
   return sel.value;
 }
 function dbRefresh(){
+  /* Not the invented sample rows while the sheet has not answered, nor when it never did (20/10). */
+  if(waitingForSheet() || noSheetToMatch()){ $("db-rows").innerHTML = `<div class="dbempty">${esc(waitingForSheet() ? t().sheetConnecting : t().sheetUnreachable)}</div>`; $("db-top").style.height = "0px"; $("db-bottom").style.height = "0px"; $("db-count").textContent = ""; return; }
   if(remote){ dbState.remotePages.clear(); dbState.failed = false; dbRemoteFetch(0, true); return; }
   const rows = dbSourceRows();
   const f = dbFacetsFor(rows);

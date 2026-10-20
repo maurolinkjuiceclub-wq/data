@@ -97,4 +97,4 @@ bootStep("stored database", () => {
    until it answers. */
 /* When it answers, whichever screen is open is redrawn from it: the
    Database and Offers screens may have drawn the local rows meanwhile. */
-checkRemote().then(() => { if(remote){ run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(e => console.error("worker check:", e));
+checkRemote().then(settled).catch(e => console.error("worker check:", e));
