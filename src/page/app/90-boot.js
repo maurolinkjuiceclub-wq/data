@@ -25,8 +25,11 @@ bootStep("list", () => { $("list").value = STAR; });
    them once and matches. */
 bootStep("from the desk", () => {
   let h = null; try{ h = JSON.parse(localStorage.getItem("ljc-lists:handoff") || "null"); }catch(e){}
-  if(!h || !h.text || Date.now() - (h.at || 0) > 10 * 60 * 1000) return;
+  if(!h) return;
+  /* One that has waited longer than that, or is empty, is thrown away too: the
+     thread's text does not stay in the browser's storage (19/10). */
   try{ localStorage.removeItem("ljc-lists:handoff"); }catch(e){}
+  if(!h.text || Date.now() - (h.at || 0) > 10 * 60 * 1000) return;
   $("sender").value = h.sender || ""; $("list").value = h.text; $("label").value = h.label || "";
 });
 bootStep("database screen", () => {

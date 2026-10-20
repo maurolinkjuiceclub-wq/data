@@ -339,6 +339,8 @@ caso("termsOf admin NO INDEX", eq(tf.adminComments, ["NO INDEX"]));
 caso("termsOf empty when silent", eq(termsOf({ terms: "", prices: {} }).linkType, ""));
 const pd = priceDelta([{ niche: "casino", offered: { amount: 269 }, inDatabase: { amount: 199 } }, { niche: "cbd", offered: { amount: 100 }, inDatabase: null }]);
 caso("priceDelta", pd[0].delta === 70 && pd[0].pct === 35 && pd[1].delta === null, pd);
+const pdGbp = priceDelta([{ niche: "general", offered: { amount: 100, currency: "GBP" }, inDatabase: { amount: 120 } }, { niche: "general", offered: { amount: 100, currency: "EUR" }, inDatabase: { amount: 120 } }]);
+caso("priceDelta: a price in another currency is not compared with the EUR one", pdGbp[0].delta === null && pdGbp[0].pct === null && pdGbp[1].delta === -20 && pdGbp[1].pct === -17, pdGbp);
 
 /* --- list-wide terms --- */
 const lt = listTermsOf(star);
