@@ -27,7 +27,7 @@ export function normaliseDomain(raw){
   /* A note in brackets after the name: "rfi.ro (rfi.fr/ro)", "x.com (DR
      45)". Only when a name stands before it: "(example.com)" is a domain
      in brackets, not an empty name with a note. */
-  s = s.replace(/^(\S.*?)\s*\([^()]*\)\s*$/, "$1");
+  s = s.replace(/^(\S.*?)\s*(?:\([^()]*\)|\[[^\[\]]*\])\s*$/, "$1");
   s = s.replace(/^[\s"'“”‘’«»<(\[]+|[\s"'“”‘’«»>)\]:;,.]+$/g, "");
   s = s.replace(/^(?:https?:)?\/\//, "");
   s = s.replace(/^www\d?\./, "");
@@ -172,13 +172,13 @@ function splitRows(text){
      separators when most lines without tabs have them; a comma inside
      brackets or in prose ("General 300 EUR, Casino 500 EUR") does not. */
   const plain = clean.filter(l => !l.includes("\t"));
-  const csvComma = l => { const o = l.replace(/\([^()]*\)/g, ""); return /,\S/.test(o) || (o.split(",").length > 2); };
+  const csvComma = l => { const o = l.replace(/\([^()]*\)|\[[^\[\]]*\]/g, ""); return /,\S/.test(o) || (o.split(",").length > 2); };
   const sep = plain.filter(l => l.includes(";")).length > plain.length / 2 ? ";" : plain.filter(csvComma).length > plain.length / 2 ? "," : null;
   /* Words in brackets are one cell ("(DR 45)", "(dofollow, permanent)"):
      their spaces are protected while the line is split and put back after.
      A bracket with " / " inside is a header ("(Allgemein / Glücksspiel /
      Vape-CBD-Crypto)") and splits as before. */
-  const guard = l => l.replace(/\([^()\/|]*\)/g, m => m.replace(/\s/g, "\u0001"));
+  const guard = l => l.replace(/\([^()\/|]*\)|\[[^\[\]\/|]*\]/g, m => m.replace(/\s/g, "\u0001"));
   /* ", " splits too when a domain follows ("a.com, b.com - 300 EUR"). */
   const prose = l => guard(l).split(/\s{2,}|\s[-–—\/:|]\s|\s+(?=[€$£]?\s?\d)|,\s+(?=[\w-]+\.[a-z])/i).map(c => c.replace(/\u0001/g, " "));
   return clean.map(l => {
@@ -298,7 +298,7 @@ export function parseList(text){
     let domIdxs = cells.map((c, j) => { const d = normaliseDomain(c); return d && !/^(docs|drive|sheets)\.google\.com$/.test(d.domain) && !/(^|\.)linkjuiceclub\.com$/.test(d.domain) ? j : -1; }).filter(j => j >= 0);
     /* One item per domain cell; a note in brackets after the name ("x.com
        (DR 45)") goes to the terms, so metricsOf reads it. */
-    const noteOf = c => { const m = String(c).match(/^\S.*?\s*\(([^()]*)\)\s*$/); return m ? m[1].trim() : ""; };
+    const noteOf = c => { const m = String(c).match(/^\S.*?\s*(?:\(([^()]*)\)|\[([^\[\]]*)\])\s*$/); return m ? (m[1] !== undefined ? m[1] : m[2]).trim() : ""; };
     const mkItem = (j, prices, terms) => { const d = normaliseDomain(cells[j]); return { domain: d.domain, path: d.path, raw: cells[j], prices, terms: [noteOf(cells[j]), terms].filter(Boolean).join(" | "), line: i + 1 }; };
     if(domIdxs.length > 1){
       if(domainCol >= 0 && domIdxs.includes(domainCol)) domIdxs = [domainCol];
