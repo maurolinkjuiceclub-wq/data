@@ -58,7 +58,7 @@ function dbRefresh(){
   dbState.lang = fillSelect("db-lang", f.languages, dbState.lang);
   dbState.list = rows.filter(r => rowMatchesFilters(r, dbState));
   dbState.total = rows.length;
-  dbBadge = rows.length; paintDbBadge();
+  dbBadge = apiAnswered ? null : rows.length; paintDbBadge();
   dbDraw();
 }
 function dbColumns(){

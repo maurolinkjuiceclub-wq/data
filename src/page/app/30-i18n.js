@@ -107,8 +107,9 @@ function describeDb(){
     /* The seal stays short so the bar fits on one line; the reason is in the panel. */
     if(remote.loadError && !remote.loading) txt += " · " + t().refreshFailedShort;
     $("state").textContent = txt;
-    /* The Database tab's count is the sheet's as soon as it is connected. */
-    if(!remote.loading && remote.rows != null){ dbBadge = remote.rows; paintDbBadge(); }
+    /* The Database tab's count is the sheet's as soon as it is connected: the copy in use while a new read runs, nothing while the first read has no rows yet. */
+    if(remote.rows > 0) dbBadge = remote.rows; else if(remote.loading) dbBadge = null; else if(remote.rows != null) dbBadge = remote.rows;
+    paintDbBadge();
     document.querySelector("[data-i18n=dbhint]").textContent = t().dbhintLive;
     $("refresh").hidden = false;
     if(why){ why.textContent = remote.loadError ? t().refreshFailed(remote.loadError) : ""; why.hidden = !remote.loadError; }

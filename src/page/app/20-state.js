@@ -12,6 +12,9 @@ let groups = null, items = [], lastParsed = null, view = "changed", stype = "Pub
 /* Where the Worker answers: /api when the page is on its own, /api/lists
    when it is served inside the desk under /listas/ (13/10). */
 const API = /^\/listas(\/|$)/.test(location.pathname) ? "/api/lists" : "/api";
+/* The Database tab's number is the sheet's, never the sample rows' (27/10, Gary: "database says 8 sites but when I click it shows 102K": while the Worker was
+   still reading the sheet the tab kept the 8 sample rows). It is blank until the status route has answered, and the sample count only shows when there is no API. */
+let statusDone = false;
 let remote = null;      /* { rows, readAt, write, loading, loadError } when the status route says connected */
 let apiAnswered = false; /* the status route answered (connected or not); false when there is no API at all */
 let remoteDetail = "";   /* the reason the API gave, verbatim, for the "other" sentence */
@@ -71,6 +74,8 @@ async function checkRemote(force){
     clearTimeout(remotePoll);
     if(remote && remote.loading) remotePoll = setTimeout(() => checkRemote().then(() => { if(remote && !remote.loading){ if(items.length) run(); if(mode === "db") dbRefresh(); if(mode === "offer") ofRefresh(); } }).catch(() => {}), 4000);
   }catch(e){ remote = null; apiAnswered = false; remoteWhy = ""; remoteDetail = String(e && e.message || e); }
+  statusDone = true;
+  if(!remote){ dbBadge = apiAnswered ? null : dbRows.length; paintDbBadge(); }
   /* The API is there but the sheet is not (paused, no key, a read that
      failed): the sample rows go, so the Database and Offers screens say so
      instead of listing invented sites (review of 16/10). They stay only
