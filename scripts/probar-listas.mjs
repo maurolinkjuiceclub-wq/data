@@ -484,6 +484,15 @@ function csvToObjects(text){
   caso("em dash after the domain", eq(gen("alpha.com — 300 EUR"), [300]));
   const note = parseList("alpha.com (DR 45) - 300 EUR").items[0];
   caso("a note in brackets after the domain is kept, and read as a metric", note.domain === "alpha.com" && note.prices.general.amount === 300 && /DR 45/.test(note.terms) && metricsOf(note.terms).dr === 45, note);
+  /* Square brackets are a note like round ones (27/10: "newsnode.example [crypto niche] 300 € per article" was skipped in the simulated session). */
+  const sq = parseList("newsnode.example [crypto and finance niche, nofollow on request] 300 € per article").items[0];
+  caso("a note in SQUARE brackets after the domain, before the price, is kept as terms and the price is read", sq && sq.domain === "newsnode.example" && sq.prices.general.amount === 300 && sq.prices.general.currency === "EUR" && /crypto and finance niche, nofollow on request/.test(sq.terms) && /per article/.test(sq.terms), sq);
+  caso("…the same as with round brackets", eq(gen("newsnode.example [crypto niche] 300 €"), gen("newsnode.example (crypto niche) 300 €")) && eq(doms("3. newsnode.example [DR 40] 300 EUR"), ["newsnode.example"]));
+  const sqDr = parseList("newsnode.example [DR 40] 300 € per article").items[0];
+  caso("…and a metric in square brackets is read as a metric", sqDr && metricsOf(sqDr.terms).dr === 40, sqDr);
+  caso("…also on a tab row, and two sites with a note each on one line", eq(doms("newsnode.example [DR 40]\t300"), ["newsnode.example"]) && eq(doms("a.example [x], b.example [y] - 300 EUR"), ["a.example", "b.example"]));
+  caso("a comma inside square brackets is not a CSV separator", eq(gen("a.com - 300 EUR [dofollow, permanent]\nb.com - 250 EUR [dofollow, permanent]"), [300, 250]));
+  caso("normaliseDomain: a trailing square-bracket note", normaliseDomain("newsnode.example [crypto niche]").domain === "newsnode.example");
   caso("domain in brackets and in curly quotes", eq(doms("(alpha.com) 300 EUR\n“beta.com” 250 EUR"), ["alpha.com", "beta.com"]));
   caso("normaliseDomain: markers and quotes", normaliseDomain("1. alpha.com").domain === "alpha.com" && normaliseDomain("• beta.com").domain === "beta.com" && normaliseDomain("«gamma.com»").domain === "gamma.com" && normaliseDomain("(delta.com)").domain === "delta.com" && normaliseDomain("1337.io").domain === "1337.io" && eq(normaliseDomain("rfi.ro (rfi.fr/ro)"), { domain: "rfi.ro", path: "" }));
   caso("several domains on one line, comma separated", eq(doms("alpha.com, beta.com, gamma.com: 300 EUR each"), ["alpha.com", "beta.com", "gamma.com"]) && eq(gen("alpha.com, beta.com, gamma.com: 300 EUR each"), [300, 300, 300]));
